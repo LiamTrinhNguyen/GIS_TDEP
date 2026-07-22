@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ETCH-TERMINAL · PIPSQUEAK</title>
+
+  <!-- PyScript -->
+  <link rel="stylesheet" href="https://pyscript.net/releases/2024.11.1/core.css" />
+  <script type="module" src="https://pyscript.net/releases/2024.11.1/core.js"></script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #000;
+      color: #00FF41;
+      font-family: 'Consolas', 'Courier New', monospace;
+      min-height: 100vh;
+    }
+    .crt {
+      background: #000800;
+      box-shadow: inset 0 0 40px #00FF41;
+      padding: 18px;
+      min-height: 100vh;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    .header h1 {
+      font-size: 22px;
+      letter-spacing: 2px;
+    }
+    .subtitle {
+      color: #00AA2A;
+      font-size: 13px;
+      margin-top: 4px;
+    }
+    .toolbar {
+      text-align: center;
+      margin: 12px 0;
+    }
+    button {
+      background: #001100;
+      color: #00FF41;
+      border: 1px solid #00AA2A;
+      padding: 6px 14px;
+      margin: 0 4px;
+      font-family: inherit;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #002200;
+      box-shadow: 0 0 8px #00FF41;
+    }
+    .main {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    canvas {
+      background: #000C00;
+      border: 1px solid #00AA2A;
+      image-rendering: pixelated;
+    }
+    .console {
+      width: 380px;
+      background: #000A00;
+      border: 1px solid #00AA2A;
+      padding: 12px;
+    }
+    textarea {
+      width: 100%;
+      height: 280px;
+      background: #000000;
+      color: #00FF41;
+      border: 1px solid #003300;
+      font-family: inherit;
+      font-size: 13px;
+      padding: 8px;
+      resize: vertical;
+    }
+    .examples {
+      margin: 8px 0;
+    }
+    .examples button {
+      font-size: 12px;
+      padding: 4px 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="crt">
+    <div class="header">
+      <h1>ETCH-TERMINAL · PIPSQUEAK</h1>
+      <div class="subtitle">Vector drawing engine · Pipsqueak turtle language · phosphor replay</div>
+    </div>
+
+    <div class="toolbar">
+      <button id="btn-clear">[ CLEAR ]</button>
+      <button id="btn-run">[ RUN ]</button>
+    </div>
+
+    <div class="main">
+      <canvas id="canvas" width="640" height="480"></canvas>
+
+      <div class="console">
+        <strong>PIPSQUEAK CONSOLE v1.0</strong>
+        <div class="examples">
+          Examples:
+          <button onclick="loadExample('square')">Square</button>
+          <button onclick="loadExample('star')">Star</button>
+          <button onclick="loadExample('spiral')">Spiral</button>
+        </div>
+        <textarea id="code">CENTER
+REPEAT 4 {
+  FORWARD 100
+  TURN 90
+}</textarea>
+        <br><br>
+        <button id="btn-run2">[ RUN ]</button>
+        <button onclick="document.getElementById('code').value=''">[ CLR ]</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load Python modules -->
+  <py-config>
+    [[fetch]]
+    files = [
+      "./modules/turtle.py",
+      "./modules/parser.py"
+    ]
+  </py-config>
+
+  <script type="py">
+    from modules.parser import run_pipsqueak, init_turtle
+    from js import document
+
+    # Initialize turtle on load
+    init_turtle()
+
+    def run_code(event=None):
+        code = document.getElementById("code").value
+        run_pipsqueak(code)
+
+    def clear_canvas(event=None):
+        from modules.parser import init_turtle
+        t = init_turtle()
+        t.clear()
+
+    document.getElementById("btn-run").addEventListener("click", run_code)
+    document.getElementById("btn-run2").addEventListener("click", run_code)
+    document.getElementById("btn-clear").addEventListener("click", clear_canvas)
+  </script>
+
+  <script>
+    function loadExample(name) {
+      const examples = {
+        square: `CENTER
+REPEAT 4 {
+  FORWARD 100
+  TURN 90
+}`,
+        star: `CENTER
+REPEAT 5 {
+  FORWARD 120
+  TURN 144
+}`,
+        spiral: `CENTER
+REPEAT 80 {
+  FORWARD 5
+  TURN 15
+}`
+      };
+      document.getElementById("code").value = examples[name] || "";
+    }
+  </script>
+</body>
+</html>
