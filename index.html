@@ -8,7 +8,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
   <!-- Browser tab title -->
-  <title>GIS_TDEP · VISUALIZATION</title>
+  <title>MAP ACTIVE - SIMULATION RUNNING</title>
 
   <!-- PyScript CSS -->
   <link rel="stylesheet" href="https://pyscript.net/releases/2024.11.1/core.css" />
@@ -21,10 +21,10 @@
 
   <style>
     /* Reset default styles */
-    * { 
-      box-sizing: border-box; 
-      margin: 0; 
-      padding: 0; 
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
 
     /* Main page style - pure black & white */
@@ -83,7 +83,7 @@
       box-shadow: 0 0 8px #FFFFFF;
     }
 
-    /* Main layout - now 3 columns */
+    /* Main layout - 3 columns */
     .main {
       display: flex;
       gap: 20px;
@@ -128,9 +128,7 @@
       padding: 4px 8px;
     }
 
-    /* ==============================
-       NEW: Interactive Map Panel
-       ============================== */
+    /* Interactive Map Panel */
     .map-panel {
       width: 420px;
       background: #0A0A0A;
@@ -170,9 +168,9 @@
 
     <!-- Header -->
     <div class="header">
-      <h1>GIS_TDEP · VISUALIZATION</h1>
+      <h1>MAP ACTIVE - SIMULATION RUNNING</h1>
       <div class="subtitle">
-        Vector drawing engine · Interactive map · Pipsqueak turtle language
+        Mapping Display · Statistical Information · Trending
       </div>
     </div>
 
@@ -185,10 +183,7 @@
     <!-- Main content area -->
     <div class="main">
 
-      <!-- 1. Drawing Canvas -->
-      <canvas id="canvas" width="520" height="400"></canvas>
-
-      <!-- 2. NEW: Interactive Map Box -->
+      <!-- 1. FIRST COLUMN: Interactive Map -->
       <div class="map-panel">
         <div class="map-title">MAP VIEW · ZOOM & EXPLORE</div>
         
@@ -196,11 +191,14 @@
         <div id="map"></div>
         
         <div style="margin-top: 8px; font-size: 12px; color: #AAAAAA;">
-          Scroll to zoom · Drag to pan · Similar to Apple Maps style
+          Scroll to zoom · Drag to pan
         </div>
       </div>
 
-      <!-- 3. Console -->
+      <!-- 2. SECOND COLUMN: Drawing Canvas -->
+      <canvas id="canvas" width="520" height="400"></canvas>
+
+      <!-- 3. THIRD COLUMN: Console -->
       <div class="console">
         <strong>PIPSQUEAK CONSOLE v1.0</strong>
 
@@ -279,28 +277,25 @@ REPEAT 80 {
     }
   </script>
 
-  <!-- ==============================
-       Leaflet Map (Apple Maps style interaction)
-       ============================== -->
+  <!-- Leaflet Map -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    // Create the map
-    // Centered roughly on Wisconsin (you can change coordinates later)
+    // Create the map - centered on Madison, WI
     const map = L.map('map', {
-      zoomControl: true,          // Show + / - buttons
-      scrollWheelZoom: true,      // Zoom with mouse wheel
-      doubleClickZoom: true,      // Double-click to zoom
-      dragging: true              // Drag to pan
-    }).setView([43.07, -89.40], 7);  // Madison, WI area
+      zoomControl: true,
+      scrollWheelZoom: true,
+      doubleClickZoom: true,
+      dragging: true
+    }).setView([43.07, -89.40], 7);
 
-    // Use a clean black & white map style (CartoDB Positron)
+    // Clean black & white map style
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; OpenStreetMap & CartoDB',
       maxZoom: 19,
       minZoom: 3
     }).addTo(map);
 
-    // Optional: Add a marker (example)
+    // Example marker
     L.marker([43.07, -89.40])
       .addTo(map)
       .bindPopup('Wisconsin State Laboratory of Hygiene area');
