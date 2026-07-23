@@ -4,33 +4,26 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MAP ACTIVE - SIMULATION RUNNING</title>
-
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-
     body {
       background: #000;
       color: #fff;
       font-family: 'Consolas', 'Courier New', monospace;
       min-height: 100vh;
     }
-
     .crt {
       background: #000;
       box-shadow: inset 0 0 40px #222;
       padding: 18px;
       min-height: 100vh;
     }
-
     .header { text-align: center; margin-bottom: 12px; }
     .header h1 { font-size: 22px; letter-spacing: 2px; }
     .subtitle { color: #aaa; font-size: 13px; margin-top: 4px; }
-
     .toolbar { text-align: center; margin: 12px 0; }
-
     button {
       background: #111;
       color: #fff;
@@ -50,8 +43,6 @@
       background: #333;
       box-shadow: 0 0 4px #fff;
     }
-
-    /* ========== 3-column layout ========== */
     .main {
       display: flex;
       gap: 18px;
@@ -59,7 +50,6 @@
       flex-wrap: wrap;
       align-items: flex-start;
     }
-
     .panel {
       width: 420px;
       height: 620px;
@@ -69,28 +59,23 @@
       display: flex;
       flex-direction: column;
     }
-
     .panel-title {
       font-size: 14px;
       letter-spacing: 1px;
       margin-bottom: 10px;
       flex-shrink: 0;
     }
-
     .panel-content {
       flex: 1;
       overflow-y: auto;
       overflow-x: hidden;
     }
-
     #coverage-plot {
       flex: 1;
       overflow: hidden;
       display: flex;
       flex-direction: column;
     }
-
-    /* ========== Column 1 ========== */
     #map {
       width: 100%;
       height: 220px;
@@ -104,14 +89,12 @@
       color: #fff !important;
       border: 1px solid #fff !important;
     }
-
     .sort-bar {
       margin-bottom: 6px;
       font-size: 11px;
       color: #aaa;
     }
     .sort-bar button { font-size: 11px; padding: 3px 8px; }
-
     .network-list-box {
       border: 1px solid #555;
       flex: 1;
@@ -150,8 +133,6 @@
       background: #333;
       box-shadow: inset 0 0 0 1px #fff;
     }
-
-    /* ========== Column 2 ========== */
     .info-box {
       border: 1px solid #444;
       padding: 12px;
@@ -165,7 +146,6 @@
     }
     .var-buttons { margin-top: 10px; }
     .var-buttons button { font-size: 11px; padding: 4px 7px; }
-
     .placeholder {
       color: #666;
       font-size: 13px;
@@ -173,8 +153,6 @@
       text-align: center;
       line-height: 1.6;
     }
-
-    /* ========== Column 3 ========== */
     .plot-title {
       font-size: 13px;
       color: #aaa;
@@ -224,65 +202,101 @@
       text-align: center;
       line-height: 1.6;
     }
-
     .trend-btn-wrap {
       margin-top: 10px;
       flex-shrink: 0;
       text-align: center;
     }
-
-    /* ========== Full-width trend panel ========== */
     .trend-panel {
       width: 100%;
-      max-width: 1296px;          /* ~3 × 420 + gaps */
+      max-width: 1296px;
       margin: 18px auto 0 auto;
       background: #0a0a0a;
       border: 1px solid #ffffff;
       padding: 14px;
-      display: none;              /* hidden until button is clicked */
+      display: none;
     }
-    .trend-panel.visible {
-      display: block;
-    }
+    .trend-panel.visible { display: block; }
     .trend-header {
       font-size: 14px;
       letter-spacing: 1px;
       margin-bottom: 10px;
       color: #aaa;
     }
+    .trend-body {
+      display: flex;
+      gap: 10px;
+      align-items: stretch;
+    }
     #trend-canvas-wrap {
       position: relative;
       height: 320px;
+      flex: 1;
+      min-width: 0;
+    }
+    /* Y scrollbar = zoom */
+    .trend-zoom-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      flex-shrink: 0;
+    }
+    .trend-zoom-wrap label {
+      font-size: 10px;
+      color: #888;
+      margin-bottom: 6px;
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+    }
+    #trend-zoom {
+      writing-mode: vertical-lr;
+      direction: rtl;
+      width: 8px;
+      height: 260px;
+      cursor: pointer;
+      accent-color: #e74c3c;
+    }
+    /* X scrollbar = time pan */
+    .trend-scroll-wrap {
+      margin-top: 10px;
+      padding: 0 4px;
+    }
+    .trend-scroll-wrap label {
+      font-size: 11px;
+      color: #888;
+      display: block;
+      margin-bottom: 4px;
+    }
+    #trend-scroll {
       width: 100%;
+      height: 8px;
+      cursor: pointer;
+      accent-color: #e74c3c;
     }
   </style>
 </head>
 <body>
   <div class="crt">
-
     <div class="header">
       <h1>MAP ACTIVE - SIMULATION RUNNING</h1>
       <div class="subtitle">Mapping Display · Statistical Information · Trending</div>
     </div>
-
     <div class="toolbar">
       <button onclick="loadAllSites()">[ LOAD SITES ]</button>
     </div>
-
     <div class="main">
-
-      <!-- ========== COLUMN 1 ========== -->
+      <!-- COLUMN 1 -->
       <div class="panel">
         <div class="panel-title">MAP VIEW · ZOOM & EXPLORE</div>
         <div id="map"></div>
-
         <div class="sort-bar">
           Sort by:
           <button id="sort-default" class="active-sort" onclick="sortNetworkList('default')">Default</button>
           <button id="sort-castnet" onclick="sortNetworkList('CASTNET')">CASTNET A–Z</button>
           <button id="sort-ntn" onclick="sortNetworkList('NTN')">NTN A–Z</button>
         </div>
-
         <div class="network-list-box">
           <div class="network-list-title">NETWORK LIST</div>
           <div class="network-list-container">
@@ -300,8 +314,7 @@
           </div>
         </div>
       </div>
-
-      <!-- ========== COLUMN 2 ========== -->
+      <!-- COLUMN 2 -->
       <div class="panel">
         <div class="panel-title">SELECTED SITE(S)</div>
         <div class="panel-content" id="site-info">
@@ -311,8 +324,7 @@
           </div>
         </div>
       </div>
-
-      <!-- ========== COLUMN 3 ========== -->
+      <!-- COLUMN 3 -->
       <div class="panel">
         <div class="panel-title">WEEKLY COVERAGE</div>
         <div id="coverage-plot">
@@ -322,31 +334,35 @@
             year-stacked coverage
           </div>
         </div>
-
         <div class="trend-btn-wrap">
           <button id="btn-trend" onclick="showTrendPlot()">
             [ STATISTICAL-TRENDING ]
           </button>
         </div>
       </div>
-
     </div>
 
-    <!-- ========== FULL-WIDTH TREND PANEL ========== -->
+    <!-- FULL-WIDTH TREND PANEL -->
     <div class="trend-panel" id="trend-panel">
       <div class="trend-header" id="trend-header">Time Series</div>
-      <div id="trend-canvas-wrap">
-        <canvas id="trend-chart"></canvas>
+      <div class="trend-body">
+        <div id="trend-canvas-wrap">
+          <canvas id="trend-chart"></canvas>
+        </div>
+        <div class="trend-zoom-wrap">
+          <label>ZOOM</label>
+          <input type="range" id="trend-zoom" min="20" max="100" value="100" step="1" />
+        </div>
+      </div>
+      <div class="trend-scroll-wrap">
+        <label>TIME (scroll left / right)</label>
+        <input type="range" id="trend-scroll" min="0" max="100" value="0" step="1" />
       </div>
     </div>
-
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    // ==================================================
-    // GLOBAL STATE
-    // ==================================================
     const map = L.map('map', {
       zoomControl: true,
       scrollWheelZoom: true,
@@ -360,23 +376,22 @@
       minZoom: 3
     }).addTo(map);
 
-    let allMarkers     = [];
-    let siteRegistry   = {};
-    let dateSummary    = {};
-    let coverageData   = {};
+    let allMarkers = [];
+    let siteRegistry = {};
+    let dateSummary = {};
+    let coverageData = {};
     let timeseriesData = {};
-    let selectedKey    = null;
-    let currentSort    = 'default';
+    let selectedKey = null;
+    let currentSort = 'default';
     let currentNetwork = null;
-    let currentSiteId  = null;
+    let currentSiteId = null;
     let currentVariable = null;
-    let trendChart     = null;
+    let trendChart = null;
+    let trendLabels = [];
+    let trendValues = [];
 
     const VARIABLES = ["SO2","SO4","HNO3","NO3","TNO3","NH4","CA","K","MG","Sodium"];
 
-    // ==================================================
-    // HELPERS
-    // ==================================================
     function parseCSV(text) {
       const lines = text.trim().split(/\r?\n/);
       if (lines.length < 2) return [];
@@ -393,9 +408,6 @@
       return `${lat.toFixed(5)}_${lon.toFixed(5)}`;
     }
 
-    // ==================================================
-    // LOAD DATA
-    // ==================================================
     async function loadCoordinator(network, path) {
       try {
         const res = await fetch(path);
@@ -407,7 +419,6 @@
           const lon = parseFloat(row.LONGITUDE || row.LON || row.LONG || row.X);
           const siteId = row.SITE_ID || row.SITEID || row.SITE || row.ID;
           if (isNaN(lat) || isNaN(lon) || !siteId) return;
-
           const key = makeKey(lat, lon);
           if (!siteRegistry[key]) {
             siteRegistry[key] = { lat, lon, CASTNET: null, NTN: null, marker: null };
@@ -431,10 +442,7 @@
         rows.forEach(r => {
           const net = r.NETWORK;
           if (!dateSummary[net]) dateSummary[net] = {};
-          dateSummary[net][r.SITE_ID] = {
-            first: r.FIRST_DATE,
-            last:  r.LAST_DATE
-          };
+          dateSummary[net][r.SITE_ID] = { first: r.FIRST_DATE, last: r.LAST_DATE };
         });
       } catch (e) {
         console.error('Date summary error', e);
@@ -462,9 +470,6 @@
       }
     }
 
-    // ==================================================
-    // SORT
-    // ==================================================
     function sortNetworkList(mode) {
       currentSort = mode;
       document.getElementById('sort-default').classList.remove('active-sort');
@@ -472,21 +477,16 @@
       document.getElementById('sort-ntn').classList.remove('active-sort');
       if (mode === 'default') document.getElementById('sort-default').classList.add('active-sort');
       if (mode === 'CASTNET') document.getElementById('sort-castnet').classList.add('active-sort');
-      if (mode === 'NTN')     document.getElementById('sort-ntn').classList.add('active-sort');
+      if (mode === 'NTN') document.getElementById('sort-ntn').classList.add('active-sort');
       buildMarkersAndTable();
     }
 
-    // ==================================================
-    // BUILD MAP + TABLE
-    // ==================================================
     function buildMarkersAndTable() {
       allMarkers.forEach(m => map.removeLayer(m));
       allMarkers = [];
       const tbody = document.getElementById('network-tbody');
       tbody.innerHTML = '';
-
       let keys = Object.keys(siteRegistry);
-
       if (currentSort === 'CASTNET') {
         keys.sort((a, b) => (siteRegistry[a].CASTNET || 'zzz').localeCompare(siteRegistry[b].CASTNET || 'zzz'));
       } else if (currentSort === 'NTN') {
@@ -494,25 +494,20 @@
       } else {
         keys.sort((a, b) => siteRegistry[b].lat - siteRegistry[a].lat);
       }
-
       keys.forEach(key => {
         const site = siteRegistry[key];
         const color = (site.CASTNET && site.NTN) ? '#fff' : site.CASTNET ? '#fff' : '#aaa';
-
         const marker = L.circleMarker([site.lat, site.lon], {
           radius: 7, fillColor: color, color: '#000',
           weight: 1, opacity: 1, fillOpacity: 0.9
         }).addTo(map);
-
         site.marker = marker;
         allMarkers.push(marker);
-
         let popup = '';
         if (site.CASTNET) popup += `<b>CASTNET:</b> ${site.CASTNET}<br>`;
-        if (site.NTN)     popup += `<b>NTN:</b> ${site.NTN}`;
+        if (site.NTN) popup += `<b>NTN:</b> ${site.NTN}`;
         marker.bindPopup(popup);
         marker.on('click', () => selectSite(key));
-
         const tr = document.createElement('tr');
         tr.dataset.key = key;
         tr.innerHTML = `
@@ -523,56 +518,41 @@
         tr.onclick = () => selectSite(key);
         tbody.appendChild(tr);
       });
-
       if (allMarkers.length) {
         map.fitBounds(L.featureGroup(allMarkers).getBounds().pad(0.12));
       }
     }
 
-    // ==================================================
-    // SELECT SITE
-    // ==================================================
     function selectSite(key) {
       if (selectedKey && siteRegistry[selectedKey]?.marker) {
         siteRegistry[selectedKey].marker.setStyle({ weight: 1, color: '#000', radius: 7 });
       }
       document.querySelectorAll('#network-tbody tr.selected')
               .forEach(r => r.classList.remove('selected'));
-
       selectedKey = key;
       const site = siteRegistry[key];
       if (!site) return;
-
       currentNetwork = null;
-      currentSiteId  = null;
+      currentSiteId = null;
       currentVariable = null;
-
       if (site.marker) {
         site.marker.setStyle({ weight: 3, color: '#fff', radius: 10 });
         site.marker.openPopup();
         map.panTo([site.lat, site.lon]);
       }
-
       const row = document.querySelector(`#network-tbody tr[data-key="${key}"]`);
       if (row) {
         row.classList.add('selected');
         row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
-
       document.getElementById('coverage-plot').innerHTML = `
         <div class="plot-placeholder">
           Click a variable button<br>to view year-stacked coverage
         </div>`;
-
-      // hide trend panel when switching site
       document.getElementById('trend-panel').classList.remove('visible');
-
       renderSiteInfo(site);
     }
 
-    // ==================================================
-    // RENDER COLUMN 2
-    // ==================================================
     function renderSiteInfo(site) {
       let html = `
         <div class="info-box">
@@ -580,7 +560,6 @@
           <div>Latitude: ${site.lat.toFixed(5)}</div>
           <div>Longitude: ${site.lon.toFixed(5)}</div>
         </div>`;
-
       if (site.CASTNET) {
         const range = (dateSummary.CASTNET || {})[site.CASTNET] || {};
         html += `
@@ -591,7 +570,6 @@
             <div class="var-buttons" id="vars-castnet"></div>
           </div>`;
       }
-
       if (site.NTN) {
         const range = (dateSummary.NTN || {})[site.NTN] || {};
         html += `
@@ -602,11 +580,9 @@
             <div class="var-buttons" id="vars-ntn"></div>
           </div>`;
       }
-
       document.getElementById('site-info').innerHTML = html;
-
       if (site.CASTNET) createVarButtons('CASTNET', site.CASTNET, 'vars-castnet');
-      if (site.NTN)     createVarButtons('NTN',     site.NTN,     'vars-ntn');
+      if (site.NTN) createVarButtons('NTN', site.NTN, 'vars-ntn');
     }
 
     function createVarButtons(network, siteId, containerId) {
@@ -618,8 +594,8 @@
           document.querySelectorAll('.var-buttons button')
                   .forEach(b => b.classList.remove('active-var'));
           btn.classList.add('active-var');
-          currentNetwork  = network;
-          currentSiteId   = siteId;
+          currentNetwork = network;
+          currentSiteId = siteId;
           currentVariable = v;
           showYearStackedPlot(network, siteId, v);
         };
@@ -627,14 +603,10 @@
       });
     }
 
-    // ==================================================
-    // COLUMN 3 – Year-stacked coverage
-    // ==================================================
     function showYearStackedPlot(network, siteId, variable) {
       const container = document.getElementById('coverage-plot');
       const yearData = (((coverageData[network] || {})[siteId] || {})[variable]) || {};
       const years = Object.keys(yearData).sort();
-
       if (years.length === 0) {
         container.innerHTML = `
           <div class="plot-placeholder">
@@ -642,12 +614,10 @@
           </div>`;
         return;
       }
-
       let html = `
         <div class="plot-title">
           ${network} · ${siteId} · ${variable}
         </div>`;
-
       years.forEach(year => {
         const binary = yearData[year] || '';
         html += `<div class="year-row">
@@ -659,13 +629,37 @@
         }
         html += `</div></div>`;
       });
-
       container.innerHTML = html;
     }
 
     // ==================================================
-    // FULL-WIDTH TREND PLOT (Chart.js)
+    // TREND PLOT
+    // - keep nulls → line breaks on gaps (no interpolation)
+    // - Y scrollbar = zoom (window size)
+    // - X scrollbar = move left / right in time
     // ==================================================
+    function applyTrendWindow() {
+      if (!trendChart || trendLabels.length === 0) return;
+
+      const zoomSlider = document.getElementById('trend-zoom');
+      const scrollSlider = document.getElementById('trend-scroll');
+
+      // zoom: 100 = full series, 20 = ~20% of points visible
+      const zoomPct = parseInt(zoomSlider.value, 10) / 100;
+      const windowSize = Math.max(10, Math.round(trendLabels.length * zoomPct));
+      const maxStart = Math.max(0, trendLabels.length - windowSize);
+
+      scrollSlider.max = maxStart;
+      if (parseInt(scrollSlider.value, 10) > maxStart) {
+        scrollSlider.value = maxStart;
+      }
+
+      const start = parseInt(scrollSlider.value, 10);
+      trendChart.options.scales.x.min = start;
+      trendChart.options.scales.x.max = start + windowSize - 1;
+      trendChart.update('none');
+    }
+
     function showTrendPlot() {
       if (!currentNetwork || !currentSiteId || !currentVariable) {
         alert('Please select a site and a variable first.');
@@ -673,52 +667,57 @@
       }
 
       const series = (((timeseriesData[currentNetwork] || {})[currentSiteId]) || {});
-      const dates  = series.DATEON || [];
-      const values = series[currentVariable] || [];
+      const dates = series.DATEON || [];
+      let values = series[currentVariable] || [];
+      if (values.length === 0) {
+        values = series['variable_' + currentVariable] || [];
+      }
 
       if (dates.length === 0) {
         alert('No time-series data found for this site/variable.');
         return;
       }
 
-      // Show panel
+      // Keep nulls so line breaks on missing weeks (NO filter)
+      trendLabels = [];
+      trendValues = [];
+      for (let i = 0; i < dates.length; i++) {
+        trendLabels.push(dates[i]);
+        const v = values[i];
+        trendValues.push((v === null || v === undefined || v === '') ? null : Number(v));
+      }
+
       const panel = document.getElementById('trend-panel');
       panel.classList.add('visible');
       document.getElementById('trend-header').textContent =
-        `${currentNetwork} · ${currentSiteId} · ${currentVariable}`;
-
-      // Build chart data (skip nulls for cleaner line, or keep nulls)
-      const points = dates.map((d, i) => ({
-        x: d,
-        y: values[i]
-      })).filter(p => p.y !== null && p.y !== undefined);
+        `${currentNetwork} · ${currentSiteId} · ${currentVariable}  |  Y-bar = zoom · X-bar = time`;
 
       const ctx = document.getElementById('trend-chart').getContext('2d');
-
-      if (trendChart) {
-        trendChart.destroy();
-      }
+      if (trendChart) trendChart.destroy();
 
       trendChart = new Chart(ctx, {
         type: 'line',
         data: {
+          labels: trendLabels,
           datasets: [{
             label: `${currentNetwork} ${currentVariable}`,
-            data: points,
+            data: trendValues,
             borderColor: '#e74c3c',
             backgroundColor: 'rgba(231, 76, 60, 0.15)',
             borderWidth: 1.2,
             pointRadius: 0,
             pointHoverRadius: 3,
-            tension: 0.1,
-            spanGaps: false
+            tension: 0,
+            spanGaps: false   // do not connect across nulls
           }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          animation: false,
           interaction: {
-            mode: 'index',
+            mode: 'nearest',
+            axis: 'x',
             intersect: false
           },
           plugins: {
@@ -727,7 +726,7 @@
             },
             title: {
               display: true,
-              text: `${currentSiteId}  ${currentVariable}`,
+              text: `${currentSiteId} ${currentVariable}`,
               color: '#eee',
               font: { family: 'Consolas', size: 14 }
             }
@@ -735,6 +734,8 @@
           scales: {
             x: {
               type: 'category',
+              min: 0,
+              max: trendLabels.length - 1,
               ticks: {
                 color: '#aaa',
                 maxTicksLimit: 12,
@@ -758,13 +759,18 @@
         }
       });
 
-      // Scroll the trend panel into view
+      // Reset controls
+      document.getElementById('trend-zoom').value = 100;
+      document.getElementById('trend-scroll').value = 0;
+      document.getElementById('trend-scroll').max = 0;
+
+      document.getElementById('trend-zoom').oninput = applyTrendWindow;
+      document.getElementById('trend-scroll').oninput = applyTrendWindow;
+
+      applyTrendWindow();
       panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
-    // ==================================================
-    // MAIN LOAD
-    // ==================================================
     async function loadAllSites() {
       siteRegistry = {};
       selectedKey = null;
@@ -780,7 +786,7 @@
       document.getElementById('trend-panel').classList.remove('visible');
 
       await loadCoordinator('CASTNET', './data/input/CASTNET/CASTNET_coordinator.csv');
-      await loadCoordinator('NTN',     './data/input/NTN/NTN_coordinator.csv');
+      await loadCoordinator('NTN', './data/input/NTN/NTN_coordinator.csv');
       await loadDateSummary();
       await loadCoverage();
       await loadTimeseries();
