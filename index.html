@@ -43,6 +43,10 @@
       background: #444;
       box-shadow: 0 0 6px #fff;
     }
+    button.active-sort {
+      background: #333;
+      box-shadow: 0 0 4px #fff;
+    }
 
     /* ========== Main 3-column layout ========== */
     .main {
@@ -53,7 +57,6 @@
       align-items: flex-start;
     }
 
-    /* Common panel – same size for all columns */
     .panel {
       width: 420px;
       height: 620px;
@@ -71,7 +74,7 @@
       flex-shrink: 0;
     }
 
-    /* Column 2 – scroll only when content is long */
+    /* Column 2 – scroll when needed */
     .panel-content {
       flex: 1;
       overflow-y: auto;
@@ -89,16 +92,26 @@
     /* ========== Column 1 ========== */
     #map {
       width: 100%;
-      height: 260px;
+      height: 240px;
       background: #111;
       border: 1px solid #555;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
       flex-shrink: 0;
     }
     .leaflet-control-zoom a {
       background: #111 !important;
       color: #fff !important;
       border: 1px solid #fff !important;
+    }
+
+    .sort-bar {
+      margin-bottom: 6px;
+      font-size: 11px;
+      color: #aaa;
+    }
+    .sort-bar button {
+      font-size: 11px;
+      padding: 3px 8px;
     }
 
     .network-list-box {
@@ -164,7 +177,7 @@
       line-height: 1.6;
     }
 
-    /* ========== Column 3 – fixed, no scroll ========== */
+    /* ========== Column 3 – fixed weekly boxes ========== */
     .plot-title {
       font-size: 13px;
       color: #aaa;
@@ -191,15 +204,16 @@
       display: flex;
       flex-wrap: nowrap;
       gap: 1px;
-      overflow: hidden;     /* no horizontal scroll */
+      overflow: hidden;
       flex: 1;
     }
 
+    /* Same fixed size for every weekly box */
     .week-box {
-      flex: 1 1 0;          /* stretch to fill the row */
-      min-width: 0;
+      width: 7px;
       height: 12px;
       border: 1px solid #333;
+      flex-shrink: 0;
     }
     .week-box.green { background: #00cc44; }
     .week-box.white { background: #ffffff; }
@@ -230,9 +244,14 @@
       <div class="panel">
         <div class="panel-title">MAP VIEW · ZOOM & EXPLORE</div>
         <div id="map"></div>
-        <div style="font-size:12px; color:#aaa; margin-bottom:8px;">
-          Click a point or a row
+
+        <div class="sort-bar">
+          Sort by:
+          <button id="sort-default" class="active-sort" onclick="sortNetworkList('default')">Default</button>
+          <button id="sort-castnet" onclick="sortNetworkList('CASTNET')">CASTNET A–Z</button>
+          <button id="sort-ntn" onclick="sortNetworkList('NTN')">NTN A–Z</button>
         </div>
+
         <div class="network-list-box">
           <div class="network-list-title">NETWORK LIST</div>
           <div class="network-list-container">
@@ -300,6 +319,7 @@
     let dateSummary  = {};
     let coverageData = {};
     let selectedKey  = null;
+    let currentSort  = 'default';   // default | CASTNET | NTN
 
     const VARIABLES = ["SO2","SO4","HNO3","NO3","TNO3","NH4","CA","K","MG","Sodium"];
 
@@ -386,6 +406,24 @@
     }
 
     // ==================================================
+    // SORT NETWORK LIST
+    // ==================================================
+    function sortNetworkList(mode) {
+      currentSort = mode;
+
+      // Update active button style
+      document.getElementById('sort-default').classList.remove('active-sort');
+      document.getElementById('sort-castnet').classList.remove('active-sort');
+      document.getElementById('sort-ntn').classList.remove('active-sort');
+
+      if (mode === 'default') document.getElementById('sort-default').classList.add('active-sort');
+      if (mode === 'CASTNET') document.getElementById('sort-castnet').classList.add('active-sort');
+      if (mode === 'NTN')     document.getElementById('sort-ntn').classList.add('active-sort');
+
+      buildMarkersAndTable();  // rebuild table with new order
+    }
+
+    // ==================================================
     // BUILD MAP + TABLE
     // ==================================================
     function buildMarkersAndTable() {
@@ -394,9 +432,25 @@
       const tbody = document.getElementById('network-tbody');
       tbody.innerHTML = '';
 
-      const keys = Object.keys(siteRegistry).sort((a, b) =>
-        siteRegistry[b].lat - siteRegistry[a].lat
-      );
+      let keys = Object.keys(siteRegistry);
+
+      // Sorting logic
+      if (currentSort === 'CASTNET') {
+        keys.sort((a, b) => {
+          const sa = siteRegistry[a].CASTNET || 'zzz';
+          const sb = siteRegistry[b].CASTNET || 'zzz';
+          return sa.localeCompare(sb);
+        });
+      } else if (currentSort === 'NTN') {
+        keys.sort((a, b) => {
+          const sa = siteRegistry[a].NTN || 'zzz';
+          const sb = siteRegistry[b].NTN || 'zzz';
+          return sa.localeCompare(sb);
+        });
+      } else {
+        // Default: by latitude (north → south)
+        keys.sort((a, b) => siteRegistry[b].lat - siteRegistry[a].lat);
+      }
 
       keys.forEach(key => {
         const site = siteRegistry[key];
@@ -526,7 +580,7 @@
     }
 
     // ==================================================
-    // COLUMN 3 – Year-stacked plot (no scroll)
+    // COLUMN 3 – Year-stacked plot (fixed box size)
     // ==================================================
     function showYearStackedPlot(network, siteId, variable) {
       const container = document.getElementById('coverage-plot');
@@ -567,6 +621,7 @@
     async function loadAllSites() {
       siteRegistry = {};
       selectedKey = null;
+      currentSort = 'default';
 
       document.getElementById('site-info').innerHTML =
         '<div class="placeholder">Loading...</div>';
