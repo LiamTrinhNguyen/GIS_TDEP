@@ -252,6 +252,16 @@
       height: 320px;
       width: 100%;
     }
+    .trend-scroll-wrap {
+      margin-top: 10px;
+      padding: 0 4px;
+    }
+    #trend-scroll {
+      width: 100%;
+      height: 8px;
+      cursor: pointer;
+      accent-color: #e74c3c;
+    }
   </style>
 </head>
 <body>
@@ -334,6 +344,9 @@
       <div class="trend-header" id="trend-header">Time Series</div>
       <div id="trend-canvas-wrap">
         <canvas id="trend-chart"></canvas>
+      </div>
+      <div class="trend-scroll-wrap">
+        <input type="range" id="trend-scroll" min="0" max="100" value="0" step="1" />
       </div>
     </div>
 
@@ -620,7 +633,7 @@
     }
 
     // ==================================================
-    // TREND PLOT – no interpolation, zoom + pan
+    // TREND PLOT – wheel zoom + scrollbar (no drag pan)
     // ==================================================
     function showTrendPlot() {
       if (!currentNetwork || !currentSiteId || !currentVariable) {
@@ -637,7 +650,7 @@
         return;
       }
 
-      // Keep nulls → line breaks on missing weeks (no linear interpolation)
+      // Keep nulls → line breaks on gaps (no interpolation)
       const points = dates.map((d, i) => ({
         x: d,
         y: (values[i] === null || values[i] === undefined) ? null : values[i]
@@ -646,10 +659,13 @@
       const panel = document.getElementById('trend-panel');
       panel.classList.add('visible');
       document.getElementById('trend-header').textContent =
-        `${currentNetwork} · ${currentSiteId} · ${currentVariable}  |  wheel = zoom · drag = pan`;
+        `${currentNetwork} · ${currentSiteId} · ${currentVariable}  |  wheel = zoom · scrollbar = move in time`;
 
       const ctx = document.getElementById('trend-chart').getContext('2d');
       if (trendChart) trendChart.destroy();
+
+      const windowSize = Math.min(120, points.length);
+      let windowStart = 0;
 
       trendChart = new Chart(ctx, {
         type: 'line',
@@ -663,7 +679,7 @@
             pointRadius: 0,
             pointHoverRadius: 3,
             tension: 0,
-            spanGaps: false          // do NOT connect across nulls
+            spanGaps: false
           }]
         },
         options: {
@@ -686,10 +702,7 @@
               font: { family: 'Consolas', size: 14 }
             },
             zoom: {
-              pan: {
-                enabled: true,
-                mode: 'x'
-              },
+              pan: { enabled: false },
               zoom: {
                 wheel: { enabled: true },
                 pinch: { enabled: true },
@@ -700,9 +713,11 @@
           scales: {
             x: {
               type: 'category',
+              min: 0,
+              max: windowSize - 1,
               ticks: {
                 color: '#aaa',
-                maxTicksLimit: 16,
+                maxTicksLimit: 14,
                 font: { family: 'Consolas', size: 11 },
                 autoSkip: true
               },
@@ -723,6 +738,20 @@
           }
         }
       });
+
+      // Scrollbar controls visible time window
+      const scroll = document.getElementById('trend-scroll');
+      const maxStart = Math.max(0, points.length - windowSize);
+      scroll.min = 0;
+      scroll.max = maxStart;
+      scroll.value = 0;
+
+      scroll.oninput = function () {
+        windowStart = parseInt(this.value, 10);
+        trendChart.options.scales.x.min = windowStart;
+        trendChart.options.scales.x.max = windowStart + windowSize - 1;
+        trendChart.update('none');
+      };
 
       panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
