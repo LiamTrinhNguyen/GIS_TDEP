@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- ============================== -->
+  <!-- Basic page setup               -->
+  <!-- ============================== -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MAP ACTIVE - SIMULATION RUNNING</title>
@@ -9,21 +12,7 @@
   <link rel="stylesheet" href="https://pyscript.net/releases/2024.11.1/core.css" />
   <script type="module" src="https://pyscript.net/releases/2024.11.1/core.js"></script>
 
-  <!DOCTYPE html>
-<html lang="en">
-<head>
-  <!-- ============================== -->
-  <!-- Basic page setup               -->
-  <!-- ============================== -->
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MAP ACTIVE - SIMULATION RUNNING</title>
-
-  <!-- PyScript (for the turtle console) -->
-  <link rel="stylesheet" href="https://pyscript.net/releases/2024.11.1/core.css" />
-  <script type="module" src="https://pyscript.net/releases/2024.11.1/core.js"></script>
-
-  <!-- Leaflet CSS (interactive map) -->
+  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
   <style>
@@ -37,13 +26,12 @@
     }
 
     body {
-      background: #000000;          /* Pure black background */
-      color: #FFFFFF;               /* White text */
+      background: #000000;
+      color: #FFFFFF;
       font-family: 'Consolas', 'Courier New', monospace;
       min-height: 100vh;
     }
 
-    /* Main terminal container */
     .crt {
       background: #000000;
       box-shadow: inset 0 0 40px #222222;
@@ -51,7 +39,6 @@
       min-height: 100vh;
     }
 
-    /* Header */
     .header {
       text-align: center;
       margin-bottom: 12px;
@@ -69,7 +56,6 @@
       margin-top: 4px;
     }
 
-    /* Toolbar buttons */
     .toolbar {
       text-align: center;
       margin: 12px 0;
@@ -102,7 +88,7 @@
       align-items: flex-start;
     }
 
-    /* ----- Column 1: Map ----- */
+    /* ----- Column 1: Map + Network List ----- */
     .map-panel {
       width: 480px;
       background: #0A0A0A;
@@ -118,12 +104,11 @@
 
     #map {
       width: 100%;
-      height: 420px;
+      height: 320px;
       background: #111111;
       border: 1px solid #555555;
     }
 
-    /* Make Leaflet zoom buttons black & white */
     .leaflet-control-zoom a {
       background-color: #111111 !important;
       color: #FFFFFF !important;
@@ -132,6 +117,59 @@
 
     .leaflet-control-zoom a:hover {
       background-color: #333333 !important;
+    }
+
+    /* New Network List box under the map */
+    .network-list-box {
+      margin-top: 12px;
+      border: 1px solid #555555;
+      background: #000000;
+    }
+
+    .network-list-title {
+      padding: 6px 10px;
+      font-size: 13px;
+      border-bottom: 1px solid #444444;
+      background: #111111;
+    }
+
+    .network-list-container {
+      max-height: 220px;
+      overflow-y: auto;           /* scroll up / down */
+      font-size: 12px;
+    }
+
+    .network-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .network-table th {
+      position: sticky;
+      top: 0;
+      background: #1a1a1a;
+      padding: 6px 8px;
+      text-align: left;
+      border-bottom: 1px solid #444;
+      font-weight: normal;
+      color: #AAAAAA;
+    }
+
+    .network-table td {
+      padding: 5px 8px;
+      border-bottom: 1px solid #222;
+      cursor: pointer;
+    }
+
+    .network-table tr:hover td {
+      background: #222222;
+    }
+
+    /* Highlighted row when selected */
+    .network-table tr.selected td {
+      background: #333333;
+      color: #FFFFFF;
+      box-shadow: inset 0 0 0 1px #FFFFFF;
     }
 
     /* ----- Column 2: Site Information ----- */
@@ -204,9 +242,7 @@
 <body>
   <div class="crt">
 
-    <!-- ============================== -->
-    <!-- Header                         -->
-    <!-- ============================== -->
+    <!-- Header -->
     <div class="header">
       <h1>MAP ACTIVE - SIMULATION RUNNING</h1>
       <div class="subtitle">
@@ -214,41 +250,51 @@
       </div>
     </div>
 
-    <!-- ============================== -->
-    <!-- Toolbar                        -->
-    <!-- ============================== -->
+    <!-- Toolbar -->
     <div class="toolbar">
       <button id="btn-clear">[ CLEAR ]</button>
-      <button id="btn-run">[ RUN ]</button>
       <button onclick="loadAllSites()">[ LOAD SITES ]</button>
     </div>
 
-    <!-- ============================== -->
-    <!-- Main 3-column layout           -->
-    <!-- ============================== -->
+    <!-- Main 3-column layout -->
     <div class="main">
 
-      <!-- ========== COLUMN 1: MAP ========== -->
+      <!-- ========== COLUMN 1: MAP + NETWORK LIST ========== -->
       <div class="map-panel">
         <div class="map-title">MAP VIEW · ZOOM & EXPLORE</div>
-        
-        <!-- Leaflet will create the map inside this div -->
         <div id="map"></div>
-        
-        <div style="margin-top: 8px; font-size: 12px; color: #AAAAAA;">
-          Scroll to zoom · Drag to pan · Click a point to select
+        <div style="margin-top: 6px; font-size: 12px; color: #AAAAAA;">
+          Scroll to zoom · Drag to pan · Click a point or a row
+        </div>
+
+        <!-- NEW: Network List under the map -->
+        <div class="network-list-box">
+          <div class="network-list-title">NETWORK LIST (scroll)</div>
+          <div class="network-list-container">
+            <table class="network-table">
+              <thead>
+                <tr>
+                  <th>Latitude</th>
+                  <th>Longitude</th>
+                  <th>CASTNET</th>
+                  <th>NTN</th>
+                </tr>
+              </thead>
+              <tbody id="network-tbody">
+                <!-- Rows will be inserted here by JavaScript -->
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
       <!-- ========== COLUMN 2: SITE INFO ========== -->
       <div class="info-panel">
         <h3>SELECTED SITE(S)</h3>
-        
-        <!-- This div will be updated when a marker is clicked -->
         <div id="site-info">
           <div class="placeholder">
             Click a marker on the map<br>
-            to display Site ID and Network
+            or a row in the Network List
           </div>
         </div>
       </div>
@@ -278,9 +324,7 @@ REPEAT 4 {
     </div>
   </div>
 
-  <!-- ============================== -->
-  <!-- Load Python modules            -->
-  <!-- ============================== -->
+  <!-- PyScript modules -->
   <py-config>
     [[fetch]]
     files = [
@@ -289,12 +333,10 @@ REPEAT 4 {
     ]
   </py-config>
 
-  <!-- Python logic for the turtle console -->
   <script type="py">
     from modules.parser import run_pipsqueak, init_turtle
     from js import document
 
-    # Create turtle when page loads
     init_turtle()
 
     def run_code(event=None):
@@ -306,13 +348,10 @@ REPEAT 4 {
         t = init_turtle()
         t.clear()
 
-    # Connect buttons to Python functions
-    document.getElementById("btn-run").addEventListener("click", run_code)
-    document.getElementById("btn-run2").addEventListener("click", run_code)
     document.getElementById("btn-clear").addEventListener("click", clear_canvas)
+    document.getElementById("btn-run2").addEventListener("click", run_code)
   </script>
 
-  <!-- Example code loader -->
   <script>
     function loadExample(name) {
       const examples = {
@@ -336,39 +375,37 @@ REPEAT 80 {
     }
   </script>
 
-  <!-- ============================== -->
-  <!-- Leaflet Map + Site Loading     -->
-  <!-- ============================== -->
+  <!-- Leaflet + Site Logic -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     // --------------------------------------------------
     // 1. Create the map
     // --------------------------------------------------
     const map = L.map('map', {
-      zoomControl: true,        // Show + / - buttons
-      scrollWheelZoom: true,    // Zoom with mouse wheel
-      doubleClickZoom: true,    // Double-click to zoom
-      dragging: true            // Drag to move the map
-    }).setView([39.5, -98.0], 4);   // Center on the United States
+      zoomControl: true,
+      scrollWheelZoom: true,
+      doubleClickZoom: true,
+      dragging: true
+    }).setView([39.5, -98.0], 4);
 
-    // Light (almost black & white) map tiles
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; OpenStreetMap & CartoDB',
       maxZoom: 19,
       minZoom: 3
     }).addTo(map);
 
-    // Store all markers so we can clear them later
-    let allMarkers = [];
+    // Global storage
+    let allMarkers = [];          // Leaflet markers
+    let siteRegistry = {};        // key = "lat_lon" → site data
+    let selectedKey = null;       // currently selected location key
 
     // --------------------------------------------------
-    // 2. Simple CSV parser
+    // 2. CSV parser
     // --------------------------------------------------
     function parseCSV(text) {
       const lines = text.trim().split(/\r?\n/);
       if (lines.length < 2) return [];
 
-      // Get header names and make them uppercase for easy matching
       const headers = lines[0].split(',').map(h => h.trim().toUpperCase());
 
       return lines.slice(1).map(line => {
@@ -382,13 +419,19 @@ REPEAT 80 {
     }
 
     // --------------------------------------------------
-    // 3. Load sites from one network (CASTNET or NTN)
+    // 3. Create a unique key from coordinates
     // --------------------------------------------------
-    async function loadNetwork(networkName, filePath, color) {
+    function makeKey(lat, lon) {
+      // Round to 5 decimals so tiny differences still match
+      return `${lat.toFixed(5)}_${lon.toFixed(5)}`;
+    }
+
+    // --------------------------------------------------
+    // 4. Load one network and store in registry
+    // --------------------------------------------------
+    async function loadNetwork(networkName, filePath) {
       try {
         const response = await fetch(filePath);
-
-        // If the file does not exist, just skip it
         if (!response.ok) {
           console.warn(`File not found: ${filePath}`);
           return 0;
@@ -399,39 +442,32 @@ REPEAT 80 {
         let count = 0;
 
         rows.forEach(row => {
-          // Accept common column name variations
           const lat = parseFloat(row.LATITUDE || row.LAT || row.Y);
           const lon = parseFloat(row.LONGITUDE || row.LON || row.LONG || row.X);
           const siteId = row.SITE_ID || row.SITEID || row.SITE || row.ID;
 
-          // Skip rows that do not have valid coordinates
           if (isNaN(lat) || isNaN(lon) || !siteId) return;
 
-          // Create a circular marker
-          const marker = L.circleMarker([lat, lon], {
-            radius: 7,
-            fillColor: color,
-            color: '#000000',
-            weight: 1,
-            opacity: 1,
-            fillOpacity: 0.9
-          }).addTo(map);
+          const key = makeKey(lat, lon);
 
-          // Popup that appears on hover / click
-          marker.bindPopup(`<b>${siteId}</b><br>Network: ${networkName}`);
+          // Create entry if it does not exist yet
+          if (!siteRegistry[key]) {
+            siteRegistry[key] = {
+              lat: lat,
+              lon: lon,
+              CASTNET: null,
+              NTN: null,
+              marker: null
+            };
+          }
 
-          // When the user clicks the marker → show info in Column 2
-          marker.on('click', function () {
-            showSiteInfo(siteId, networkName, lat, lon);
-          });
-
-          allMarkers.push(marker);
+          // Store the site ID for this network
+          siteRegistry[key][networkName] = siteId;
           count++;
         });
 
         console.log(`Loaded ${count} sites from ${networkName}`);
         return count;
-
       } catch (err) {
         console.error(`Error loading ${networkName}:`, err);
         return 0;
@@ -439,59 +475,179 @@ REPEAT 80 {
     }
 
     // --------------------------------------------------
-    // 4. Display selected site in Column 2
+    // 5. Create markers and the scrollable table
     // --------------------------------------------------
-    function showSiteInfo(siteId, network, lat, lon) {
-      const container = document.getElementById('site-info');
-
-      container.innerHTML = `
-        <div class="site-item">
-          <div><strong>SITE_ID:</strong> ${siteId}</div>
-          <div class="network">Network: ${network}</div>
-          <div style="margin-top: 10px; font-size: 12px; color: #AAAAAA;">
-            Latitude: ${lat.toFixed(5)}<br>
-            Longitude: ${lon.toFixed(5)}
-          </div>
-        </div>
-      `;
-    }
-
-    // --------------------------------------------------
-    // 5. Load both networks
-    // --------------------------------------------------
-    async function loadAllSites() {
-      // Remove any existing markers
+    function buildMarkersAndTable() {
+      // Clear old markers
       allMarkers.forEach(m => map.removeLayer(m));
       allMarkers = [];
 
-      // Load CASTNET (correct filename from your folder)
-      await loadNetwork(
-        'CASTNET',
-        './data/input/CASTNET/CASTNET_coordinator.csv',
-        '#FFFFFF'          // white markers
-      );
+      const tbody = document.getElementById('network-tbody');
+      tbody.innerHTML = '';
 
-      // Try to load NTN (will be skipped if the file does not exist yet)
-      await loadNetwork(
-        'NTN',
-        './data/input/NTN/NTN_coordinator.csv',
-        '#AAAAAA'          // gray markers
-      );
+      // Sort by latitude for nicer display
+      const keys = Object.keys(siteRegistry).sort((a, b) => {
+        return siteRegistry[b].lat - siteRegistry[a].lat;
+      });
 
-      // Automatically zoom the map to show all loaded points
+      keys.forEach(key => {
+        const site = siteRegistry[key];
+
+        // ----- Create map marker -----
+        const color = (site.CASTNET && site.NTN) ? '#FFFFFF' :
+                      (site.CASTNET) ? '#FFFFFF' : '#AAAAAA';
+
+        const marker = L.circleMarker([site.lat, site.lon], {
+          radius: 7,
+          fillColor: color,
+          color: '#000000',
+          weight: 1,
+          opacity: 1,
+          fillOpacity: 0.9
+        }).addTo(map);
+
+        // Store reference so we can highlight later
+        site.marker = marker;
+        allMarkers.push(marker);
+
+        // Popup
+        let popupText = '';
+        if (site.CASTNET) popupText += `<b>CASTNET:</b> ${site.CASTNET}<br>`;
+        if (site.NTN)     popupText += `<b>NTN:</b> ${site.NTN}`;
+        marker.bindPopup(popupText);
+
+        // Click marker → select
+        marker.on('click', () => selectSite(key));
+
+        // ----- Create table row -----
+        const tr = document.createElement('tr');
+        tr.dataset.key = key;
+        tr.innerHTML = `
+          <td>${site.lat.toFixed(5)}</td>
+          <td>${site.lon.toFixed(5)}</td>
+          <td>${site.CASTNET || '—'}</td>
+          <td>${site.NTN || '—'}</td>
+        `;
+
+        // Click row → select
+        tr.addEventListener('click', () => selectSite(key));
+
+        tbody.appendChild(tr);
+      });
+
+      // Fit map to all points
       if (allMarkers.length > 0) {
         const group = L.featureGroup(allMarkers);
-        map.fitBounds(group.getBounds().pad(0.15));
-      } else {
-        alert('No sites were loaded.\nCheck that the CSV file exists and has columns SITE_ID, LATITUDE, LONGITUDE.');
+        map.fitBounds(group.getBounds().pad(0.12));
       }
     }
 
     // --------------------------------------------------
-    // 6. Auto-load sites when the page finishes loading
+    // 6. Select a site (from map or from table)
     // --------------------------------------------------
+    function selectSite(key) {
+      // Remove previous highlight
+      if (selectedKey && siteRegistry[selectedKey]) {
+        const prev = siteRegistry[selectedKey];
+        if (prev.marker) {
+          prev.marker.setStyle({
+            weight: 1,
+            color: '#000000',
+            radius: 7
+          });
+        }
+      }
+
+      // Clear previous selected row
+      document.querySelectorAll('#network-tbody tr.selected')
+              .forEach(r => r.classList.remove('selected'));
+
+      selectedKey = key;
+      const site = siteRegistry[key];
+      if (!site) return;
+
+      // Highlight marker
+      if (site.marker) {
+        site.marker.setStyle({
+          weight: 3,
+          color: '#FFFFFF',
+          radius: 10
+        });
+        site.marker.openPopup();
+        map.panTo([site.lat, site.lon]);
+      }
+
+      // Highlight table row
+      const row = document.querySelector(`#network-tbody tr[data-key="${key}"]`);
+      if (row) {
+        row.classList.add('selected');
+        row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+
+      // Update Column 2 (details)
+      showSiteInfo(site);
+    }
+
+    // --------------------------------------------------
+    // 7. Show details in Column 2
+    // --------------------------------------------------
+    function showSiteInfo(site) {
+      const container = document.getElementById('site-info');
+
+      let html = `<div class="site-item">`;
+      html += `<div style="margin-bottom:8px;"><strong>Location</strong></div>`;
+      html += `<div>Latitude: ${site.lat.toFixed(5)}</div>`;
+      html += `<div>Longitude: ${site.lon.toFixed(5)}</div>`;
+
+      if (site.CASTNET) {
+        html += `<div class="network" style="margin-top:10px;">
+                   <strong>CASTNET</strong><br>Site ID: ${site.CASTNET}
+                 </div>`;
+      }
+      if (site.NTN) {
+        html += `<div class="network" style="margin-top:10px;">
+                   <strong>NTN</strong><br>Site ID: ${site.NTN}
+                 </div>`;
+      }
+
+      html += `</div>`;
+      container.innerHTML = html;
+    }
+
+    // --------------------------------------------------
+    // 8. Load both networks
+    // --------------------------------------------------
+    async function loadAllSites() {
+      siteRegistry = {};
+      selectedKey = null;
+
+      document.getElementById('site-info').innerHTML = `
+        <div class="placeholder">
+          Loading sites...
+        </div>`;
+
+      await loadNetwork('CASTNET', './data/input/CASTNET/CASTNET_coordinator.csv');
+      await loadNetwork('NTN', './data/input/NTN/NTN_coordinator.csv');
+
+      buildMarkersAndTable();
+
+      if (Object.keys(siteRegistry).length === 0) {
+        document.getElementById('site-info').innerHTML = `
+          <div class="placeholder">
+            No sites loaded.<br>
+            Check CSV files and column names.
+          </div>`;
+      } else {
+        document.getElementById('site-info').innerHTML = `
+          <div class="placeholder">
+            Click a marker or a row<br>
+            to see details
+          </div>`;
+      }
+    }
+
+    // Auto-load when page is ready
     window.addEventListener('load', () => {
-      // Small delay so the map is fully ready
       setTimeout(loadAllSites, 700);
     });
   </script>
