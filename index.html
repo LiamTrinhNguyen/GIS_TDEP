@@ -1,33 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Character encoding -->
   <meta charset="UTF-8" />
-  
-  <!-- Responsive design for mobile -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  
-  <!-- Browser tab title -->
   <title>MAP ACTIVE - SIMULATION RUNNING</title>
 
-  <!-- PyScript CSS -->
+  <!-- PyScript -->
   <link rel="stylesheet" href="https://pyscript.net/releases/2024.11.1/core.css" />
-  
-  <!-- PyScript engine -->
   <script type="module" src="https://pyscript.net/releases/2024.11.1/core.js"></script>
 
-  <!-- Leaflet CSS (for the interactive map) -->
+  <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
   <style>
-    /* Reset default styles */
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* Main page style - pure black & white */
     body {
       background: #000000;
       color: #FFFFFF;
@@ -35,7 +22,6 @@
       min-height: 100vh;
     }
 
-    /* Terminal-style container */
     .crt {
       background: #000000;
       box-shadow: inset 0 0 40px #222222;
@@ -43,7 +29,6 @@
       min-height: 100vh;
     }
 
-    /* Header section */
     .header {
       text-align: center;
       margin-bottom: 12px;
@@ -61,7 +46,6 @@
       margin-top: 4px;
     }
 
-    /* Toolbar buttons */
     .toolbar {
       text-align: center;
       margin: 12px 0;
@@ -83,7 +67,6 @@
       box-shadow: 0 0 8px #FFFFFF;
     }
 
-    /* Main layout - 3 columns */
     .main {
       display: flex;
       gap: 20px;
@@ -92,14 +75,68 @@
       align-items: flex-start;
     }
 
-    /* Drawing canvas */
-    canvas {
-      background: #000000;
+    /* ===== Column 1: Map ===== */
+    .map-panel {
+      width: 480px;
+      background: #0A0A0A;
       border: 1px solid #FFFFFF;
-      image-rendering: pixelated;
+      padding: 12px;
     }
 
-    /* Console panel */
+    .map-title {
+      font-size: 14px;
+      margin-bottom: 8px;
+      letter-spacing: 1px;
+    }
+
+    #map {
+      width: 100%;
+      height: 420px;
+      background: #111111;
+      border: 1px solid #555555;
+    }
+
+    .leaflet-control-zoom a {
+      background-color: #111111 !important;
+      color: #FFFFFF !important;
+      border: 1px solid #FFFFFF !important;
+    }
+
+    /* ===== Column 2: Site Info Panel ===== */
+    .info-panel {
+      width: 320px;
+      background: #0A0A0A;
+      border: 1px solid #FFFFFF;
+      padding: 14px;
+      min-height: 420px;
+    }
+
+    .info-panel h3 {
+      margin-bottom: 12px;
+      font-size: 15px;
+      letter-spacing: 1px;
+    }
+
+    .site-item {
+      border: 1px solid #444;
+      padding: 10px;
+      margin-bottom: 10px;
+      background: #111;
+    }
+
+    .site-item .network {
+      color: #AAAAAA;
+      font-size: 12px;
+    }
+
+    .placeholder {
+      color: #666666;
+      font-size: 13px;
+      margin-top: 30px;
+      text-align: center;
+    }
+
+    /* ===== Column 3: Console ===== */
     .console {
       width: 340px;
       background: #0A0A0A;
@@ -109,7 +146,7 @@
 
     textarea {
       width: 100%;
-      height: 240px;
+      height: 220px;
       background: #000000;
       color: #FFFFFF;
       border: 1px solid #555555;
@@ -127,46 +164,12 @@
       font-size: 12px;
       padding: 4px 8px;
     }
-
-    /* Interactive Map Panel */
-    .map-panel {
-      width: 420px;
-      background: #0A0A0A;
-      border: 1px solid #FFFFFF;
-      padding: 12px;
-    }
-
-    .map-title {
-      font-size: 14px;
-      margin-bottom: 8px;
-      letter-spacing: 1px;
-    }
-
-    /* The actual map container */
-    #map {
-      width: 100%;
-      height: 380px;
-      background: #111111;
-      border: 1px solid #555555;
-    }
-
-    /* Custom zoom controls style (black & white) */
-    .leaflet-control-zoom a {
-      background-color: #111111 !important;
-      color: #FFFFFF !important;
-      border: 1px solid #FFFFFF !important;
-    }
-
-    .leaflet-control-zoom a:hover {
-      background-color: #333333 !important;
-    }
   </style>
 </head>
 
 <body>
   <div class="crt">
 
-    <!-- Header -->
     <div class="header">
       <h1>MAP ACTIVE - SIMULATION RUNNING</h1>
       <div class="subtitle">
@@ -174,31 +177,35 @@
       </div>
     </div>
 
-    <!-- Toolbar -->
     <div class="toolbar">
       <button id="btn-clear">[ CLEAR ]</button>
       <button id="btn-run">[ RUN ]</button>
+      <button onclick="loadAllSites()">[ LOAD SITES ]</button>
     </div>
 
-    <!-- Main content area -->
     <div class="main">
 
-      <!-- 1. FIRST COLUMN: Interactive Map -->
+      <!-- ========== COLUMN 1: MAP ========== -->
       <div class="map-panel">
         <div class="map-title">MAP VIEW · ZOOM & EXPLORE</div>
-        
-        <!-- Leaflet map will be created inside this div -->
         <div id="map"></div>
-        
         <div style="margin-top: 8px; font-size: 12px; color: #AAAAAA;">
-          Scroll to zoom · Drag to pan
+          Click a point to see Site ID + Network
         </div>
       </div>
 
-      <!-- 2. SECOND COLUMN: Drawing Canvas -->
-      <canvas id="canvas" width="520" height="400"></canvas>
+      <!-- ========== COLUMN 2: SITE INFO ========== -->
+      <div class="info-panel">
+        <h3>SELECTED SITE(S)</h3>
+        <div id="site-info">
+          <div class="placeholder">
+            Click a marker on the map<br>
+            to display Site ID and Network
+          </div>
+        </div>
+      </div>
 
-      <!-- 3. THIRD COLUMN: Console -->
+      <!-- ========== COLUMN 3: CONSOLE ========== -->
       <div class="console">
         <strong>PIPSQUEAK CONSOLE v1.0</strong>
 
@@ -223,7 +230,7 @@ REPEAT 4 {
     </div>
   </div>
 
-  <!-- Load Python modules -->
+  <!-- PyScript modules -->
   <py-config>
     [[fetch]]
     files = [
@@ -232,7 +239,6 @@ REPEAT 4 {
     ]
   </py-config>
 
-  <!-- Python logic -->
   <script type="py">
     from modules.parser import run_pipsqueak, init_turtle
     from js import document
@@ -253,7 +259,6 @@ REPEAT 4 {
     document.getElementById("btn-clear").addEventListener("click", clear_canvas)
   </script>
 
-  <!-- Example loader -->
   <script>
     function loadExample(name) {
       const examples = {
@@ -277,28 +282,133 @@ REPEAT 80 {
     }
   </script>
 
-  <!-- Leaflet Map -->
+  <!-- Leaflet + Site Loading Logic -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    // Create the map - centered on Madison, WI
+    // ======================
+    // Initialize Map
+    // ======================
     const map = L.map('map', {
       zoomControl: true,
       scrollWheelZoom: true,
       doubleClickZoom: true,
       dragging: true
-    }).setView([43.07, -89.40], 7);
+    }).setView([39.5, -98.0], 4);   // Center of USA
 
-    // Clean black & white map style
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; OpenStreetMap & CartoDB',
       maxZoom: 19,
       minZoom: 3
     }).addTo(map);
 
-    // Example marker
-    L.marker([43.07, -89.40])
-      .addTo(map)
-      .bindPopup('Wisconsin State Laboratory of Hygiene area');
+    // Store all markers
+    let allMarkers = [];
+
+    // ======================
+    // Helper: simple CSV parser
+    // ======================
+    function parseCSV(text) {
+      const lines = text.trim().split('\n');
+      const headers = lines[0].split(',').map(h => h.trim().toUpperCase());
+      
+      return lines.slice(1).map(line => {
+        const values = line.split(',');
+        const obj = {};
+        headers.forEach((h, i) => {
+          obj[h] = values[i] ? values[i].trim() : '';
+        });
+        return obj;
+      });
+    }
+
+    // ======================
+    // Load one network
+    // ======================
+    async function loadNetwork(networkName, filePath, color) {
+      try {
+        const response = await fetch(filePath);
+        if (!response.ok) {
+          console.warn(`Could not load ${filePath}`);
+          return;
+        }
+        const text = await response.text();
+        const rows = parseCSV(text);
+
+        rows.forEach(row => {
+          const lat = parseFloat(row.LATITUDE);
+          const lon = parseFloat(row.LONGITUDE);
+          const siteId = row.SITE_ID;
+
+          if (isNaN(lat) || isNaN(lon) || !siteId) return;
+
+          const marker = L.circleMarker([lat, lon], {
+            radius: 6,
+            fillColor: color,
+            color: '#000',
+            weight: 1,
+            opacity: 1,
+            fillOpacity: 0.85
+          }).addTo(map);
+
+          marker.bindPopup(`<b>${siteId}</b><br>${networkName}`);
+
+          // When user clicks the marker → update Column 2
+          marker.on('click', function () {
+            showSiteInfo(siteId, networkName, lat, lon);
+          });
+
+          allMarkers.push(marker);
+        });
+
+        console.log(`Loaded ${rows.length} sites from ${networkName}`);
+      } catch (err) {
+        console.error(`Error loading ${networkName}:`, err);
+      }
+    }
+
+    // ======================
+    // Show info in Column 2
+    // ======================
+    function showSiteInfo(siteId, network, lat, lon) {
+      const container = document.getElementById('site-info');
+      container.innerHTML = `
+        <div class="site-item">
+          <div><strong>SITE_ID:</strong> ${siteId}</div>
+          <div class="network">Network: ${network}</div>
+          <div style="margin-top:6px; font-size:12px;">
+            Lat: ${lat.toFixed(4)}<br>
+            Lon: ${lon.toFixed(4)}
+          </div>
+        </div>
+      `;
+    }
+
+    // ======================
+    // Load both networks
+    // ======================
+    async function loadAllSites() {
+      // Clear old markers
+      allMarkers.forEach(m => map.removeLayer(m));
+      allMarkers = [];
+
+      // Load CASTNET (white points)
+      await loadNetwork('CASTNET', './data/input/CASTNET/sites.csv', '#FFFFFF');
+
+      // Load NTN (gray points)
+      await loadNetwork('NTN', './data/input/NTN/sites.csv', '#AAAAAA');
+
+      // Optional: fit map to all points
+      if (allMarkers.length > 0) {
+        const group = L.featureGroup(allMarkers);
+        map.fitBounds(group.getBounds().pad(0.1));
+      }
+    }
+
+    // Automatically try to load when page opens
+    window.addEventListener('load', () => {
+      // Small delay so map is ready
+      setTimeout(loadAllSites, 800);
+    });
   </script>
 </body>
 </html>
