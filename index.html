@@ -5,8 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MAP ACTIVE - SIMULATION RUNNING</title>
 
-  <link rel="stylesheet" href="https://pyscript.net/releases/2024.11.1/core.css" />
-  <script type="module" src="https://pyscript.net/releases/2024.11.1/core.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
   <style>
@@ -48,6 +46,7 @@
       box-shadow: 0 0 6px #fff;
     }
 
+    /* ========== Main 3-column layout ========== */
     .main {
       display: flex;
       gap: 18px;
@@ -56,19 +55,39 @@
       align-items: flex-start;
     }
 
-    /* ========== Column 1: Map + Network List ========== */
-    .map-panel {
-      width: 460px;
+    /* Common panel style – same height for all columns */
+    .panel {
+      width: 420px;
+      height: 620px;                 /* fixed height so all columns match */
       background: #0a0a0a;
-      border: 1px solid #fff;
+      border: 1px solid #ffffff;     /* white border */
       padding: 12px;
+      display: flex;
+      flex-direction: column;
     }
-    .map-title { font-size: 14px; margin-bottom: 8px; letter-spacing: 1px; }
+
+    .panel-title {
+      font-size: 14px;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+      flex-shrink: 0;
+    }
+
+    /* Scrollable content area inside each panel */
+    .panel-content {
+      flex: 1;
+      overflow-y: auto;              /* scroll when content is taller */
+      overflow-x: hidden;
+    }
+
+    /* ========== Column 1 specific ========== */
     #map {
       width: 100%;
       height: 260px;
       background: #111;
       border: 1px solid #555;
+      margin-bottom: 10px;
+      flex-shrink: 0;
     }
     .leaflet-control-zoom a {
       background: #111 !important;
@@ -77,17 +96,21 @@
     }
 
     .network-list-box {
-      margin-top: 12px;
       border: 1px solid #555;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
     }
     .network-list-title {
       padding: 6px 10px;
       font-size: 13px;
       border-bottom: 1px solid #444;
       background: #111;
+      flex-shrink: 0;
     }
     .network-list-container {
-      max-height: 170px;
+      flex: 1;
       overflow-y: auto;
       font-size: 12px;
     }
@@ -112,19 +135,7 @@
       box-shadow: inset 0 0 0 1px #fff;
     }
 
-    /* ========== Column 2: Site Info + Variable Buttons ========== */
-    .info-panel {
-      width: 400px;
-      background: #0a0a0a;
-      border: 1px solid #fff;
-      padding: 14px;
-      min-height: 500px;
-    }
-    .info-panel h3 {
-      margin-bottom: 12px;
-      font-size: 15px;
-      letter-spacing: 1px;
-    }
+    /* ========== Column 2 specific ========== */
     .info-box {
       border: 1px solid #444;
       padding: 12px;
@@ -147,19 +158,7 @@
       line-height: 1.6;
     }
 
-    /* ========== Column 3: Year-stacked Coverage Plot ========== */
-    .plot-panel {
-      width: 380px;
-      background: #0a0a0a;
-      border: 1px solid #fff;
-      padding: 14px;
-      min-height: 500px;
-    }
-    .plot-panel h3 {
-      margin-bottom: 12px;
-      font-size: 15px;
-      letter-spacing: 1px;
-    }
+    /* ========== Column 3 specific ========== */
     .plot-title {
       font-size: 13px;
       color: #aaa;
@@ -216,10 +215,12 @@
     <div class="main">
 
       <!-- ========== COLUMN 1 ========== -->
-      <div class="map-panel">
-        <div class="map-title">MAP VIEW · ZOOM & EXPLORE</div>
+      <div class="panel">
+        <div class="panel-title">MAP VIEW · ZOOM & EXPLORE</div>
+
         <div id="map"></div>
-        <div style="margin-top:6px; font-size:12px; color:#aaa;">
+
+        <div style="font-size:12px; color:#aaa; margin-bottom:8px;">
           Click a point or a row
         </div>
 
@@ -242,9 +243,9 @@
       </div>
 
       <!-- ========== COLUMN 2 ========== -->
-      <div class="info-panel">
-        <h3>SELECTED SITE(S)</h3>
-        <div id="site-info">
+      <div class="panel">
+        <div class="panel-title">SELECTED SITE(S)</div>
+        <div class="panel-content" id="site-info">
           <div class="placeholder">
             Click a marker or a row<br>
             to see details
@@ -252,10 +253,10 @@
         </div>
       </div>
 
-      <!-- ========== COLUMN 3: Year-stacked plot ========== -->
-      <div class="plot-panel">
-        <h3>WEEKLY COVERAGE</h3>
-        <div id="coverage-plot">
+      <!-- ========== COLUMN 3 ========== -->
+      <div class="panel">
+        <div class="panel-title">WEEKLY COVERAGE</div>
+        <div class="panel-content" id="coverage-plot">
           <div class="plot-placeholder">
             Select a site, then click<br>
             a variable button to view<br>
@@ -267,7 +268,6 @@
     </div>
   </div>
 
-  <!-- Leaflet -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
@@ -288,9 +288,9 @@
     }).addTo(map);
 
     let allMarkers   = [];
-    let siteRegistry = {};   // key = "lat_lon"
-    let dateSummary  = {};   // network → {SITE_ID → {first, last}}
-    let coverageData = {};   // network → {SITE_ID → {SO2: {year: "1010..."}, ...}}
+    let siteRegistry = {};
+    let dateSummary  = {};
+    let coverageData = {};
     let selectedKey  = null;
 
     const VARIABLES = ["SO2","SO4","HNO3","NO3","TNO3","NH4","CA","K","MG","Sodium"];
@@ -315,7 +315,7 @@
     }
 
     // ==================================================
-    // LOAD COORDINATOR FILES
+    // LOAD COORDINATOR
     // ==================================================
     async function loadCoordinator(network, path) {
       try {
@@ -435,7 +435,6 @@
     // SELECT SITE
     // ==================================================
     function selectSite(key) {
-      // Remove previous highlight
       if (selectedKey && siteRegistry[selectedKey]?.marker) {
         siteRegistry[selectedKey].marker.setStyle({ weight: 1, color: '#000', radius: 7 });
       }
@@ -446,21 +445,18 @@
       const site = siteRegistry[key];
       if (!site) return;
 
-      // Highlight marker
       if (site.marker) {
         site.marker.setStyle({ weight: 3, color: '#fff', radius: 10 });
         site.marker.openPopup();
         map.panTo([site.lat, site.lon]);
       }
 
-      // Highlight table row
       const row = document.querySelector(`#network-tbody tr[data-key="${key}"]`);
       if (row) {
         row.classList.add('selected');
         row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
 
-      // Reset plot panel
       document.getElementById('coverage-plot').innerHTML = `
         <div class="plot-placeholder">
           Click a variable button<br>to view year-stacked coverage
@@ -470,7 +466,7 @@
     }
 
     // ==================================================
-    // RENDER COLUMN 2 (Site info + buttons)
+    // RENDER COLUMN 2
     // ==================================================
     function renderSiteInfo(site) {
       let html = `
@@ -480,7 +476,6 @@
           <div>Longitude: ${site.lon.toFixed(5)}</div>
         </div>`;
 
-      // CASTNET box
       if (site.CASTNET) {
         const range = (dateSummary.CASTNET || {})[site.CASTNET] || {};
         html += `
@@ -492,7 +487,6 @@
           </div>`;
       }
 
-      // NTN box
       if (site.NTN) {
         const range = (dateSummary.NTN || {})[site.NTN] || {};
         html += `
@@ -516,7 +510,6 @@
         const btn = document.createElement('button');
         btn.textContent = v;
         btn.onclick = () => {
-          // Remove active state from all buttons in both boxes
           document.querySelectorAll('.var-buttons button')
                   .forEach(b => b.classList.remove('active-var'));
           btn.classList.add('active-var');
@@ -527,12 +520,11 @@
     }
 
     // ==================================================
-    // COLUMN 3 – Year-stacked green/white boxes
+    // COLUMN 3 – Year-stacked plot
     // ==================================================
     function showYearStackedPlot(network, siteId, variable) {
       const container = document.getElementById('coverage-plot');
       const yearData = (((coverageData[network] || {})[siteId] || {})[variable]) || {};
-
       const years = Object.keys(yearData).sort();
 
       if (years.length === 0) {
@@ -556,10 +548,8 @@
 
         for (const ch of binary) {
           const cls = ch === '1' ? 'green' : 'white';
-          const title = ch === '1' ? 'Has data' : 'Missing';
-          html += `<div class="week-box ${cls}" title="${title}"></div>`;
+          html += `<div class="week-box ${cls}" title="${ch === '1' ? 'Has data' : 'Missing'}"></div>`;
         }
-
         html += `</div></div>`;
       });
 
@@ -580,10 +570,8 @@
 
       await loadCoordinator('CASTNET', './data/input/CASTNET/CASTNET_coordinator.csv');
       await loadCoordinator('NTN',     './data/input/NTN/NTN_coordinator.csv');
-
       await loadDateSummary();
       await loadCoverage();
-
       buildMarkersAndTable();
 
       document.getElementById('site-info').innerHTML = `
