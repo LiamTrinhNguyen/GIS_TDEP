@@ -48,7 +48,7 @@
       box-shadow: 0 0 4px #fff;
     }
 
-    /* ========== Main 3-column layout ========== */
+    /* ========== 3-column layout ========== */
     .main {
       display: flex;
       gap: 18px;
@@ -74,7 +74,7 @@
       flex-shrink: 0;
     }
 
-    /* Column 2 – scroll when needed */
+    /* Column 2 scrolls if needed */
     .panel-content {
       flex: 1;
       overflow-y: auto;
@@ -177,46 +177,55 @@
       line-height: 1.6;
     }
 
-    /* ========== Column 3 – fixed weekly boxes ========== */
+    /* ========== Column 3 – GitHub contribution style ========== */
     .plot-title {
       font-size: 13px;
       color: #aaa;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
       flex-shrink: 0;
     }
 
     .year-row {
       display: flex;
       align-items: center;
-      margin-bottom: 3px;
-      font-size: 11px;
-      height: 16px;
+      margin-bottom: 4px;
+      height: 14px;
     }
 
     .year-label {
-      width: 38px;
-      color: #aaa;
+      width: 36px;
+      color: #8b949e;
       flex-shrink: 0;
       font-size: 11px;
+      text-align: right;
+      padding-right: 8px;
     }
 
     .week-boxes {
       display: flex;
-      flex-wrap: nowrap;
-      gap: 1px;
-      overflow: hidden;
       flex: 1;
+      gap: 3px;
+      min-width: 0;
     }
 
-    /* Same fixed size for every weekly box */
     .week-box {
-      width: 7px;
-      height: 12px;
-      border: 1px solid #333;
-      flex-shrink: 0;
+      flex: 1 1 0;
+      min-width: 0;
+      aspect-ratio: 1 / 1;
+      max-height: 12px;
+      border-radius: 2px;
+      border: 1px solid #1b1f23;
     }
-    .week-box.green { background: #00cc44; }
-    .week-box.white { background: #ffffff; }
+
+    .week-box.green {
+      background: #26a641;
+      border-color: #226c37;
+    }
+
+    .week-box.white {
+      background: #161b22;
+      border-color: #1b1f23;
+    }
 
     .plot-placeholder {
       color: #666;
@@ -319,7 +328,7 @@
     let dateSummary  = {};
     let coverageData = {};
     let selectedKey  = null;
-    let currentSort  = 'default';   // default | CASTNET | NTN
+    let currentSort  = 'default';
 
     const VARIABLES = ["SO2","SO4","HNO3","NO3","TNO3","NH4","CA","K","MG","Sodium"];
 
@@ -411,7 +420,6 @@
     function sortNetworkList(mode) {
       currentSort = mode;
 
-      // Update active button style
       document.getElementById('sort-default').classList.remove('active-sort');
       document.getElementById('sort-castnet').classList.remove('active-sort');
       document.getElementById('sort-ntn').classList.remove('active-sort');
@@ -420,7 +428,7 @@
       if (mode === 'CASTNET') document.getElementById('sort-castnet').classList.add('active-sort');
       if (mode === 'NTN')     document.getElementById('sort-ntn').classList.add('active-sort');
 
-      buildMarkersAndTable();  // rebuild table with new order
+      buildMarkersAndTable();
     }
 
     // ==================================================
@@ -434,7 +442,6 @@
 
       let keys = Object.keys(siteRegistry);
 
-      // Sorting logic
       if (currentSort === 'CASTNET') {
         keys.sort((a, b) => {
           const sa = siteRegistry[a].CASTNET || 'zzz';
@@ -448,7 +455,6 @@
           return sa.localeCompare(sb);
         });
       } else {
-        // Default: by latitude (north → south)
         keys.sort((a, b) => siteRegistry[b].lat - siteRegistry[a].lat);
       }
 
@@ -580,7 +586,7 @@
     }
 
     // ==================================================
-    // COLUMN 3 – Year-stacked plot (fixed box size)
+    // COLUMN 3 – Year-stacked GitHub-style boxes
     // ==================================================
     function showYearStackedPlot(network, siteId, variable) {
       const container = document.getElementById('coverage-plot');
