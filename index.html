@@ -7,7 +7,6 @@
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -52,6 +51,7 @@
       box-shadow: 0 0 4px #fff;
     }
 
+    /* ========== 3-column layout ========== */
     .main {
       display: flex;
       gap: 18px;
@@ -90,7 +90,7 @@
       flex-direction: column;
     }
 
-    /* Column 1 */
+    /* ========== Column 1 ========== */
     #map {
       width: 100%;
       height: 220px;
@@ -151,7 +151,7 @@
       box-shadow: inset 0 0 0 1px #fff;
     }
 
-    /* Column 2 */
+    /* ========== Column 2 ========== */
     .info-box {
       border: 1px solid #444;
       padding: 12px;
@@ -174,7 +174,7 @@
       line-height: 1.6;
     }
 
-    /* Column 3 */
+    /* ========== Column 3 ========== */
     .plot-title {
       font-size: 13px;
       color: #aaa;
@@ -224,23 +224,26 @@
       text-align: center;
       line-height: 1.6;
     }
+
     .trend-btn-wrap {
       margin-top: 10px;
       flex-shrink: 0;
       text-align: center;
     }
 
-    /* Full-width trend panel */
+    /* ========== Full-width trend panel ========== */
     .trend-panel {
       width: 100%;
-      max-width: 1296px;
+      max-width: 1296px;          /* ~3 × 420 + gaps */
       margin: 18px auto 0 auto;
       background: #0a0a0a;
       border: 1px solid #ffffff;
       padding: 14px;
-      display: none;
+      display: none;              /* hidden until button is clicked */
     }
-    .trend-panel.visible { display: block; }
+    .trend-panel.visible {
+      display: block;
+    }
     .trend-header {
       font-size: 14px;
       letter-spacing: 1px;
@@ -251,16 +254,6 @@
       position: relative;
       height: 320px;
       width: 100%;
-    }
-    .trend-scroll-wrap {
-      margin-top: 10px;
-      padding: 0 4px;
-    }
-    #trend-scroll {
-      width: 100%;
-      height: 8px;
-      cursor: pointer;
-      accent-color: #e74c3c;
     }
   </style>
 </head>
@@ -278,7 +271,7 @@
 
     <div class="main">
 
-      <!-- COLUMN 1 -->
+      <!-- ========== COLUMN 1 ========== -->
       <div class="panel">
         <div class="panel-title">MAP VIEW · ZOOM & EXPLORE</div>
         <div id="map"></div>
@@ -308,7 +301,7 @@
         </div>
       </div>
 
-      <!-- COLUMN 2 -->
+      <!-- ========== COLUMN 2 ========== -->
       <div class="panel">
         <div class="panel-title">SELECTED SITE(S)</div>
         <div class="panel-content" id="site-info">
@@ -319,7 +312,7 @@
         </div>
       </div>
 
-      <!-- COLUMN 3 -->
+      <!-- ========== COLUMN 3 ========== -->
       <div class="panel">
         <div class="panel-title">WEEKLY COVERAGE</div>
         <div id="coverage-plot">
@@ -339,14 +332,11 @@
 
     </div>
 
-    <!-- FULL-WIDTH TREND PANEL -->
+    <!-- ========== FULL-WIDTH TREND PANEL ========== -->
     <div class="trend-panel" id="trend-panel">
       <div class="trend-header" id="trend-header">Time Series</div>
       <div id="trend-canvas-wrap">
         <canvas id="trend-chart"></canvas>
-      </div>
-      <div class="trend-scroll-wrap">
-        <input type="range" id="trend-scroll" min="0" max="100" value="0" step="1" />
       </div>
     </div>
 
@@ -354,6 +344,9 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
+    // ==================================================
+    // GLOBAL STATE
+    // ==================================================
     const map = L.map('map', {
       zoomControl: true,
       scrollWheelZoom: true,
@@ -367,20 +360,23 @@
       minZoom: 3
     }).addTo(map);
 
-    let allMarkers = [];
-    let siteRegistry = {};
-    let dateSummary = {};
-    let coverageData = {};
+    let allMarkers     = [];
+    let siteRegistry   = {};
+    let dateSummary    = {};
+    let coverageData   = {};
     let timeseriesData = {};
-    let selectedKey = null;
-    let currentSort = 'default';
+    let selectedKey    = null;
+    let currentSort    = 'default';
     let currentNetwork = null;
-    let currentSiteId = null;
+    let currentSiteId  = null;
     let currentVariable = null;
-    let trendChart = null;
+    let trendChart     = null;
 
     const VARIABLES = ["SO2","SO4","HNO3","NO3","TNO3","NH4","CA","K","MG","Sodium"];
 
+    // ==================================================
+    // HELPERS
+    // ==================================================
     function parseCSV(text) {
       const lines = text.trim().split(/\r?\n/);
       if (lines.length < 2) return [];
@@ -397,6 +393,9 @@
       return `${lat.toFixed(5)}_${lon.toFixed(5)}`;
     }
 
+    // ==================================================
+    // LOAD DATA
+    // ==================================================
     async function loadCoordinator(network, path) {
       try {
         const res = await fetch(path);
@@ -408,6 +407,7 @@
           const lon = parseFloat(row.LONGITUDE || row.LON || row.LONG || row.X);
           const siteId = row.SITE_ID || row.SITEID || row.SITE || row.ID;
           if (isNaN(lat) || isNaN(lon) || !siteId) return;
+
           const key = makeKey(lat, lon);
           if (!siteRegistry[key]) {
             siteRegistry[key] = { lat, lon, CASTNET: null, NTN: null, marker: null };
@@ -431,7 +431,10 @@
         rows.forEach(r => {
           const net = r.NETWORK;
           if (!dateSummary[net]) dateSummary[net] = {};
-          dateSummary[net][r.SITE_ID] = { first: r.FIRST_DATE, last: r.LAST_DATE };
+          dateSummary[net][r.SITE_ID] = {
+            first: r.FIRST_DATE,
+            last:  r.LAST_DATE
+          };
         });
       } catch (e) {
         console.error('Date summary error', e);
@@ -459,6 +462,9 @@
       }
     }
 
+    // ==================================================
+    // SORT
+    // ==================================================
     function sortNetworkList(mode) {
       currentSort = mode;
       document.getElementById('sort-default').classList.remove('active-sort');
@@ -466,10 +472,13 @@
       document.getElementById('sort-ntn').classList.remove('active-sort');
       if (mode === 'default') document.getElementById('sort-default').classList.add('active-sort');
       if (mode === 'CASTNET') document.getElementById('sort-castnet').classList.add('active-sort');
-      if (mode === 'NTN') document.getElementById('sort-ntn').classList.add('active-sort');
+      if (mode === 'NTN')     document.getElementById('sort-ntn').classList.add('active-sort');
       buildMarkersAndTable();
     }
 
+    // ==================================================
+    // BUILD MAP + TABLE
+    // ==================================================
     function buildMarkersAndTable() {
       allMarkers.forEach(m => map.removeLayer(m));
       allMarkers = [];
@@ -477,6 +486,7 @@
       tbody.innerHTML = '';
 
       let keys = Object.keys(siteRegistry);
+
       if (currentSort === 'CASTNET') {
         keys.sort((a, b) => (siteRegistry[a].CASTNET || 'zzz').localeCompare(siteRegistry[b].CASTNET || 'zzz'));
       } else if (currentSort === 'NTN') {
@@ -488,16 +498,18 @@
       keys.forEach(key => {
         const site = siteRegistry[key];
         const color = (site.CASTNET && site.NTN) ? '#fff' : site.CASTNET ? '#fff' : '#aaa';
+
         const marker = L.circleMarker([site.lat, site.lon], {
           radius: 7, fillColor: color, color: '#000',
           weight: 1, opacity: 1, fillOpacity: 0.9
         }).addTo(map);
+
         site.marker = marker;
         allMarkers.push(marker);
 
         let popup = '';
         if (site.CASTNET) popup += `<b>CASTNET:</b> ${site.CASTNET}<br>`;
-        if (site.NTN) popup += `<b>NTN:</b> ${site.NTN}`;
+        if (site.NTN)     popup += `<b>NTN:</b> ${site.NTN}`;
         marker.bindPopup(popup);
         marker.on('click', () => selectSite(key));
 
@@ -517,6 +529,9 @@
       }
     }
 
+    // ==================================================
+    // SELECT SITE
+    // ==================================================
     function selectSite(key) {
       if (selectedKey && siteRegistry[selectedKey]?.marker) {
         siteRegistry[selectedKey].marker.setStyle({ weight: 1, color: '#000', radius: 7 });
@@ -529,7 +544,7 @@
       if (!site) return;
 
       currentNetwork = null;
-      currentSiteId = null;
+      currentSiteId  = null;
       currentVariable = null;
 
       if (site.marker) {
@@ -548,10 +563,16 @@
         <div class="plot-placeholder">
           Click a variable button<br>to view year-stacked coverage
         </div>`;
+
+      // hide trend panel when switching site
       document.getElementById('trend-panel').classList.remove('visible');
+
       renderSiteInfo(site);
     }
 
+    // ==================================================
+    // RENDER COLUMN 2
+    // ==================================================
     function renderSiteInfo(site) {
       let html = `
         <div class="info-box">
@@ -570,6 +591,7 @@
             <div class="var-buttons" id="vars-castnet"></div>
           </div>`;
       }
+
       if (site.NTN) {
         const range = (dateSummary.NTN || {})[site.NTN] || {};
         html += `
@@ -582,8 +604,9 @@
       }
 
       document.getElementById('site-info').innerHTML = html;
+
       if (site.CASTNET) createVarButtons('CASTNET', site.CASTNET, 'vars-castnet');
-      if (site.NTN) createVarButtons('NTN', site.NTN, 'vars-ntn');
+      if (site.NTN)     createVarButtons('NTN',     site.NTN,     'vars-ntn');
     }
 
     function createVarButtons(network, siteId, containerId) {
@@ -595,8 +618,8 @@
           document.querySelectorAll('.var-buttons button')
                   .forEach(b => b.classList.remove('active-var'));
           btn.classList.add('active-var');
-          currentNetwork = network;
-          currentSiteId = siteId;
+          currentNetwork  = network;
+          currentSiteId   = siteId;
           currentVariable = v;
           showYearStackedPlot(network, siteId, v);
         };
@@ -604,6 +627,9 @@
       });
     }
 
+    // ==================================================
+    // COLUMN 3 – Year-stacked coverage
+    // ==================================================
     function showYearStackedPlot(network, siteId, variable) {
       const container = document.getElementById('coverage-plot');
       const yearData = (((coverageData[network] || {})[siteId] || {})[variable]) || {};
@@ -617,7 +643,11 @@
         return;
       }
 
-      let html = `<div class="plot-title">${network} · ${siteId} · ${variable}</div>`;
+      let html = `
+        <div class="plot-title">
+          ${network} · ${siteId} · ${variable}
+        </div>`;
+
       years.forEach(year => {
         const binary = yearData[year] || '';
         html += `<div class="year-row">
@@ -629,11 +659,12 @@
         }
         html += `</div></div>`;
       });
+
       container.innerHTML = html;
     }
 
     // ==================================================
-    // TREND PLOT – wheel zoom + scrollbar (no drag pan)
+    // FULL-WIDTH TREND PLOT (Chart.js)
     // ==================================================
     function showTrendPlot() {
       if (!currentNetwork || !currentSiteId || !currentVariable) {
@@ -650,22 +681,23 @@
         return;
       }
 
-      // Keep nulls → line breaks on gaps (no interpolation)
-      const points = dates.map((d, i) => ({
-        x: d,
-        y: (values[i] === null || values[i] === undefined) ? null : values[i]
-      }));
-
+      // Show panel
       const panel = document.getElementById('trend-panel');
       panel.classList.add('visible');
       document.getElementById('trend-header').textContent =
-        `${currentNetwork} · ${currentSiteId} · ${currentVariable}  |  wheel = zoom · scrollbar = move in time`;
+        `${currentNetwork} · ${currentSiteId} · ${currentVariable}`;
+
+      // Build chart data (skip nulls for cleaner line, or keep nulls)
+      const points = dates.map((d, i) => ({
+        x: d,
+        y: values[i]
+      })).filter(p => p.y !== null && p.y !== undefined);
 
       const ctx = document.getElementById('trend-chart').getContext('2d');
-      if (trendChart) trendChart.destroy();
 
-      const windowSize = Math.min(120, points.length);
-      let windowStart = 0;
+      if (trendChart) {
+        trendChart.destroy();
+      }
 
       trendChart = new Chart(ctx, {
         type: 'line',
@@ -674,21 +706,19 @@
             label: `${currentNetwork} ${currentVariable}`,
             data: points,
             borderColor: '#e74c3c',
-            backgroundColor: 'rgba(231, 76, 60, 0.1)',
-            borderWidth: 1.5,
+            backgroundColor: 'rgba(231, 76, 60, 0.15)',
+            borderWidth: 1.2,
             pointRadius: 0,
             pointHoverRadius: 3,
-            tension: 0,
+            tension: 0.1,
             spanGaps: false
           }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          animation: false,
           interaction: {
-            mode: 'nearest',
-            axis: 'x',
+            mode: 'index',
             intersect: false
           },
           plugins: {
@@ -700,26 +730,15 @@
               text: `${currentSiteId}  ${currentVariable}`,
               color: '#eee',
               font: { family: 'Consolas', size: 14 }
-            },
-            zoom: {
-              pan: { enabled: false },
-              zoom: {
-                wheel: { enabled: true },
-                pinch: { enabled: true },
-                mode: 'x'
-              }
             }
           },
           scales: {
             x: {
               type: 'category',
-              min: 0,
-              max: windowSize - 1,
               ticks: {
                 color: '#aaa',
-                maxTicksLimit: 14,
-                font: { family: 'Consolas', size: 11 },
-                autoSkip: true
+                maxTicksLimit: 12,
+                font: { family: 'Consolas', size: 11 }
               },
               grid: { color: '#222' }
             },
@@ -739,23 +758,13 @@
         }
       });
 
-      // Scrollbar controls visible time window
-      const scroll = document.getElementById('trend-scroll');
-      const maxStart = Math.max(0, points.length - windowSize);
-      scroll.min = 0;
-      scroll.max = maxStart;
-      scroll.value = 0;
-
-      scroll.oninput = function () {
-        windowStart = parseInt(this.value, 10);
-        trendChart.options.scales.x.min = windowStart;
-        trendChart.options.scales.x.max = windowStart + windowSize - 1;
-        trendChart.update('none');
-      };
-
+      // Scroll the trend panel into view
       panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
+    // ==================================================
+    // MAIN LOAD
+    // ==================================================
     async function loadAllSites() {
       siteRegistry = {};
       selectedKey = null;
@@ -764,21 +773,27 @@
       currentSiteId = null;
       currentVariable = null;
 
-      document.getElementById('site-info').innerHTML = '<div class="placeholder">Loading...</div>';
-      document.getElementById('coverage-plot').innerHTML = '<div class="plot-placeholder">Loading...</div>';
+      document.getElementById('site-info').innerHTML =
+        '<div class="placeholder">Loading...</div>';
+      document.getElementById('coverage-plot').innerHTML =
+        '<div class="plot-placeholder">Loading...</div>';
       document.getElementById('trend-panel').classList.remove('visible');
 
       await loadCoordinator('CASTNET', './data/input/CASTNET/CASTNET_coordinator.csv');
-      await loadCoordinator('NTN', './data/input/NTN/NTN_coordinator.csv');
+      await loadCoordinator('NTN',     './data/input/NTN/NTN_coordinator.csv');
       await loadDateSummary();
       await loadCoverage();
       await loadTimeseries();
       buildMarkersAndTable();
 
       document.getElementById('site-info').innerHTML = `
-        <div class="placeholder">Click a marker or a row<br>to see details</div>`;
+        <div class="placeholder">
+          Click a marker or a row<br>to see details
+        </div>`;
       document.getElementById('coverage-plot').innerHTML = `
-        <div class="plot-placeholder">Select a site, then click<br>a variable button</div>`;
+        <div class="plot-placeholder">
+          Select a site, then click<br>a variable button
+        </div>`;
     }
 
     window.addEventListener('load', () => setTimeout(loadAllSites, 600));
