@@ -73,11 +73,19 @@
       flex-shrink: 0;
     }
 
-    /* Column 2 can scroll if needed */
+    /* Column 2 scrolls if needed */
     .panel-content {
       flex: 1;
       overflow-y: auto;
       overflow-x: hidden;
+    }
+
+    /* Column 3 – no scroll, fixed layout */
+    #coverage-plot {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
     }
 
     /* ========== Column 1 ========== */
@@ -158,14 +166,7 @@
       line-height: 1.6;
     }
 
-    /* ========== Column 3 – fixed, no scroll ========== */
-    #coverage-plot {
-      flex: 1;
-      overflow: hidden;              /* no scroll */
-      display: flex;
-      flex-direction: column;
-    }
-
+    /* ========== Column 3 – fixed year stack ========== */
     .plot-title {
       font-size: 13px;
       color: #aaa;
@@ -192,12 +193,12 @@
       display: flex;
       flex-wrap: nowrap;
       gap: 1px;
-      overflow: hidden;              /* no horizontal scroll */
+      overflow: hidden;
       flex: 1;
     }
 
     .week-box {
-      flex: 1 1 0;                   /* stretch to fill row */
+      flex: 1 1 0;
       min-width: 0;
       height: 12px;
       border: 1px solid #333;
