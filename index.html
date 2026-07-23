@@ -1,132 +1,191 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Character encoding for the page -->
   <meta charset="UTF-8" />
+  
+  <!-- Makes the page responsive on mobile devices -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <!-- Text that appears on the browser tab -->
   <title>GIS_TDEP · VISUALIZATION</title>
 
-  <!-- PyScript -->
+  <!-- Load PyScript CSS (required for Python in the browser) -->
   <link rel="stylesheet" href="https://pyscript.net/releases/2024.11.1/core.css" />
+  
+  <!-- Load PyScript JavaScript engine -->
   <script type="module" src="https://pyscript.net/releases/2024.11.1/core.js"></script>
 
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    /* Reset default browser styles */
+    * { 
+      box-sizing: border-box; 
+      margin: 0; 
+      padding: 0; 
+    }
+
+    /* Main page background and text color (black & white only) */
     body {
-      background: #000;
-      color: #00FF41; /*using for the description word title*/
+      background: #000000;          /* Pure black background */
+      color: #FFFFFF;               /* Pure white text */
       font-family: 'Consolas', 'Courier New', monospace;
       min-height: 100vh;
     }
+
+    /* Outer container that creates the terminal look */
     .crt {
-      background: #000800;
-      box-shadow: inset 0 0 40px #0a0a0a;
+      background: #000000;          /* Black background */
+      box-shadow: inset 0 0 40px #222222;  /* Soft dark glow */
       padding: 18px;
       min-height: 100vh;
     }
+
+    /* Header section (title + subtitle) */
     .header {
       text-align: center;
       margin-bottom: 12px;
     }
+
+    /* Main title style */
     .header h1 {
       font-size: 22px;
       letter-spacing: 2px;
+      color: #FFFFFF;               /* White title */
     }
+
+    /* Subtitle under the main title */
     .subtitle {
-      color: #00AA2A;
+      color: #AAAAAA;               /* Light gray for secondary text */
       font-size: 13px;
       margin-top: 4px;
     }
+
+    /* Container for the top buttons (CLEAR / RUN) */
     .toolbar {
       text-align: center;
       margin: 12px 0;
     }
+
+    /* Style for all buttons */
     button {
-      background: #001100;
-      color: #00FF41;
-      border: 1px solid #00AA2A;
+      background: #111111;          /* Very dark gray */
+      color: #FFFFFF;               /* White text */
+      border: 1px solid #FFFFFF;    /* White border */
       padding: 6px 14px;
       margin: 0 4px;
       font-family: inherit;
       font-size: 14px;
       cursor: pointer;
     }
+
+    /* Button hover effect */
     button:hover {
-      background: #002200;
-      box-shadow: 0 0 8px #00FF41;
+      background: #333333;          /* Slightly lighter on hover */
+      box-shadow: 0 0 8px #FFFFFF;
     }
+
+    /* Main layout: canvas on the left, console on the right */
     .main {
       display: flex;
       gap: 20px;
       justify-content: center;
       flex-wrap: wrap;
     }
+
+    /* Drawing canvas */
     canvas {
-      background: #000C00;
-      border: 1px solid #00AA2A;
+      background: #000000;          /* Black canvas background */
+      border: 1px solid #FFFFFF;    /* White border */
       image-rendering: pixelated;
     }
+
+    /* Right-side console panel */
     .console {
       width: 380px;
-      background: #000A00;
-      border: 1px solid #00AA2A;
+      background: #0A0A0A;          /* Almost black */
+      border: 1px solid #FFFFFF;
       padding: 12px;
     }
+
+    /* Text area where user types Pipsqueak code */
     textarea {
       width: 100%;
       height: 280px;
-      background: #000000;
-      color: #00FF41;
-      border: 1px solid #003300;
+      background: #000000;          /* Black background */
+      color: #FFFFFF;               /* White text */
+      border: 1px solid #555555;    /* Gray border */
       font-family: inherit;
       font-size: 13px;
       padding: 8px;
       resize: vertical;
     }
+
+    /* Container for example buttons */
     .examples {
       margin: 8px 0;
     }
+
+    /* Smaller buttons for examples */
     .examples button {
       font-size: 12px;
       padding: 4px 8px;
     }
   </style>
 </head>
+
 <body>
+  <!-- Main terminal container -->
   <div class="crt">
+
+    <!-- Header with project title -->
     <div class="header">
-      <h1>ETCH-TERMINAL · PIPSQUEAK</h1>
-      <div class="subtitle">Vector drawing engine · Pipsqueak turtle language · phosphor replay</div>
+      <h1>GIS_TDEP · VISUALIZATION</h1>
+      <div class="subtitle">
+        Vector drawing engine · Pipsqueak turtle language · phosphor replay
+      </div>
     </div>
 
+    <!-- Top toolbar buttons -->
     <div class="toolbar">
       <button id="btn-clear">[ CLEAR ]</button>
       <button id="btn-run">[ RUN ]</button>
     </div>
 
+    <!-- Main content area -->
     <div class="main">
+
+      <!-- Drawing canvas (left side) -->
       <canvas id="canvas" width="640" height="480"></canvas>
 
+      <!-- Console panel (right side) -->
       <div class="console">
         <strong>PIPSQUEAK CONSOLE v1.0</strong>
+
+        <!-- Example shortcut buttons -->
         <div class="examples">
           Examples:
           <button onclick="loadExample('square')">Square</button>
           <button onclick="loadExample('star')">Star</button>
           <button onclick="loadExample('spiral')">Spiral</button>
         </div>
+
+        <!-- Code input area -->
         <textarea id="code">CENTER
 REPEAT 4 {
   FORWARD 100
   TURN 90
 }</textarea>
+
         <br><br>
+
+        <!-- Console action buttons -->
         <button id="btn-run2">[ RUN ]</button>
         <button onclick="document.getElementById('code').value=''">[ CLR ]</button>
       </div>
     </div>
   </div>
 
-  <!-- Load Python modules -->
+  <!-- Tell PyScript which Python modules to load -->
   <py-config>
     [[fetch]]
     files = [
@@ -135,27 +194,32 @@ REPEAT 4 {
     ]
   </py-config>
 
+  <!-- Python code that runs in the browser -->
   <script type="py">
     from modules.parser import run_pipsqueak, init_turtle
     from js import document
 
-    # Initialize turtle on load
+    # Initialize the turtle when the page loads
     init_turtle()
 
+    # Function that runs the code written in the textarea
     def run_code(event=None):
         code = document.getElementById("code").value
         run_pipsqueak(code)
 
+    # Function that clears the canvas
     def clear_canvas(event=None):
         from modules.parser import init_turtle
         t = init_turtle()
         t.clear()
 
+    # Connect buttons to the Python functions
     document.getElementById("btn-run").addEventListener("click", run_code)
     document.getElementById("btn-run2").addEventListener("click", run_code)
     document.getElementById("btn-clear").addEventListener("click", clear_canvas)
   </script>
 
+  <!-- JavaScript helper for loading example codes -->
   <script>
     function loadExample(name) {
       const examples = {
