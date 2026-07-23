@@ -4,9 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MAP ACTIVE - SIMULATION RUNNING</title>
-
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -55,12 +53,12 @@
       align-items: flex-start;
     }
 
-    /* Common panel style – same height for all columns */
+    /* Common panel – same size for all columns */
     .panel {
       width: 420px;
-      height: 620px;                 /* fixed height so all columns match */
+      height: 620px;
       background: #0a0a0a;
-      border: 1px solid #ffffff;     /* white border */
+      border: 1px solid #ffffff;
       padding: 12px;
       display: flex;
       flex-direction: column;
@@ -73,14 +71,22 @@
       flex-shrink: 0;
     }
 
-    /* Scrollable content area inside each panel */
+    /* Column 2 – scroll only when content is long */
     .panel-content {
       flex: 1;
-      overflow-y: auto;              /* scroll when content is taller */
+      overflow-y: auto;
       overflow-x: hidden;
     }
 
-    /* ========== Column 1 specific ========== */
+    /* Column 3 – no scroll */
+    #coverage-plot {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ========== Column 1 ========== */
     #map {
       width: 100%;
       height: 260px;
@@ -135,7 +141,7 @@
       box-shadow: inset 0 0 0 1px #fff;
     }
 
-    /* ========== Column 2 specific ========== */
+    /* ========== Column 2 ========== */
     .info-box {
       border: 1px solid #444;
       padding: 12px;
@@ -158,34 +164,42 @@
       line-height: 1.6;
     }
 
-    /* ========== Column 3 specific ========== */
+    /* ========== Column 3 – fixed, no scroll ========== */
     .plot-title {
       font-size: 13px;
       color: #aaa;
       margin-bottom: 10px;
+      flex-shrink: 0;
     }
+
     .year-row {
       display: flex;
       align-items: center;
-      margin-bottom: 4px;
-      font-size: 12px;
+      margin-bottom: 3px;
+      font-size: 11px;
+      height: 16px;
     }
+
     .year-label {
-      width: 42px;
+      width: 38px;
       color: #aaa;
       flex-shrink: 0;
+      font-size: 11px;
     }
+
     .week-boxes {
       display: flex;
       flex-wrap: nowrap;
       gap: 1px;
-      overflow-x: auto;
+      overflow: hidden;     /* no horizontal scroll */
+      flex: 1;
     }
+
     .week-box {
-      width: 9px;
-      height: 14px;
+      flex: 1 1 0;          /* stretch to fill the row */
+      min-width: 0;
+      height: 12px;
       border: 1px solid #333;
-      flex-shrink: 0;
     }
     .week-box.green { background: #00cc44; }
     .week-box.white { background: #ffffff; }
@@ -199,10 +213,8 @@
     }
   </style>
 </head>
-
 <body>
   <div class="crt">
-
     <div class="header">
       <h1>MAP ACTIVE - SIMULATION RUNNING</h1>
       <div class="subtitle">Mapping Display · Statistical Information · Trending</div>
@@ -217,13 +229,10 @@
       <!-- ========== COLUMN 1 ========== -->
       <div class="panel">
         <div class="panel-title">MAP VIEW · ZOOM & EXPLORE</div>
-
         <div id="map"></div>
-
         <div style="font-size:12px; color:#aaa; margin-bottom:8px;">
           Click a point or a row
         </div>
-
         <div class="network-list-box">
           <div class="network-list-title">NETWORK LIST</div>
           <div class="network-list-container">
@@ -256,7 +265,7 @@
       <!-- ========== COLUMN 3 ========== -->
       <div class="panel">
         <div class="panel-title">WEEKLY COVERAGE</div>
-        <div class="panel-content" id="coverage-plot">
+        <div id="coverage-plot">
           <div class="plot-placeholder">
             Select a site, then click<br>
             a variable button to view<br>
@@ -269,7 +278,6 @@
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
   <script>
     // ==================================================
     // GLOBAL STATE
@@ -323,7 +331,6 @@
         if (!res.ok) return 0;
         const rows = parseCSV(await res.text());
         let count = 0;
-
         rows.forEach(row => {
           const lat = parseFloat(row.LATITUDE || row.LAT || row.Y);
           const lon = parseFloat(row.LONGITUDE || row.LON || row.LONG || row.X);
@@ -353,7 +360,6 @@
         if (!res.ok) return;
         const rows = parseCSV(await res.text());
         dateSummary = { CASTNET: {}, NTN: {} };
-
         rows.forEach(r => {
           const net = r.NETWORK;
           if (!dateSummary[net]) dateSummary[net] = {};
@@ -520,7 +526,7 @@
     }
 
     // ==================================================
-    // COLUMN 3 – Year-stacked plot
+    // COLUMN 3 – Year-stacked plot (no scroll)
     // ==================================================
     function showYearStackedPlot(network, siteId, variable) {
       const container = document.getElementById('coverage-plot');
@@ -545,7 +551,6 @@
         html += `<div class="year-row">
                    <div class="year-label">${year}</div>
                    <div class="week-boxes">`;
-
         for (const ch of binary) {
           const cls = ch === '1' ? 'green' : 'white';
           html += `<div class="week-box ${cls}" title="${ch === '1' ? 'Has data' : 'Missing'}"></div>`;
