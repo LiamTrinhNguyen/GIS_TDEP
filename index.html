@@ -1,9 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- ============================== -->
-  <!-- Basic page setup               -->
-  <!-- ============================== -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MAP ACTIVE - SIMULATION RUNNING</title>
@@ -12,18 +9,11 @@
   <link rel="stylesheet" href="https://pyscript.net/releases/2024.11.1/core.css" />
   <script type="module" src="https://pyscript.net/releases/2024.11.1/core.js"></script>
 
-  <!-- Leaflet CSS -->
+  <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
   <style>
-    /* ============================== */
-    /* Reset and base styles          */
-    /* ============================== */
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       background: #000000;
@@ -39,27 +29,11 @@
       min-height: 100vh;
     }
 
-    .header {
-      text-align: center;
-      margin-bottom: 12px;
-    }
+    .header { text-align: center; margin-bottom: 12px; }
+    .header h1 { font-size: 22px; letter-spacing: 2px; }
+    .subtitle { color: #AAAAAA; font-size: 13px; margin-top: 4px; }
 
-    .header h1 {
-      font-size: 22px;
-      letter-spacing: 2px;
-      color: #FFFFFF;
-    }
-
-    .subtitle {
-      color: #AAAAAA;
-      font-size: 13px;
-      margin-top: 4px;
-    }
-
-    .toolbar {
-      text-align: center;
-      margin: 12px 0;
-    }
+    .toolbar { text-align: center; margin: 12px 0; }
 
     button {
       background: #111111;
@@ -71,15 +45,8 @@
       font-size: 14px;
       cursor: pointer;
     }
+    button:hover { background: #333333; box-shadow: 0 0 8px #FFFFFF; }
 
-    button:hover {
-      background: #333333;
-      box-shadow: 0 0 8px #FFFFFF;
-    }
-
-    /* ============================== */
-    /* Three-column layout            */
-    /* ============================== */
     .main {
       display: flex;
       gap: 20px;
@@ -88,118 +55,88 @@
       align-items: flex-start;
     }
 
-    /* ----- Column 1: Map + Network List ----- */
+    /* Column 1 */
     .map-panel {
       width: 480px;
       background: #0A0A0A;
       border: 1px solid #FFFFFF;
       padding: 12px;
     }
-
-    .map-title {
-      font-size: 14px;
-      margin-bottom: 8px;
-      letter-spacing: 1px;
-    }
-
+    .map-title { font-size: 14px; margin-bottom: 8px; letter-spacing: 1px; }
     #map {
       width: 100%;
-      height: 320px;
+      height: 300px;
       background: #111111;
       border: 1px solid #555555;
     }
-
     .leaflet-control-zoom a {
       background-color: #111111 !important;
       color: #FFFFFF !important;
       border: 1px solid #FFFFFF !important;
     }
 
-    .leaflet-control-zoom a:hover {
-      background-color: #333333 !important;
-    }
-
-    /* New Network List box under the map */
+    /* Network list under map */
     .network-list-box {
       margin-top: 12px;
       border: 1px solid #555555;
       background: #000000;
     }
-
     .network-list-title {
       padding: 6px 10px;
       font-size: 13px;
       border-bottom: 1px solid #444444;
       background: #111111;
     }
-
     .network-list-container {
-      max-height: 220px;
-      overflow-y: auto;           /* scroll up / down */
+      max-height: 200px;
+      overflow-y: auto;
       font-size: 12px;
     }
-
-    .network-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
+    .network-table { width: 100%; border-collapse: collapse; }
     .network-table th {
-      position: sticky;
-      top: 0;
+      position: sticky; top: 0;
       background: #1a1a1a;
       padding: 6px 8px;
       text-align: left;
       border-bottom: 1px solid #444;
-      font-weight: normal;
       color: #AAAAAA;
+      font-weight: normal;
     }
-
     .network-table td {
       padding: 5px 8px;
       border-bottom: 1px solid #222;
       cursor: pointer;
     }
-
-    .network-table tr:hover td {
-      background: #222222;
-    }
-
-    /* Highlighted row when selected */
+    .network-table tr:hover td { background: #222222; }
     .network-table tr.selected td {
       background: #333333;
-      color: #FFFFFF;
       box-shadow: inset 0 0 0 1px #FFFFFF;
     }
 
-    /* ----- Column 2: Site Information ----- */
+    /* Column 2 */
     .info-panel {
-      width: 320px;
+      width: 340px;
       background: #0A0A0A;
       border: 1px solid #FFFFFF;
       padding: 14px;
-      min-height: 420px;
+      min-height: 500px;
     }
-
     .info-panel h3 {
       margin-bottom: 14px;
       font-size: 15px;
       letter-spacing: 1px;
     }
-
-    .site-item {
+    .info-box {
       border: 1px solid #444444;
       padding: 12px;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
       background: #111111;
     }
-
-    .site-item .network {
-      color: #AAAAAA;
+    .info-box .title {
       font-size: 13px;
-      margin-top: 4px;
+      color: #AAAAAA;
+      margin-bottom: 6px;
     }
-
     .placeholder {
       color: #666666;
       font-size: 13px;
@@ -208,14 +145,13 @@
       line-height: 1.6;
     }
 
-    /* ----- Column 3: Console ----- */
+    /* Column 3 */
     .console {
       width: 340px;
       background: #0A0A0A;
       border: 1px solid #FFFFFF;
       padding: 12px;
     }
-
     textarea {
       width: 100%;
       height: 220px;
@@ -227,39 +163,27 @@
       padding: 8px;
       resize: vertical;
     }
-
-    .examples {
-      margin: 8px 0;
-    }
-
-    .examples button {
-      font-size: 12px;
-      padding: 4px 8px;
-    }
+    .examples { margin: 8px 0; }
+    .examples button { font-size: 12px; padding: 4px 8px; }
   </style>
 </head>
 
 <body>
   <div class="crt">
 
-    <!-- Header -->
     <div class="header">
       <h1>MAP ACTIVE - SIMULATION RUNNING</h1>
-      <div class="subtitle">
-        Mapping Display · Statistical Information · Trending
-      </div>
+      <div class="subtitle">Mapping Display · Statistical Information · Trending</div>
     </div>
 
-    <!-- Toolbar -->
     <div class="toolbar">
       <button id="btn-clear">[ CLEAR ]</button>
       <button onclick="loadAllSites()">[ LOAD SITES ]</button>
     </div>
 
-    <!-- Main 3-column layout -->
     <div class="main">
 
-      <!-- ========== COLUMN 1: MAP + NETWORK LIST ========== -->
+      <!-- ========== COLUMN 1 ========== -->
       <div class="map-panel">
         <div class="map-title">MAP VIEW · ZOOM & EXPLORE</div>
         <div id="map"></div>
@@ -267,7 +191,6 @@
           Scroll to zoom · Drag to pan · Click a point or a row
         </div>
 
-        <!-- NEW: Network List under the map -->
         <div class="network-list-box">
           <div class="network-list-title">NETWORK LIST (scroll)</div>
           <div class="network-list-container">
@@ -280,15 +203,13 @@
                   <th>NTN</th>
                 </tr>
               </thead>
-              <tbody id="network-tbody">
-                <!-- Rows will be inserted here by JavaScript -->
-              </tbody>
+              <tbody id="network-tbody"></tbody>
             </table>
           </div>
         </div>
       </div>
 
-      <!-- ========== COLUMN 2: SITE INFO ========== -->
+      <!-- ========== COLUMN 2 ========== -->
       <div class="info-panel">
         <h3>SELECTED SITE(S)</h3>
         <div id="site-info">
@@ -299,23 +220,20 @@
         </div>
       </div>
 
-      <!-- ========== COLUMN 3: CONSOLE ========== -->
+      <!-- ========== COLUMN 3 ========== -->
       <div class="console">
         <strong>PIPSQUEAK CONSOLE v1.0</strong>
-
         <div class="examples">
           Examples:
           <button onclick="loadExample('square')">Square</button>
           <button onclick="loadExample('star')">Star</button>
           <button onclick="loadExample('spiral')">Spiral</button>
         </div>
-
         <textarea id="code">CENTER
 REPEAT 4 {
   FORWARD 100
   TURN 90
 }</textarea>
-
         <br><br>
         <button id="btn-run2">[ RUN ]</button>
         <button onclick="document.getElementById('code').value=''">[ CLR ]</button>
@@ -324,30 +242,23 @@ REPEAT 4 {
     </div>
   </div>
 
-  <!-- PyScript modules -->
+  <!-- PyScript -->
   <py-config>
     [[fetch]]
-    files = [
-      "./modules/turtle.py",
-      "./modules/parser.py"
-    ]
+    files = ["./modules/turtle.py", "./modules/parser.py"]
   </py-config>
 
   <script type="py">
     from modules.parser import run_pipsqueak, init_turtle
     from js import document
-
     init_turtle()
-
     def run_code(event=None):
         code = document.getElementById("code").value
         run_pipsqueak(code)
-
     def clear_canvas(event=None):
         from modules.parser import init_turtle
         t = init_turtle()
         t.clear()
-
     document.getElementById("btn-clear").addEventListener("click", clear_canvas)
     document.getElementById("btn-run2").addEventListener("click", run_code)
   </script>
@@ -355,32 +266,19 @@ REPEAT 4 {
   <script>
     function loadExample(name) {
       const examples = {
-        square: `CENTER
-REPEAT 4 {
-  FORWARD 100
-  TURN 90
-}`,
-        star: `CENTER
-REPEAT 5 {
-  FORWARD 120
-  TURN 144
-}`,
-        spiral: `CENTER
-REPEAT 80 {
-  FORWARD 5
-  TURN 15
-}`
+        square: `CENTER\nREPEAT 4 {\n  FORWARD 100\n  TURN 90\n}`,
+        star:   `CENTER\nREPEAT 5 {\n  FORWARD 120\n  TURN 144\n}`,
+        spiral: `CENTER\nREPEAT 80 {\n  FORWARD 5\n  TURN 15\n}`
       };
       document.getElementById("code").value = examples[name] || "";
     }
   </script>
 
-  <!-- Leaflet + Site Logic -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    // --------------------------------------------------
-    // 1. Create the map
-    // --------------------------------------------------
+    // ==================================================
+    // GLOBAL STATE
+    // ==================================================
     const map = L.map('map', {
       zoomControl: true,
       scrollWheelZoom: true,
@@ -394,20 +292,21 @@ REPEAT 80 {
       minZoom: 3
     }).addTo(map);
 
-    // Global storage
-    let allMarkers = [];          // Leaflet markers
-    let siteRegistry = {};        // key = "lat_lon" → site data
-    let selectedKey = null;       // currently selected location key
+    let allMarkers = [];
+    let siteRegistry = {};   // key = "lat_lon"
+    let dateRange = {        // SITE_ID → {first, last}
+      CASTNET: {},
+      NTN: {}
+    };
+    let selectedKey = null;
 
-    // --------------------------------------------------
-    // 2. CSV parser
-    // --------------------------------------------------
+    // ==================================================
+    // CSV PARSER
+    // ==================================================
     function parseCSV(text) {
       const lines = text.trim().split(/\r?\n/);
       if (lines.length < 2) return [];
-
       const headers = lines[0].split(',').map(h => h.trim().toUpperCase());
-
       return lines.slice(1).map(line => {
         const values = line.split(',');
         const obj = {};
@@ -418,74 +317,93 @@ REPEAT 80 {
       });
     }
 
-    // --------------------------------------------------
-    // 3. Create a unique key from coordinates
-    // --------------------------------------------------
     function makeKey(lat, lon) {
-      // Round to 5 decimals so tiny differences still match
       return `${lat.toFixed(5)}_${lon.toFixed(5)}`;
     }
 
-    // --------------------------------------------------
-    // 4. Load one network and store in registry
-    // --------------------------------------------------
-    async function loadNetwork(networkName, filePath) {
+    // ==================================================
+    // LOAD COORDINATOR FILES (for map points)
+    // ==================================================
+    async function loadCoordinator(networkName, filePath) {
       try {
         const response = await fetch(filePath);
         if (!response.ok) {
-          console.warn(`File not found: ${filePath}`);
+          console.warn(`Coordinator not found: ${filePath}`);
           return 0;
         }
-
-        const text = await response.text();
-        const rows = parseCSV(text);
+        const rows = parseCSV(await response.text());
         let count = 0;
 
         rows.forEach(row => {
           const lat = parseFloat(row.LATITUDE || row.LAT || row.Y);
           const lon = parseFloat(row.LONGITUDE || row.LON || row.LONG || row.X);
           const siteId = row.SITE_ID || row.SITEID || row.SITE || row.ID;
-
           if (isNaN(lat) || isNaN(lon) || !siteId) return;
 
           const key = makeKey(lat, lon);
-
-          // Create entry if it does not exist yet
           if (!siteRegistry[key]) {
             siteRegistry[key] = {
-              lat: lat,
-              lon: lon,
+              lat, lon,
               CASTNET: null,
               NTN: null,
               marker: null
             };
           }
-
-          // Store the site ID for this network
           siteRegistry[key][networkName] = siteId;
           count++;
         });
-
-        console.log(`Loaded ${count} sites from ${networkName}`);
+        console.log(`Coordinator ${networkName}: ${count} sites`);
         return count;
       } catch (err) {
-        console.error(`Error loading ${networkName}:`, err);
+        console.error(err);
         return 0;
       }
     }
 
-    // --------------------------------------------------
-    // 5. Create markers and the scrollable table
-    // --------------------------------------------------
+    // ==================================================
+    // LOAD TRANSFORMED WIDE FILES (for DATEON / DATEOFF)
+    // ==================================================
+    async function loadDateRanges(networkName, filePath) {
+      try {
+        const response = await fetch(filePath);
+        if (!response.ok) {
+          console.warn(`Wide file not found: ${filePath}`);
+          return;
+        }
+        const rows = parseCSV(await response.text());
+
+        // Group by SITE_ID and find min DATEON + max DATEOFF
+        const temp = {};
+        rows.forEach(row => {
+          const siteId = row.SITE_ID;
+          const dateOn  = row.DATEON;
+          const dateOff = row.DATEOFF;
+          if (!siteId || !dateOn) return;
+
+          if (!temp[siteId]) {
+            temp[siteId] = { first: dateOn, last: dateOff || dateOn };
+          } else {
+            if (dateOn < temp[siteId].first) temp[siteId].first = dateOn;
+            if (dateOff && dateOff > temp[siteId].last) temp[siteId].last = dateOff;
+          }
+        });
+
+        dateRange[networkName] = temp;
+        console.log(`Date ranges loaded for ${networkName}: ${Object.keys(temp).length} sites`);
+      } catch (err) {
+        console.error(`Error loading dates for ${networkName}:`, err);
+      }
+    }
+
+    // ==================================================
+    // BUILD MARKERS + TABLE
+    // ==================================================
     function buildMarkersAndTable() {
-      // Clear old markers
       allMarkers.forEach(m => map.removeLayer(m));
       allMarkers = [];
-
       const tbody = document.getElementById('network-tbody');
       tbody.innerHTML = '';
 
-      // Sort by latitude for nicer display
       const keys = Object.keys(siteRegistry).sort((a, b) => {
         return siteRegistry[b].lat - siteRegistry[a].lat;
       });
@@ -493,7 +411,7 @@ REPEAT 80 {
       keys.forEach(key => {
         const site = siteRegistry[key];
 
-        // ----- Create map marker -----
+        // Marker color
         const color = (site.CASTNET && site.NTN) ? '#FFFFFF' :
                       (site.CASTNET) ? '#FFFFFF' : '#AAAAAA';
 
@@ -506,20 +424,16 @@ REPEAT 80 {
           fillOpacity: 0.9
         }).addTo(map);
 
-        // Store reference so we can highlight later
         site.marker = marker;
         allMarkers.push(marker);
 
-        // Popup
-        let popupText = '';
-        if (site.CASTNET) popupText += `<b>CASTNET:</b> ${site.CASTNET}<br>`;
-        if (site.NTN)     popupText += `<b>NTN:</b> ${site.NTN}`;
-        marker.bindPopup(popupText);
-
-        // Click marker → select
+        let popup = '';
+        if (site.CASTNET) popup += `<b>CASTNET:</b> ${site.CASTNET}<br>`;
+        if (site.NTN)     popup += `<b>NTN:</b> ${site.NTN}`;
+        marker.bindPopup(popup);
         marker.on('click', () => selectSite(key));
 
-        // ----- Create table row -----
+        // Table row
         const tr = document.createElement('tr');
         tr.dataset.key = key;
         tr.innerHTML = `
@@ -528,37 +442,24 @@ REPEAT 80 {
           <td>${site.CASTNET || '—'}</td>
           <td>${site.NTN || '—'}</td>
         `;
-
-        // Click row → select
         tr.addEventListener('click', () => selectSite(key));
-
         tbody.appendChild(tr);
       });
 
-      // Fit map to all points
       if (allMarkers.length > 0) {
         const group = L.featureGroup(allMarkers);
         map.fitBounds(group.getBounds().pad(0.12));
       }
     }
 
-    // --------------------------------------------------
-    // 6. Select a site (from map or from table)
-    // --------------------------------------------------
+    // ==================================================
+    // SELECT SITE (map or table)
+    // ==================================================
     function selectSite(key) {
       // Remove previous highlight
-      if (selectedKey && siteRegistry[selectedKey]) {
-        const prev = siteRegistry[selectedKey];
-        if (prev.marker) {
-          prev.marker.setStyle({
-            weight: 1,
-            color: '#000000',
-            radius: 7
-          });
-        }
+      if (selectedKey && siteRegistry[selectedKey]?.marker) {
+        siteRegistry[selectedKey].marker.setStyle({ weight: 1, color: '#000000', radius: 7 });
       }
-
-      // Clear previous selected row
       document.querySelectorAll('#network-tbody tr.selected')
               .forEach(r => r.classList.remove('selected'));
 
@@ -568,11 +469,7 @@ REPEAT 80 {
 
       // Highlight marker
       if (site.marker) {
-        site.marker.setStyle({
-          weight: 3,
-          color: '#FFFFFF',
-          radius: 10
-        });
+        site.marker.setStyle({ weight: 3, color: '#FFFFFF', radius: 10 });
         site.marker.openPopup();
         map.panTo([site.lat, site.lon]);
       }
@@ -584,69 +481,98 @@ REPEAT 80 {
         row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
 
-      // Update Column 2 (details)
+      // Update Column 2
       showSiteInfo(site);
     }
 
-    // --------------------------------------------------
-    // 7. Show details in Column 2
-    // --------------------------------------------------
+    // ==================================================
+    // SHOW DETAILS IN COLUMN 2
+    // ==================================================
     function showSiteInfo(site) {
       const container = document.getElementById('site-info');
+      let html = '';
 
-      let html = `<div class="site-item">`;
-      html += `<div style="margin-bottom:8px;"><strong>Location</strong></div>`;
-      html += `<div>Latitude: ${site.lat.toFixed(5)}</div>`;
-      html += `<div>Longitude: ${site.lon.toFixed(5)}</div>`;
+      // ----- Box 1: Location -----
+      html += `
+        <div class="info-box">
+          <div class="title">LOCATION</div>
+          <div>Latitude: ${site.lat.toFixed(5)}</div>
+          <div>Longitude: ${site.lon.toFixed(5)}</div>
+        </div>
+      `;
 
+      // ----- Box 2: CASTNET -----
       if (site.CASTNET) {
-        html += `<div class="network" style="margin-top:10px;">
-                   <strong>CASTNET</strong><br>Site ID: ${site.CASTNET}
-                 </div>`;
-      }
-      if (site.NTN) {
-        html += `<div class="network" style="margin-top:10px;">
-                   <strong>NTN</strong><br>Site ID: ${site.NTN}
-                 </div>`;
+        const range = dateRange.CASTNET[site.CASTNET] || {};
+        html += `
+          <div class="info-box">
+            <div class="title">CASTNET</div>
+            <div>Site ID: <strong>${site.CASTNET}</strong></div>
+            <div style="margin-top:6px;">First day (DATEON): ${range.first || '—'}</div>
+            <div>Last day (DATEOFF): ${range.last || '—'}</div>
+          </div>
+        `;
       }
 
-      html += `</div>`;
+      // ----- Box 3: NTN / NADP -----
+      if (site.NTN) {
+        const range = dateRange.NTN[site.NTN] || {};
+        html += `
+          <div class="info-box">
+            <div class="title">NTN (NADP)</div>
+            <div>Site ID: <strong>${site.NTN}</strong></div>
+            <div style="margin-top:6px;">First day (DATEON): ${range.first || '—'}</div>
+            <div>Last day (DATEOFF): ${range.last || '—'}</div>
+          </div>
+        `;
+      }
+
+      // If neither network has data
+      if (!site.CASTNET && !site.NTN) {
+        html += `<div class="placeholder">No network data for this location</div>`;
+      }
+
       container.innerHTML = html;
     }
 
-    // --------------------------------------------------
-    // 8. Load both networks
-    // --------------------------------------------------
+    // ==================================================
+    // MAIN LOAD FUNCTION
+    // ==================================================
     async function loadAllSites() {
       siteRegistry = {};
+      dateRange = { CASTNET: {}, NTN: {} };
       selectedKey = null;
 
       document.getElementById('site-info').innerHTML = `
-        <div class="placeholder">
-          Loading sites...
-        </div>`;
+        <div class="placeholder">Loading data...</div>`;
 
-      await loadNetwork('CASTNET', './data/input/CASTNET/CASTNET_coordinator.csv');
-      await loadNetwork('NTN', './data/input/NTN/NTN_coordinator.csv');
+      // 1. Load coordinates
+      await loadCoordinator('CASTNET', './data/input/CASTNET/CASTNET_coordinator.csv');
+      await loadCoordinator('NTN',     './data/input/NTN/NTN_coordinator.csv');
 
+      // 2. Load date ranges from the new wide files
+      await loadDateRanges('CASTNET', './data/input/CASTNET/CASTNET_transformed_wide.csv');
+      await loadDateRanges('NTN',     './data/input/NTN/NADP_transformed_wide.csv');
+
+      // 3. Build map + table
       buildMarkersAndTable();
 
       if (Object.keys(siteRegistry).length === 0) {
         document.getElementById('site-info').innerHTML = `
           <div class="placeholder">
             No sites loaded.<br>
-            Check CSV files and column names.
+            Check coordinator CSV files.
           </div>`;
       } else {
         document.getElementById('site-info').innerHTML = `
           <div class="placeholder">
             Click a marker or a row<br>
-            to see details
+            to see location and date range
           </div>`;
       }
     }
 
-    // Auto-load when page is ready
+    // Auto load
     window.addEventListener('load', () => {
       setTimeout(loadAllSites, 700);
     });
