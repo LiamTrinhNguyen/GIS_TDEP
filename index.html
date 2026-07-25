@@ -57,7 +57,6 @@
       align-items: flex-start;
     }
 
-    /* Column 1 – original size */
     .panel {
       width: 420px;
       height: 620px;
@@ -68,7 +67,6 @@
       flex-direction: column;
     }
 
-    /* Column 2 – width of old col 2 + col 3 */
     .panel-wide {
       width: 860px;
       height: 620px;
@@ -92,7 +90,6 @@
       overflow-x: hidden;
     }
 
-    /* Column 1 map */
     #map {
       width: 100%;
       height: 220px;
@@ -153,7 +150,6 @@
       box-shadow: inset 0 0 0 1px #fff;
     }
 
-    /* Column 2 content */
     .info-box {
       border: 1px solid #444;
       padding: 12px;
@@ -176,7 +172,6 @@
       line-height: 1.6;
     }
 
-    /* Legend under network header */
     .coverage-legend {
       display: flex;
       align-items: center;
@@ -211,12 +206,11 @@
       border-color: #1b1f23;
     }
 
-    /* Weekly coverage inside each network box */
     .coverage-block {
       margin-top: 10px;
       border-top: 1px solid #333;
       padding-top: 8px;
-      max-height: 180px;
+      max-height: 160px;
       overflow-y: auto;
     }
     .coverage-block .plot-title {
@@ -271,36 +265,47 @@
     }
 
     .trend-btn-wrap {
-      margin-top: 8px;
-      flex-shrink: 0;
+      margin-top: 10px;
       text-align: center;
     }
 
-    /* Full-width trend panel */
-    .trend-panel {
+    /* Separate trend panels */
+    .trend-panels {
       width: 100%;
       max-width: 1296px;
       margin: 18px auto 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .trend-panel {
+      width: 100%;
       background: #0a0a0a;
       border: 1px solid #ffffff;
       padding: 14px;
       display: none;
     }
     .trend-panel.visible { display: block; }
+
+    .trend-panel.castnet-panel { border-color: #e74c3c; }
+    .trend-panel.ntn-panel { border-color: #3498db; }
+
     .trend-header {
       font-size: 14px;
       letter-spacing: 1px;
       margin-bottom: 10px;
       color: #aaa;
     }
+
     .trend-body {
       display: flex;
       gap: 10px;
       align-items: stretch;
     }
-    #trend-canvas-wrap {
+    .trend-canvas-wrap {
       position: relative;
-      height: 320px;
+      height: 300px;
       flex: 1;
       min-width: 0;
     }
@@ -319,11 +324,11 @@
       writing-mode: vertical-rl;
       transform: rotate(180deg);
     }
-    #trend-zoom {
+    .trend-zoom {
       writing-mode: vertical-lr;
       direction: rtl;
       width: 8px;
-      height: 260px;
+      height: 240px;
       cursor: pointer;
       accent-color: #fafafa;
     }
@@ -337,7 +342,7 @@
       display: block;
       margin-bottom: 4px;
     }
-    #trend-scroll {
+    .trend-scroll {
       width: 100%;
       height: 8px;
       cursor: pointer;
@@ -385,7 +390,7 @@
         </div>
       </div>
 
-      <!-- COLUMN 2 (wide = old 2 + 3) -->
+      <!-- COLUMN 2 (wide) -->
       <div class="panel-wide">
         <div class="panel-title">SELECTED SITE(S) · WEEKLY COVERAGE</div>
         <div class="panel-content" id="site-info">
@@ -394,29 +399,45 @@
             to see details
           </div>
         </div>
-        <div class="trend-btn-wrap">
-          <button id="btn-trend" onclick="showTrendPlot()">
-            [ STATISTICAL-TRENDING ]
-          </button>
-        </div>
       </div>
     </div>
 
-    <!-- FULL-WIDTH TREND PANEL -->
-    <div class="trend-panel" id="trend-panel">
-      <div class="trend-header" id="trend-header">Time Series</div>
-      <div class="trend-body">
-        <div id="trend-canvas-wrap">
-          <canvas id="trend-chart"></canvas>
+    <!-- SEPARATE TREND PANELS -->
+    <div class="trend-panels">
+      <!-- CASTNET trend panel -->
+      <div class="trend-panel castnet-panel" id="trend-panel-castnet">
+        <div class="trend-header" id="trend-header-castnet">CASTNET Time Series</div>
+        <div class="trend-body">
+          <div class="trend-canvas-wrap">
+            <canvas id="trend-chart-castnet"></canvas>
+          </div>
+          <div class="trend-zoom-wrap">
+            <label>ZOOM</label>
+            <input type="range" class="trend-zoom" id="trend-zoom-castnet" min="20" max="100" value="100" step="1" />
+          </div>
         </div>
-        <div class="trend-zoom-wrap">
-          <label>ZOOM</label>
-          <input type="range" id="trend-zoom" min="20" max="100" value="100" step="1" />
+        <div class="trend-scroll-wrap">
+          <label>TIME (scroll left / right)</label>
+          <input type="range" class="trend-scroll" id="trend-scroll-castnet" min="0" max="100" value="0" step="1" />
         </div>
       </div>
-      <div class="trend-scroll-wrap">
-        <label>TIME (scroll left / right)</label>
-        <input type="range" id="trend-scroll" min="0" max="100" value="0" step="1" />
+
+      <!-- NTN trend panel -->
+      <div class="trend-panel ntn-panel" id="trend-panel-ntn">
+        <div class="trend-header" id="trend-header-ntn">NTN Time Series</div>
+        <div class="trend-body">
+          <div class="trend-canvas-wrap">
+            <canvas id="trend-chart-ntn"></canvas>
+          </div>
+          <div class="trend-zoom-wrap">
+            <label>ZOOM</label>
+            <input type="range" class="trend-zoom" id="trend-zoom-ntn" min="20" max="100" value="100" step="1" />
+          </div>
+        </div>
+        <div class="trend-scroll-wrap">
+          <label>TIME (scroll left / right)</label>
+          <input type="range" class="trend-scroll" id="trend-scroll-ntn" min="0" max="100" value="0" step="1" />
+        </div>
       </div>
     </div>
   </div>
@@ -443,12 +464,18 @@
     let timeseriesData = {};
     let selectedKey = null;
     let currentSort = 'default';
-    let currentNetwork = null;
-    let currentSiteId = null;
-    let currentVariable = null;
-    let trendChart = null;
-    let trendLabels = [];
-    let trendValues = [];
+
+    // Per-network selection state
+    let selected = {
+      CASTNET: { siteId: null, variable: null },
+      NTN:     { siteId: null, variable: null }
+    };
+
+    // Per-network charts
+    let charts = {
+      CASTNET: { chart: null, labels: [], values: [] },
+      NTN:     { chart: null, labels: [], values: [] }
+    };
 
     const VARIABLES = ["SO2","SO4","HNO3","NO3","TNO3","NH4","CA","K","MG","Sodium"];
 
@@ -599,9 +626,8 @@
       const site = siteRegistry[key];
       if (!site) return;
 
-      currentNetwork = null;
-      currentSiteId = null;
-      currentVariable = null;
+      selected.CASTNET = { siteId: null, variable: null };
+      selected.NTN     = { siteId: null, variable: null };
 
       if (site.marker) {
         site.marker.setStyle({ weight: 3, color: '#fff', radius: 10 });
@@ -615,7 +641,10 @@
         row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
 
-      document.getElementById('trend-panel').classList.remove('visible');
+      // hide trend panels when switching site
+      document.getElementById('trend-panel-castnet').classList.remove('visible');
+      document.getElementById('trend-panel-ntn').classList.remove('visible');
+
       renderSiteInfo(site);
     }
 
@@ -667,6 +696,11 @@
             <div class="coverage-block" id="coverage-castnet">
               <div class="coverage-empty">Click a variable to show weekly coverage</div>
             </div>
+            <div class="trend-btn-wrap">
+              <button onclick="showTrendPlot('CASTNET')">
+                [ STATISTICAL-TRENDING CASTNET ]
+              </button>
+            </div>
           </div>`;
       }
 
@@ -685,6 +719,11 @@
             <div class="coverage-block" id="coverage-ntn">
               <div class="coverage-empty">Click a variable to show weekly coverage</div>
             </div>
+            <div class="trend-btn-wrap">
+              <button onclick="showTrendPlot('NTN')">
+                [ STATISTICAL-TRENDING NTN ]
+              </button>
+            </div>
           </div>`;
       }
 
@@ -699,13 +738,11 @@
         const btn = document.createElement('button');
         btn.textContent = v;
         btn.onclick = () => {
-          // highlight only within this network's buttons
           container.querySelectorAll('button').forEach(b => b.classList.remove('active-var'));
           btn.classList.add('active-var');
 
-          currentNetwork = network;
-          currentSiteId = siteId;
-          currentVariable = v;
+          selected[network].siteId = siteId;
+          selected[network].variable = v;
 
           const targetId = (network === 'CASTNET') ? 'coverage-castnet' : 'coverage-ntn';
           const target = document.getElementById(targetId);
@@ -717,15 +754,17 @@
       });
     }
 
-    function applyTrendWindow() {
-      if (!trendChart || trendLabels.length === 0) return;
+    function applyTrendWindow(network) {
+      const state = charts[network];
+      if (!state.chart || state.labels.length === 0) return;
 
-      const zoomSlider = document.getElementById('trend-zoom');
-      const scrollSlider = document.getElementById('trend-scroll');
+      const key = network.toLowerCase();
+      const zoomSlider = document.getElementById('trend-zoom-' + key);
+      const scrollSlider = document.getElementById('trend-scroll-' + key);
 
       const zoomPct = parseInt(zoomSlider.value, 10) / 100;
-      const windowSize = Math.max(10, Math.round(trendLabels.length * zoomPct));
-      const maxStart = Math.max(0, trendLabels.length - windowSize);
+      const windowSize = Math.max(10, Math.round(state.labels.length * zoomPct));
+      const maxStart = Math.max(0, state.labels.length - windowSize);
 
       scrollSlider.max = maxStart;
       if (parseInt(scrollSlider.value, 10) > maxStart) {
@@ -733,22 +772,23 @@
       }
 
       const start = parseInt(scrollSlider.value, 10);
-      trendChart.options.scales.x.min = start;
-      trendChart.options.scales.x.max = start + windowSize - 1;
-      trendChart.update('none');
+      state.chart.options.scales.x.min = start;
+      state.chart.options.scales.x.max = start + windowSize - 1;
+      state.chart.update('none');
     }
 
-    function showTrendPlot() {
-      if (!currentNetwork || !currentSiteId || !currentVariable) {
-        alert('Please select a site and a variable first.');
+    function showTrendPlot(network) {
+      const sel = selected[network];
+      if (!sel.siteId || !sel.variable) {
+        alert('Please select a variable under ' + network + ' first.');
         return;
       }
 
-      const series = (((timeseriesData[currentNetwork] || {})[currentSiteId]) || {});
+      const series = (((timeseriesData[network] || {})[sel.siteId]) || {});
       const dates = series.DATEON || [];
-      let values = series[currentVariable] || [];
+      let values = series[sel.variable] || [];
       if (values.length === 0) {
-        values = series['variable_' + currentVariable] || [];
+        values = series['variable_' + sel.variable] || [];
       }
 
       if (dates.length === 0) {
@@ -756,31 +796,40 @@
         return;
       }
 
-      trendLabels = [];
-      trendValues = [];
+      const labels = [];
+      const dataVals = [];
       for (let i = 0; i < dates.length; i++) {
-        trendLabels.push(dates[i]);
+        labels.push(dates[i]);
         const v = values[i];
-        trendValues.push((v === null || v === undefined || v === '') ? null : Number(v));
+        dataVals.push((v === null || v === undefined || v === '') ? null : Number(v));
       }
 
-      const panel = document.getElementById('trend-panel');
+      charts[network].labels = labels;
+      charts[network].values = dataVals;
+
+      const key = network.toLowerCase();
+      const panel = document.getElementById('trend-panel-' + key);
       panel.classList.add('visible');
-      document.getElementById('trend-header').textContent =
-        `${currentNetwork} · ${currentSiteId} · ${currentVariable}  |  Y-bar = zoom · X-bar = time`;
+      document.getElementById('trend-header-' + key).textContent =
+        `${network} · ${sel.siteId} · ${sel.variable}  |  Y-bar = zoom · X-bar = time`;
 
-      const ctx = document.getElementById('trend-chart').getContext('2d');
-      if (trendChart) trendChart.destroy();
+      const canvasId = 'trend-chart-' + key;
+      const ctx = document.getElementById(canvasId).getContext('2d');
+      if (charts[network].chart) charts[network].chart.destroy();
 
-      trendChart = new Chart(ctx, {
+      const lineColor = (network === 'CASTNET') ? '#e74c3c' : '#3498db';
+
+      charts[network].chart = new Chart(ctx, {
         type: 'line',
         data: {
-          labels: trendLabels,
+          labels: labels,
           datasets: [{
-            label: `${currentNetwork} ${currentVariable}`,
-            data: trendValues,
-            borderColor: '#fafafa',
-            backgroundColor: 'rgba(250, 250, 250, 0.12)',
+            label: `${network} ${sel.variable}`,
+            data: dataVals,
+            borderColor: lineColor,
+            backgroundColor: (network === 'CASTNET')
+              ? 'rgba(231, 76, 60, 0.12)'
+              : 'rgba(52, 152, 219, 0.12)',
             borderWidth: 1.2,
             pointRadius: 0,
             pointHoverRadius: 3,
@@ -803,7 +852,7 @@
             },
             title: {
               display: true,
-              text: `${currentSiteId} ${currentVariable}`,
+              text: `${sel.siteId}  ${sel.variable}`,
               color: '#eee',
               font: { family: 'Consolas', size: 14 }
             }
@@ -812,7 +861,7 @@
             x: {
               type: 'category',
               min: 0,
-              max: trendLabels.length - 1,
+              max: labels.length - 1,
               ticks: {
                 color: '#aaa',
                 maxTicksLimit: 12,
@@ -823,7 +872,7 @@
             y: {
               title: {
                 display: true,
-                text: currentVariable,
+                text: sel.variable,
                 color: '#aaa'
               },
               ticks: {
@@ -836,14 +885,14 @@
         }
       });
 
-      document.getElementById('trend-zoom').value = 100;
-      document.getElementById('trend-scroll').value = 0;
-      document.getElementById('trend-scroll').max = 0;
+      document.getElementById('trend-zoom-' + key).value = 100;
+      document.getElementById('trend-scroll-' + key).value = 0;
+      document.getElementById('trend-scroll-' + key).max = 0;
 
-      document.getElementById('trend-zoom').oninput = applyTrendWindow;
-      document.getElementById('trend-scroll').oninput = applyTrendWindow;
+      document.getElementById('trend-zoom-' + key).oninput = () => applyTrendWindow(network);
+      document.getElementById('trend-scroll-' + key).oninput = () => applyTrendWindow(network);
 
-      applyTrendWindow();
+      applyTrendWindow(network);
       panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
@@ -851,13 +900,13 @@
       siteRegistry = {};
       selectedKey = null;
       currentSort = 'default';
-      currentNetwork = null;
-      currentSiteId = null;
-      currentVariable = null;
+      selected.CASTNET = { siteId: null, variable: null };
+      selected.NTN     = { siteId: null, variable: null };
 
       document.getElementById('site-info').innerHTML =
         '<div class="placeholder">Loading...</div>';
-      document.getElementById('trend-panel').classList.remove('visible');
+      document.getElementById('trend-panel-castnet').classList.remove('visible');
+      document.getElementById('trend-panel-ntn').classList.remove('visible');
 
       await loadCoordinator('CASTNET', './data/input/CASTNET/CASTNET_coordinator.csv');
       await loadCoordinator('NTN', './data/input/NTN/NTN_coordinator.csv');
