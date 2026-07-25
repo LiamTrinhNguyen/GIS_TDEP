@@ -8,22 +8,27 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
       background: #000;
       color: #fff;
       font-family: 'Consolas', 'Courier New', monospace;
       min-height: 100vh;
     }
+
     .crt {
       background: #000;
       box-shadow: inset 0 0 40px #222;
       padding: 18px;
       min-height: 100vh;
     }
+
     .header { text-align: center; margin-bottom: 12px; }
     .header h1 { font-size: 22px; letter-spacing: 2px; }
     .subtitle { color: #aaa; font-size: 13px; margin-top: 4px; }
+
     .toolbar { text-align: center; margin: 12px 0; }
+
     button {
       background: #111;
       color: #fff;
@@ -43,6 +48,7 @@
       background: #333;
       box-shadow: 0 0 4px #fff;
     }
+
     .main {
       display: flex;
       gap: 18px;
@@ -50,6 +56,7 @@
       flex-wrap: wrap;
       align-items: flex-start;
     }
+
     .panel {
       width: 420px;
       height: 620px;
@@ -59,23 +66,28 @@
       display: flex;
       flex-direction: column;
     }
+
     .panel-title {
       font-size: 14px;
       letter-spacing: 1px;
       margin-bottom: 10px;
       flex-shrink: 0;
     }
+
     .panel-content {
       flex: 1;
       overflow-y: auto;
       overflow-x: hidden;
     }
+
     #coverage-plot {
       flex: 1;
       overflow: hidden;
       display: flex;
       flex-direction: column;
     }
+
+    /* Column 1 */
     #map {
       width: 100%;
       height: 220px;
@@ -89,12 +101,14 @@
       color: #fff !important;
       border: 1px solid #fff !important;
     }
+
     .sort-bar {
       margin-bottom: 6px;
       font-size: 11px;
       color: #aaa;
     }
     .sort-bar button { font-size: 11px; padding: 3px 8px; }
+
     .network-list-box {
       border: 1px solid #555;
       flex: 1;
@@ -133,6 +147,8 @@
       background: #333;
       box-shadow: inset 0 0 0 1px #fff;
     }
+
+    /* Column 2 */
     .info-box {
       border: 1px solid #444;
       padding: 12px;
@@ -146,6 +162,7 @@
     }
     .var-buttons { margin-top: 10px; }
     .var-buttons button { font-size: 11px; padding: 4px 7px; }
+
     .placeholder {
       color: #666;
       font-size: 13px;
@@ -153,6 +170,8 @@
       text-align: center;
       line-height: 1.6;
     }
+
+    /* Column 3 – coverage boxes */
     .plot-title {
       font-size: 13px;
       color: #aaa;
@@ -187,13 +206,20 @@
       border-radius: 2px;
       border: 1px solid #1b1f23;
     }
-    .week-box.green {
-      background: #26a641;
-      border-color: #226c37;
-    }
-    .week-box.white {
+    /* Missing */
+    .week-box.missing {
       background: #161b22;
       border-color: #1b1f23;
+    }
+    /* CASTNET has data → red */
+    .week-box.castnet {
+      background: #e74c3c;
+      border-color: #c0392b;
+    }
+    /* NTN has data → blue */
+    .week-box.ntn {
+      background: #3498db;
+      border-color: #2980b9;
     }
     .plot-placeholder {
       color: #666;
@@ -207,6 +233,8 @@
       flex-shrink: 0;
       text-align: center;
     }
+
+    /* Full-width trend panel */
     .trend-panel {
       width: 100%;
       max-width: 1296px;
@@ -234,7 +262,6 @@
       flex: 1;
       min-width: 0;
     }
-    /* Y scrollbar = zoom */
     .trend-zoom-wrap {
       display: flex;
       flex-direction: column;
@@ -256,9 +283,8 @@
       width: 8px;
       height: 260px;
       cursor: pointer;
-      accent-color: #e74c3c;
+      accent-color: #2ecc71;
     }
-    /* X scrollbar = time pan */
     .trend-scroll-wrap {
       margin-top: 10px;
       padding: 0 4px;
@@ -273,7 +299,7 @@
       width: 100%;
       height: 8px;
       cursor: pointer;
-      accent-color: #e74c3c;
+      accent-color: #2ecc71;
     }
   </style>
 </head>
@@ -283,9 +309,11 @@
       <h1>MAP ACTIVE - SIMULATION RUNNING</h1>
       <div class="subtitle">Mapping Display · Statistical Information · Trending</div>
     </div>
+
     <div class="toolbar">
       <button onclick="loadAllSites()">[ LOAD SITES ]</button>
     </div>
+
     <div class="main">
       <!-- COLUMN 1 -->
       <div class="panel">
@@ -314,6 +342,7 @@
           </div>
         </div>
       </div>
+
       <!-- COLUMN 2 -->
       <div class="panel">
         <div class="panel-title">SELECTED SITE(S)</div>
@@ -324,6 +353,7 @@
           </div>
         </div>
       </div>
+
       <!-- COLUMN 3 -->
       <div class="panel">
         <div class="panel-title">WEEKLY COVERAGE</div>
@@ -486,6 +516,7 @@
       allMarkers = [];
       const tbody = document.getElementById('network-tbody');
       tbody.innerHTML = '';
+
       let keys = Object.keys(siteRegistry);
       if (currentSort === 'CASTNET') {
         keys.sort((a, b) => (siteRegistry[a].CASTNET || 'zzz').localeCompare(siteRegistry[b].CASTNET || 'zzz'));
@@ -494,6 +525,7 @@
       } else {
         keys.sort((a, b) => siteRegistry[b].lat - siteRegistry[a].lat);
       }
+
       keys.forEach(key => {
         const site = siteRegistry[key];
         const color = (site.CASTNET && site.NTN) ? '#fff' : site.CASTNET ? '#fff' : '#aaa';
@@ -503,11 +535,13 @@
         }).addTo(map);
         site.marker = marker;
         allMarkers.push(marker);
+
         let popup = '';
         if (site.CASTNET) popup += `<b>CASTNET:</b> ${site.CASTNET}<br>`;
         if (site.NTN) popup += `<b>NTN:</b> ${site.NTN}`;
         marker.bindPopup(popup);
         marker.on('click', () => selectSite(key));
+
         const tr = document.createElement('tr');
         tr.dataset.key = key;
         tr.innerHTML = `
@@ -518,6 +552,7 @@
         tr.onclick = () => selectSite(key);
         tbody.appendChild(tr);
       });
+
       if (allMarkers.length) {
         map.fitBounds(L.featureGroup(allMarkers).getBounds().pad(0.12));
       }
@@ -529,22 +564,27 @@
       }
       document.querySelectorAll('#network-tbody tr.selected')
               .forEach(r => r.classList.remove('selected'));
+
       selectedKey = key;
       const site = siteRegistry[key];
       if (!site) return;
+
       currentNetwork = null;
       currentSiteId = null;
       currentVariable = null;
+
       if (site.marker) {
         site.marker.setStyle({ weight: 3, color: '#fff', radius: 10 });
         site.marker.openPopup();
         map.panTo([site.lat, site.lon]);
       }
+
       const row = document.querySelector(`#network-tbody tr[data-key="${key}"]`);
       if (row) {
         row.classList.add('selected');
         row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
+
       document.getElementById('coverage-plot').innerHTML = `
         <div class="plot-placeholder">
           Click a variable button<br>to view year-stacked coverage
@@ -560,6 +600,7 @@
           <div>Latitude: ${site.lat.toFixed(5)}</div>
           <div>Longitude: ${site.lon.toFixed(5)}</div>
         </div>`;
+
       if (site.CASTNET) {
         const range = (dateSummary.CASTNET || {})[site.CASTNET] || {};
         html += `
@@ -580,6 +621,7 @@
             <div class="var-buttons" id="vars-ntn"></div>
           </div>`;
       }
+
       document.getElementById('site-info').innerHTML = html;
       if (site.CASTNET) createVarButtons('CASTNET', site.CASTNET, 'vars-castnet');
       if (site.NTN) createVarButtons('NTN', site.NTN, 'vars-ntn');
@@ -603,10 +645,12 @@
       });
     }
 
+    // Column 3 – CASTNET red / NTN blue
     function showYearStackedPlot(network, siteId, variable) {
       const container = document.getElementById('coverage-plot');
       const yearData = (((coverageData[network] || {})[siteId] || {})[variable]) || {};
       const years = Object.keys(yearData).sort();
+
       if (years.length === 0) {
         container.innerHTML = `
           <div class="plot-placeholder">
@@ -614,37 +658,36 @@
           </div>`;
         return;
       }
+
+      const hasClass = (network === 'CASTNET') ? 'castnet' : 'ntn';
+
       let html = `
         <div class="plot-title">
           ${network} · ${siteId} · ${variable}
         </div>`;
+
       years.forEach(year => {
         const binary = yearData[year] || '';
         html += `<div class="year-row">
                    <div class="year-label">${year}</div>
                    <div class="week-boxes">`;
         for (const ch of binary) {
-          const cls = ch === '1' ? 'green' : 'white';
-          html += `<div class="week-box ${cls}" title="${ch === '1' ? 'Has data' : 'Missing'}"></div>`;
+          const cls = (ch === '1') ? hasClass : 'missing';
+          const title = (ch === '1') ? 'Has data' : 'Missing';
+          html += `<div class="week-box ${cls}" title="${title}"></div>`;
         }
         html += `</div></div>`;
       });
+
       container.innerHTML = html;
     }
 
-    // ==================================================
-    // TREND PLOT
-    // - keep nulls → line breaks on gaps (no interpolation)
-    // - Y scrollbar = zoom (window size)
-    // - X scrollbar = move left / right in time
-    // ==================================================
     function applyTrendWindow() {
       if (!trendChart || trendLabels.length === 0) return;
 
       const zoomSlider = document.getElementById('trend-zoom');
       const scrollSlider = document.getElementById('trend-scroll');
 
-      // zoom: 100 = full series, 20 = ~20% of points visible
       const zoomPct = parseInt(zoomSlider.value, 10) / 100;
       const windowSize = Math.max(10, Math.round(trendLabels.length * zoomPct));
       const maxStart = Math.max(0, trendLabels.length - windowSize);
@@ -678,7 +721,7 @@
         return;
       }
 
-      // Keep nulls so line breaks on missing weeks (NO filter)
+      // Keep nulls → line breaks on gaps (no interpolation)
       trendLabels = [];
       trendValues = [];
       for (let i = 0; i < dates.length; i++) {
@@ -702,13 +745,13 @@
           datasets: [{
             label: `${currentNetwork} ${currentVariable}`,
             data: trendValues,
-            borderColor: '#e74c3c',
-            backgroundColor: 'rgba(231, 76, 60, 0.15)',
+            borderColor: '#2ecc71',
+            backgroundColor: 'rgba(46, 204, 113, 0.15)',
             borderWidth: 1.2,
             pointRadius: 0,
             pointHoverRadius: 3,
             tension: 0,
-            spanGaps: false   // do not connect across nulls
+            spanGaps: false
           }]
         },
         options: {
@@ -759,7 +802,6 @@
         }
       });
 
-      // Reset controls
       document.getElementById('trend-zoom').value = 100;
       document.getElementById('trend-scroll').value = 0;
       document.getElementById('trend-scroll').max = 0;
