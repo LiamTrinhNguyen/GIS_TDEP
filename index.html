@@ -57,8 +57,20 @@
       align-items: flex-start;
     }
 
+    /* Column 1 – original size */
     .panel {
       width: 420px;
+      height: 620px;
+      background: #0a0a0a;
+      border: 1px solid #ffffff;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Column 2 – width of old col 2 + col 3 */
+    .panel-wide {
+      width: 860px;
       height: 620px;
       background: #0a0a0a;
       border: 1px solid #ffffff;
@@ -80,14 +92,7 @@
       overflow-x: hidden;
     }
 
-    #coverage-plot {
-      flex: 1;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-
-    /* Column 1 */
+    /* Column 1 map */
     #map {
       width: 100%;
       height: 220px;
@@ -148,7 +153,7 @@
       box-shadow: inset 0 0 0 1px #fff;
     }
 
-    /* Column 2 */
+    /* Column 2 content */
     .info-box {
       border: 1px solid #444;
       padding: 12px;
@@ -171,22 +176,14 @@
       line-height: 1.6;
     }
 
-    /* Column 3 – title + legend */
-    .coverage-title {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
+    /* Legend under network header */
     .coverage-legend {
       display: flex;
       align-items: center;
       gap: 10px;
       font-size: 11px;
       color: #aaa;
-      letter-spacing: 0;
-      font-weight: normal;
+      margin: 8px 0 6px 0;
     }
     .legend-item {
       display: inline-flex;
@@ -214,17 +211,24 @@
       border-color: #1b1f23;
     }
 
-    .plot-title {
-      font-size: 13px;
+    /* Weekly coverage inside each network box */
+    .coverage-block {
+      margin-top: 10px;
+      border-top: 1px solid #333;
+      padding-top: 8px;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+    .coverage-block .plot-title {
+      font-size: 12px;
       color: #aaa;
-      margin-bottom: 10px;
-      flex-shrink: 0;
+      margin-bottom: 6px;
     }
     .year-row {
       display: flex;
       align-items: center;
-      margin-bottom: 4px;
-      height: 14px;
+      margin-bottom: 3px;
+      height: 13px;
     }
     .year-label {
       width: 36px;
@@ -237,14 +241,14 @@
     .week-boxes {
       display: flex;
       flex: 1;
-      gap: 3px;
+      gap: 2px;
       min-width: 0;
     }
     .week-box {
       flex: 1 1 0;
       min-width: 0;
       aspect-ratio: 1 / 1;
-      max-height: 12px;
+      max-height: 11px;
       border-radius: 2px;
       border: 1px solid #1b1f23;
     }
@@ -260,15 +264,14 @@
       background: #3498db;
       border-color: #2980b9;
     }
-    .plot-placeholder {
-      color: #666;
-      font-size: 13px;
-      margin-top: 40px;
-      text-align: center;
-      line-height: 1.6;
+    .coverage-empty {
+      color: #555;
+      font-size: 12px;
+      padding: 6px 0;
     }
+
     .trend-btn-wrap {
-      margin-top: 10px;
+      margin-top: 8px;
       flex-shrink: 0;
       text-align: center;
     }
@@ -382,36 +385,15 @@
         </div>
       </div>
 
-      <!-- COLUMN 2 -->
-      <div class="panel">
-        <div class="panel-title">SELECTED SITE(S)</div>
+      <!-- COLUMN 2 (wide = old 2 + 3) -->
+      <div class="panel-wide">
+        <div class="panel-title">SELECTED SITE(S) · WEEKLY COVERAGE</div>
         <div class="panel-content" id="site-info">
           <div class="placeholder">
             Click a marker or a row<br>
             to see details
           </div>
         </div>
-      </div>
-
-      <!-- COLUMN 3 -->
-      <div class="panel">
-        <div class="panel-title coverage-title">
-          WEEKLY COVERAGE
-          <span class="coverage-legend">
-            <span class="legend-item"><span class="legend-dot castnet"></span> dry</span>
-            <span class="legend-item"><span class="legend-dot ntn"></span> wet</span>
-            <span class="legend-item"><span class="legend-dot missing"></span> no record</span>
-          </span>
-        </div>
-
-        <div id="coverage-plot">
-          <div class="plot-placeholder">
-            Select a site, then click<br>
-            a variable button to view<br>
-            year-stacked coverage
-          </div>
-        </div>
-
         <div class="trend-btn-wrap">
           <button id="btn-trend" onclick="showTrendPlot()">
             [ STATISTICAL-TRENDING ]
@@ -633,12 +615,33 @@
         row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
 
-      document.getElementById('coverage-plot').innerHTML = `
-        <div class="plot-placeholder">
-          Click a variable button<br>to view year-stacked coverage
-        </div>`;
       document.getElementById('trend-panel').classList.remove('visible');
       renderSiteInfo(site);
+    }
+
+    function buildCoverageHTML(network, siteId, variable) {
+      const yearData = (((coverageData[network] || {})[siteId] || {})[variable]) || {};
+      const years = Object.keys(yearData).sort();
+      if (years.length === 0) {
+        return `<div class="coverage-empty">No coverage data for ${variable}</div>`;
+      }
+
+      const hasClass = (network === 'CASTNET') ? 'castnet' : 'ntn';
+      let html = `<div class="plot-title">${variable}</div>`;
+
+      years.forEach(year => {
+        const binary = yearData[year] || '';
+        html += `<div class="year-row">
+                   <div class="year-label">${year}</div>
+                   <div class="week-boxes">`;
+        for (const ch of binary) {
+          const cls = (ch === '1') ? hasClass : 'missing';
+          const title = (ch === '1') ? 'Has data' : 'Missing';
+          html += `<div class="week-box ${cls}" title="${title}"></div>`;
+        }
+        html += `</div></div>`;
+      });
+      return html;
     }
 
     function renderSiteInfo(site) {
@@ -652,21 +655,36 @@
       if (site.CASTNET) {
         const range = (dateSummary.CASTNET || {})[site.CASTNET] || {};
         html += `
-          <div class="info-box">
-            <div class="title">CASTNET — ${site.CASTNET}</div>
+          <div class="info-box" id="box-castnet">
+            <div class="title">CASTNET — ${site.CASTNET} (dry)</div>
             <div>First day: ${range.first || '—'}</div>
             <div>Last day: ${range.last || '—'}</div>
             <div class="var-buttons" id="vars-castnet"></div>
+            <div class="coverage-legend">
+              <span class="legend-item"><span class="legend-dot castnet"></span> dry</span>
+              <span class="legend-item"><span class="legend-dot missing"></span> no record</span>
+            </div>
+            <div class="coverage-block" id="coverage-castnet">
+              <div class="coverage-empty">Click a variable to show weekly coverage</div>
+            </div>
           </div>`;
       }
+
       if (site.NTN) {
         const range = (dateSummary.NTN || {})[site.NTN] || {};
         html += `
-          <div class="info-box">
-            <div class="title">NTN (NADP) — ${site.NTN}</div>
+          <div class="info-box" id="box-ntn">
+            <div class="title">NTN (NADP) — ${site.NTN} (wet)</div>
             <div>First day: ${range.first || '—'}</div>
             <div>Last day: ${range.last || '—'}</div>
             <div class="var-buttons" id="vars-ntn"></div>
+            <div class="coverage-legend">
+              <span class="legend-item"><span class="legend-dot ntn"></span> wet</span>
+              <span class="legend-item"><span class="legend-dot missing"></span> no record</span>
+            </div>
+            <div class="coverage-block" id="coverage-ntn">
+              <div class="coverage-empty">Click a variable to show weekly coverage</div>
+            </div>
           </div>`;
       }
 
@@ -681,52 +699,22 @@
         const btn = document.createElement('button');
         btn.textContent = v;
         btn.onclick = () => {
-          document.querySelectorAll('.var-buttons button')
-                  .forEach(b => b.classList.remove('active-var'));
+          // highlight only within this network's buttons
+          container.querySelectorAll('button').forEach(b => b.classList.remove('active-var'));
           btn.classList.add('active-var');
+
           currentNetwork = network;
           currentSiteId = siteId;
           currentVariable = v;
-          showYearStackedPlot(network, siteId, v);
+
+          const targetId = (network === 'CASTNET') ? 'coverage-castnet' : 'coverage-ntn';
+          const target = document.getElementById(targetId);
+          if (target) {
+            target.innerHTML = buildCoverageHTML(network, siteId, v);
+          }
         };
         container.appendChild(btn);
       });
-    }
-
-    function showYearStackedPlot(network, siteId, variable) {
-      const container = document.getElementById('coverage-plot');
-      const yearData = (((coverageData[network] || {})[siteId] || {})[variable]) || {};
-      const years = Object.keys(yearData).sort();
-
-      if (years.length === 0) {
-        container.innerHTML = `
-          <div class="plot-placeholder">
-            No coverage data for<br>${network} – ${siteId} – ${variable}
-          </div>`;
-        return;
-      }
-
-      const hasClass = (network === 'CASTNET') ? 'castnet' : 'ntn';
-
-      let html = `
-        <div class="plot-title">
-          ${network} · ${siteId} · ${variable}
-        </div>`;
-
-      years.forEach(year => {
-        const binary = yearData[year] || '';
-        html += `<div class="year-row">
-                   <div class="year-label">${year}</div>
-                   <div class="week-boxes">`;
-        for (const ch of binary) {
-          const cls = (ch === '1') ? hasClass : 'missing';
-          const title = (ch === '1') ? 'Has data' : 'Missing';
-          html += `<div class="week-box ${cls}" title="${title}"></div>`;
-        }
-        html += `</div></div>`;
-      });
-
-      container.innerHTML = html;
     }
 
     function applyTrendWindow() {
@@ -792,7 +780,7 @@
             label: `${currentNetwork} ${currentVariable}`,
             data: trendValues,
             borderColor: '#fafafa',
-            backgroundColor: 'rgba(46, 204, 113, 0.15)',
+            backgroundColor: 'rgba(250, 250, 250, 0.12)',
             borderWidth: 1.2,
             pointRadius: 0,
             pointHoverRadius: 3,
@@ -869,8 +857,6 @@
 
       document.getElementById('site-info').innerHTML =
         '<div class="placeholder">Loading...</div>';
-      document.getElementById('coverage-plot').innerHTML =
-        '<div class="plot-placeholder">Loading...</div>';
       document.getElementById('trend-panel').classList.remove('visible');
 
       await loadCoordinator('CASTNET', './data/input/CASTNET/CASTNET_coordinator.csv');
@@ -883,10 +869,6 @@
       document.getElementById('site-info').innerHTML = `
         <div class="placeholder">
           Click a marker or a row<br>to see details
-        </div>`;
-      document.getElementById('coverage-plot').innerHTML = `
-        <div class="plot-placeholder">
-          Select a site, then click<br>a variable button
         </div>`;
     }
 
