@@ -171,7 +171,49 @@
       line-height: 1.6;
     }
 
-    /* Column 3 – coverage boxes */
+    /* Column 3 – title + legend */
+    .coverage-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .coverage-legend {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 11px;
+      color: #aaa;
+      letter-spacing: 0;
+      font-weight: normal;
+    }
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      border: 1px solid #333;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+    .legend-dot.castnet {
+      background: #e74c3c;
+      border-color: #c0392b;
+    }
+    .legend-dot.ntn {
+      background: #3498db;
+      border-color: #2980b9;
+    }
+    .legend-dot.missing {
+      background: #161b22;
+      border-color: #1b1f23;
+    }
+
     .plot-title {
       font-size: 13px;
       color: #aaa;
@@ -206,17 +248,14 @@
       border-radius: 2px;
       border: 1px solid #1b1f23;
     }
-    /* Missing */
     .week-box.missing {
       background: #161b22;
       border-color: #1b1f23;
     }
-    /* CASTNET has data → red */
     .week-box.castnet {
       background: #e74c3c;
       border-color: #c0392b;
     }
-    /* NTN has data → blue */
     .week-box.ntn {
       background: #3498db;
       border-color: #2980b9;
@@ -283,7 +322,7 @@
       width: 8px;
       height: 260px;
       cursor: pointer;
-      accent-color: #eff0ef;
+      accent-color: #2ecc71;
     }
     .trend-scroll-wrap {
       margin-top: 10px;
@@ -299,7 +338,7 @@
       width: 100%;
       height: 8px;
       cursor: pointer;
-      accent-color: #eff0ef;
+      accent-color: #2ecc71;
     }
   </style>
 </head>
@@ -356,7 +395,15 @@
 
       <!-- COLUMN 3 -->
       <div class="panel">
-        <div class="panel-title">WEEKLY COVERAGE</div>
+        <div class="panel-title coverage-title">
+          WEEKLY COVERAGE
+          <span class="coverage-legend">
+            <span class="legend-item"><span class="legend-dot castnet"></span> dry</span>
+            <span class="legend-item"><span class="legend-dot ntn"></span> wet</span>
+            <span class="legend-item"><span class="legend-dot missing"></span> no record</span>
+          </span>
+        </div>
+
         <div id="coverage-plot">
           <div class="plot-placeholder">
             Select a site, then click<br>
@@ -364,6 +411,7 @@
             year-stacked coverage
           </div>
         </div>
+
         <div class="trend-btn-wrap">
           <button id="btn-trend" onclick="showTrendPlot()">
             [ STATISTICAL-TRENDING ]
@@ -645,7 +693,6 @@
       });
     }
 
-    // Column 3 – CASTNET red / NTN blue
     function showYearStackedPlot(network, siteId, variable) {
       const container = document.getElementById('coverage-plot');
       const yearData = (((coverageData[network] || {})[siteId] || {})[variable]) || {};
@@ -721,7 +768,6 @@
         return;
       }
 
-      // Keep nulls → line breaks on gaps (no interpolation)
       trendLabels = [];
       trendValues = [];
       for (let i = 0; i < dates.length; i++) {
@@ -745,7 +791,7 @@
           datasets: [{
             label: `${currentNetwork} ${currentVariable}`,
             data: trendValues,
-            borderColor: '#eff0ef',
+            borderColor: '#2ecc71',
             backgroundColor: 'rgba(46, 204, 113, 0.15)',
             borderWidth: 1.2,
             pointRadius: 0,
