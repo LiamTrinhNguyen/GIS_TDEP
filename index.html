@@ -824,18 +824,16 @@
         data: {
           labels: labels,
           datasets: [{
-            label: `${network} ${sel.variable}`,
-            data: dataVals,
-            borderColor: lineColor,
-            backgroundColor: (network === 'CASTNET')
-              ? 'rgba(231, 76, 60, 0.12)'
-              : 'rgba(52, 152, 219, 0.12)',
-            borderWidth: 1.2,
-            pointRadius: 0,
-            pointHoverRadius: 3,
-            tension: 0,
-            spanGaps: false
-          }]
+                      label: `${network} ${sel.variable}`,
+                      data: dataVals,
+                      borderColor: lineColor,
+                      backgroundColor: lineColor,   // solid fill (red for CASTNET, blue for NTN)
+                      borderWidth: 1.2,
+                      pointRadius: 0,
+                      pointHoverRadius: 3,
+                      tension: 0,
+                      spanGaps: false
+                    }]
         },
         options: {
           responsive: true,
