@@ -269,7 +269,6 @@
       text-align: center;
     }
 
-    /* Combine controls */
     .combine-box {
       border: 1px solid #666;
       padding: 12px;
@@ -312,7 +311,6 @@
       text-align: center;
     }
 
-    /* Trend panels */
     .trend-panels {
       width: 100%;
       max-width: 1296px;
@@ -433,7 +431,7 @@
         </div>
       </div>
 
-      <!-- COLUMN 2 (wide) -->
+      <!-- COLUMN 2 -->
       <div class="panel-wide">
         <div class="panel-title">SELECTED SITE(S) · WEEKLY COVERAGE · COMBINE</div>
         <div class="panel-content" id="site-info">
@@ -445,9 +443,8 @@
       </div>
     </div>
 
-    <!-- SEPARATE TREND PANELS -->
+    <!-- 3 TREND PANELS -->
     <div class="trend-panels">
-      <!-- CASTNET -->
       <div class="trend-panel castnet-panel" id="trend-panel-castnet">
         <div class="trend-header" id="trend-header-castnet">CASTNET Time Series</div>
         <div class="trend-body">
@@ -465,7 +462,6 @@
         </div>
       </div>
 
-      <!-- NTN -->
       <div class="trend-panel ntn-panel" id="trend-panel-ntn">
         <div class="trend-header" id="trend-header-ntn">NTN Time Series</div>
         <div class="trend-body">
@@ -483,7 +479,6 @@
         </div>
       </div>
 
-      <!-- COMBINE -->
       <div class="trend-panel combine-panel" id="trend-panel-combine">
         <div class="trend-header" id="trend-header-combine">COMBINE Time Series</div>
         <div class="trend-body">
@@ -794,7 +789,6 @@
           </div>`;
       }
 
-      // Combine box
       if (site.CASTNET || site.NTN) {
         html += `
           <div class="combine-box">
@@ -845,15 +839,11 @@
         btn.onclick = () => {
           container.querySelectorAll('button').forEach(b => b.classList.remove('active-var'));
           btn.classList.add('active-var');
-
           selected[network].siteId = siteId;
           selected[network].variable = v;
-
           const targetId = (network === 'CASTNET') ? 'coverage-castnet' : 'coverage-ntn';
           const target = document.getElementById(targetId);
-          if (target) {
-            target.innerHTML = buildCoverageHTML(network, siteId, v);
-          }
+          if (target) target.innerHTML = buildCoverageHTML(network, siteId, v);
         };
         container.appendChild(btn);
       });
@@ -872,9 +862,7 @@
       const maxStart = Math.max(0, state.labels.length - windowSize);
 
       scrollSlider.max = maxStart;
-      if (parseInt(scrollSlider.value, 10) > maxStart) {
-        scrollSlider.value = maxStart;
-      }
+      if (parseInt(scrollSlider.value, 10) > maxStart) scrollSlider.value = maxStart;
 
       const start = parseInt(scrollSlider.value, 10);
       state.chart.options.scales.x.min = start;
@@ -891,10 +879,7 @@
 
       const series = (((timeseriesData[network] || {})[sel.siteId]) || {});
       const dates = series.DATEON || [];
-      let values = series[sel.variable] || [];
-      if (values.length === 0) {
-        values = series['variable_' + sel.variable] || [];
-      }
+      let values = series[sel.variable] || series['variable_' + sel.variable] || [];
 
       if (dates.length === 0) {
         alert('No time-series data found for this site/variable.');
@@ -943,19 +928,10 @@
           responsive: true,
           maintainAspectRatio: false,
           animation: false,
-          interaction: {
-            mode: 'nearest',
-            axis: 'x',
-            intersect: false
-          },
+          interaction: { mode: 'nearest', axis: 'x', intersect: false },
           plugins: {
             legend: {
-              labels: {
-                color: '#ccc',
-                font: { family: 'Consolas' },
-                boxWidth: 12,
-                boxHeight: 12
-              }
+              labels: { color: '#ccc', font: { family: 'Consolas' }, boxWidth: 12, boxHeight: 12 }
             },
             title: {
               display: true,
@@ -969,23 +945,12 @@
               type: 'category',
               min: 0,
               max: labels.length - 1,
-              ticks: {
-                color: '#aaa',
-                maxTicksLimit: 12,
-                font: { family: 'Consolas', size: 11 }
-              },
+              ticks: { color: '#aaa', maxTicksLimit: 12, font: { family: 'Consolas', size: 11 } },
               grid: { color: '#222' }
             },
             y: {
-              title: {
-                display: true,
-                text: sel.variable,
-                color: '#aaa'
-              },
-              ticks: {
-                color: '#aaa',
-                font: { family: 'Consolas', size: 11 }
-              },
+              title: { display: true, text: sel.variable, color: '#aaa' },
+              ticks: { color: '#aaa', font: { family: 'Consolas', size: 11 } },
               grid: { color: '#222' }
             }
           }
@@ -995,15 +960,13 @@
       document.getElementById('trend-zoom-' + key).value = 100;
       document.getElementById('trend-scroll-' + key).value = 0;
       document.getElementById('trend-scroll-' + key).max = 0;
-
       document.getElementById('trend-zoom-' + key).oninput = () => applyTrendWindow(network);
       document.getElementById('trend-scroll-' + key).oninput = () => applyTrendWindow(network);
-
       applyTrendWindow(network);
       panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
-    // ========== COMBINE ==========
+    // ========== COMBINE (time-aligned full span) ==========
     function onCombineCheck(network, el) {
       const name = (network === 'CASTNET') ? 'combine-castnet' : 'combine-ntn';
       document.querySelectorAll(`input[name="${name}"]`).forEach(cb => {
@@ -1016,12 +979,26 @@
       combineVar = { CASTNET: null, NTN: null };
       document.querySelectorAll('input[name="combine-castnet"], input[name="combine-ntn"]')
               .forEach(cb => { cb.checked = false; });
-
       if (combineChart) {
         combineChart.destroy();
         combineChart = null;
       }
       document.getElementById('trend-panel-combine').classList.remove('visible');
+    }
+
+    // Returns { dateString: value } map
+    function getSeriesMap(network, siteId, variable) {
+      const series = (((timeseriesData[network] || {})[siteId]) || {});
+      const dates = series.DATEON || [];
+      let values = series[variable] || series['variable_' + variable] || [];
+      const map = {};
+      for (let i = 0; i < dates.length; i++) {
+        const d = dates[i];
+        if (!d) continue;
+        const v = values[i];
+        map[d] = (v === null || v === undefined || v === '') ? null : Number(v);
+      }
+      return map;
     }
 
     function applyCombineWindow() {
@@ -1035,28 +1012,12 @@
       const maxStart = Math.max(0, combineLabels.length - windowSize);
 
       scrollSlider.max = maxStart;
-      if (parseInt(scrollSlider.value, 10) > maxStart) {
-        scrollSlider.value = maxStart;
-      }
+      if (parseInt(scrollSlider.value, 10) > maxStart) scrollSlider.value = maxStart;
 
       const start = parseInt(scrollSlider.value, 10);
       combineChart.options.scales.x.min = start;
       combineChart.options.scales.x.max = start + windowSize - 1;
       combineChart.update('none');
-    }
-
-    function getSeries(network, siteId, variable) {
-      const series = (((timeseriesData[network] || {})[siteId]) || {});
-      const dates = series.DATEON || [];
-      let values = series[variable] || series['variable_' + variable] || [];
-      const outDates = [];
-      const outVals = [];
-      for (let i = 0; i < dates.length; i++) {
-        outDates.push(dates[i]);
-        const v = values[i];
-        outVals.push((v === null || v === undefined || v === '') ? null : Number(v));
-      }
-      return { dates: outDates, values: outVals };
     }
 
     function showCombineTrendPlot() {
@@ -1074,63 +1035,58 @@
         return;
       }
 
+      let castMap = {};
+      let ntnMap  = {};
+
+      if (castVar && site.CASTNET) castMap = getSeriesMap('CASTNET', site.CASTNET, castVar);
+      if (ntnVar  && site.NTN)     ntnMap  = getSeriesMap('NTN', site.NTN, ntnVar);
+
+      // Full union of dates, sorted (longest timeline, e.g. 2000 → …)
+      const allDates = Array.from(new Set([
+        ...Object.keys(castMap),
+        ...Object.keys(ntnMap)
+      ])).sort();
+
+      if (allDates.length === 0) {
+        alert('No time-series data found for the selected variable(s).');
+        return;
+      }
+
+      // Align each series to full axis (null = gap before that network starts)
+      const castVals = allDates.map(d => (castMap[d] !== undefined ? castMap[d] : null));
+      const ntnVals  = allDates.map(d => (ntnMap[d]  !== undefined ? ntnMap[d]  : null));
+
       const datasets = [];
-      let allDates = [];
 
-      if (castVar && site.CASTNET) {
-        const s = getSeries('CASTNET', site.CASTNET, castVar);
-        if (s.dates.length) {
-          allDates = s.dates;
-          datasets.push({
-            label: `CASTNET ${castVar}`,
-            data: s.values,
-            borderColor: '#e74c3c',
-            backgroundColor: '#e74c3c',
-            borderWidth: 1.2,
-            pointRadius: 0,
-            pointHoverRadius: 3,
-            tension: 0,
-            spanGaps: false
-          });
-        }
+      if (castVar && site.CASTNET && Object.keys(castMap).length > 0) {
+        datasets.push({
+          label: `CASTNET ${castVar}`,
+          data: castVals,
+          borderColor: '#e74c3c',
+          backgroundColor: '#e74c3c',
+          borderWidth: 1.2,
+          pointRadius: 0,
+          pointHoverRadius: 3,
+          tension: 0,
+          spanGaps: false
+        });
       }
 
-      if (ntnVar && site.NTN) {
-        const s = getSeries('NTN', site.NTN, ntnVar);
-        if (s.dates.length) {
-          if (allDates.length === 0) {
-            allDates = s.dates;
-            datasets.push({
-              label: `NTN ${ntnVar}`,
-              data: s.values,
-              borderColor: '#3498db',
-              backgroundColor: '#3498db',
-              borderWidth: 1.2,
-              pointRadius: 0,
-              pointHoverRadius: 3,
-              tension: 0,
-              spanGaps: false
-            });
-          } else {
-            const ntnMap = {};
-            s.dates.forEach((d, i) => { ntnMap[d] = s.values[i]; });
-            const aligned = allDates.map(d => (ntnMap[d] !== undefined ? ntnMap[d] : null));
-            datasets.push({
-              label: `NTN ${ntnVar}`,
-              data: aligned,
-              borderColor: '#3498db',
-              backgroundColor: '#3498db',
-              borderWidth: 1.2,
-              pointRadius: 0,
-              pointHoverRadius: 3,
-              tension: 0,
-              spanGaps: false
-            });
-          }
-        }
+      if (ntnVar && site.NTN && Object.keys(ntnMap).length > 0) {
+        datasets.push({
+          label: `NTN ${ntnVar}`,
+          data: ntnVals,
+          borderColor: '#3498db',
+          backgroundColor: '#3498db',
+          borderWidth: 1.2,
+          pointRadius: 0,
+          pointHoverRadius: 3,
+          tension: 0,
+          spanGaps: false
+        });
       }
 
-      if (datasets.length === 0 || allDates.length === 0) {
+      if (datasets.length === 0) {
         alert('No time-series data found for the selected variable(s).');
         return;
       }
@@ -1144,7 +1100,7 @@
       if (castVar && site.CASTNET) parts.push(`CASTNET ${site.CASTNET} · ${castVar}`);
       if (ntnVar && site.NTN)     parts.push(`NTN ${site.NTN} · ${ntnVar}`);
       document.getElementById('trend-header-combine').textContent =
-        `COMBINE · ${parts.join('  |  ')}  |  Y-bar = zoom · X-bar = time`;
+        `COMBINE · ${parts.join('  |  ')}  |  full timeline aligned  |  Y-bar = zoom · X-bar = time`;
 
       const ctx = document.getElementById('trend-chart-combine').getContext('2d');
       if (combineChart) combineChart.destroy();
@@ -1159,19 +1115,10 @@
           responsive: true,
           maintainAspectRatio: false,
           animation: false,
-          interaction: {
-            mode: 'nearest',
-            axis: 'x',
-            intersect: false
-          },
+          interaction: { mode: 'nearest', axis: 'x', intersect: false },
           plugins: {
             legend: {
-              labels: {
-                color: '#ccc',
-                font: { family: 'Consolas' },
-                boxWidth: 12,
-                boxHeight: 12
-              }
+              labels: { color: '#ccc', font: { family: 'Consolas' }, boxWidth: 12, boxHeight: 12 }
             },
             title: {
               display: true,
@@ -1185,23 +1132,12 @@
               type: 'category',
               min: 0,
               max: combineLabels.length - 1,
-              ticks: {
-                color: '#aaa',
-                maxTicksLimit: 12,
-                font: { family: 'Consolas', size: 11 }
-              },
+              ticks: { color: '#aaa', maxTicksLimit: 12, font: { family: 'Consolas', size: 11 } },
               grid: { color: '#222' }
             },
             y: {
-              title: {
-                display: true,
-                text: 'value',
-                color: '#aaa'
-              },
-              ticks: {
-                color: '#aaa',
-                font: { family: 'Consolas', size: 11 }
-              },
+              title: { display: true, text: 'value', color: '#aaa' },
+              ticks: { color: '#aaa', font: { family: 'Consolas', size: 11 } },
               grid: { color: '#222' }
             }
           }
@@ -1211,10 +1147,8 @@
       document.getElementById('trend-zoom-combine').value = 100;
       document.getElementById('trend-scroll-combine').value = 0;
       document.getElementById('trend-scroll-combine').max = 0;
-
       document.getElementById('trend-zoom-combine').oninput = applyCombineWindow;
       document.getElementById('trend-scroll-combine').oninput = applyCombineWindow;
-
       applyCombineWindow();
       panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
