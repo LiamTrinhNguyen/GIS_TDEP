@@ -154,7 +154,6 @@
     .trend-header {
       font-size: 14px; letter-spacing: 1px; margin-bottom: 8px; color: #aaa;
     }
-    /* Visible-window stats (CASTNET / NTN only) */
     .trend-stats {
       font-size: 12px; color: #ccc; margin-bottom: 10px;
       padding: 6px 10px; background: #111; border: 1px solid #333;
@@ -185,13 +184,39 @@
     .trend-scroll {
       width: 100%; height: 8px; cursor: pointer; accent-color: #fafafa;
     }
+    /* MATCH SEGMENT panel */
+    .match-panel {
+      width: 100%; max-width: 1296px; margin: 18px auto 0 auto;
+      background: #0a0a0a; border: 1px solid #fafafa;
+      padding: 14px; display: none;
+    }
+    .match-panel.visible { display: block; }
+    .match-header {
+      font-size: 14px; letter-spacing: 1px; margin-bottom: 10px; color: #aaa;
+    }
+    .match-table-wrap {
+      max-height: 360px; overflow: auto; border: 1px solid #333;
+    }
+    .match-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .match-table th {
+      position: sticky; top: 0; background: #1a1a1a; color: #aaa;
+      text-align: left; padding: 6px 8px; border-bottom: 1px solid #444;
+      white-space: nowrap;
+    }
+    .match-table td {
+      padding: 5px 8px; border-bottom: 1px solid #222; color: #ddd;
+    }
+    .match-table tr:hover td { background: #1a1a1a; }
+    .match-empty {
+      color: #666; font-size: 13px; padding: 20px; text-align: center;
+    }
   </style>
 </head>
 <body>
   <div class="crt">
     <div class="header">
       <h1>MAP ACTIVE - SIMULATION RUNNING</h1>
-      <div class="subtitle">Mapping Display · Statistical Information · Trending</div>
+      <div class="subtitle">Mapping Display · Statistical Information · Trending · Match Segment</div>
     </div>
     <div class="toolbar">
       <button onclick="loadAllSites()">[ LOAD SITES ]</button>
@@ -229,7 +254,6 @@
     </div>
 
     <div class="trend-panels">
-      <!-- CASTNET -->
       <div class="trend-panel castnet-panel" id="trend-panel-castnet">
         <div class="trend-header" id="trend-header-castnet">CASTNET Time Series</div>
         <div class="trend-stats" id="trend-stats-castnet">
@@ -252,7 +276,6 @@
         </div>
       </div>
 
-      <!-- NTN -->
       <div class="trend-panel ntn-panel" id="trend-panel-ntn">
         <div class="trend-header" id="trend-header-ntn">NTN Time Series</div>
         <div class="trend-stats" id="trend-stats-ntn">
@@ -275,7 +298,6 @@
         </div>
       </div>
 
-      <!-- COMBINE (no live stats) -->
       <div class="trend-panel combine-panel" id="trend-panel-combine">
         <div class="trend-header" id="trend-header-combine">COMBINE Time Series</div>
         <div class="trend-body">
@@ -289,6 +311,17 @@
           <label>TIME (scroll left / right)</label>
           <input type="range" class="trend-scroll" id="trend-scroll-combine" min="0" max="100" value="0" step="1" />
         </div>
+      </div>
+    </div>
+
+    <!-- MATCH SEGMENT -->
+    <div class="match-panel" id="match-panel">
+      <div class="match-header" id="match-header">MATCH SEGMENT · ACF Lag vs FFT Period</div>
+      <div class="match-table-wrap">
+        <table class="match-table">
+          <thead id="match-thead"></thead>
+          <tbody id="match-tbody"></tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -308,6 +341,7 @@
     let dateSummary = {};
     let coverageData = {};
     let timeseriesData = {};
+    let acfFftCombined = { CASTNET: [], NTN: [] };
     let selectedKey = null;
     let currentSort = 'default';
 
@@ -336,8 +370,22 @@
         return obj;
       });
     }
+
     function makeKey(lat, lon) {
       return `${lat.toFixed(5)}_${lon.toFixed(5)}`;
+    }
+
+    /** Flexible cell lookup (headers are uppercased by parseCSV) */
+    function cell(row, ...candidates) {
+      const upperMap = {};
+      Object.keys(row).forEach(k => {
+        upperMap[k.toUpperCase().replace(/[^A-Z0-9]/g, '')] = row[k];
+      });
+      for (const c of candidates) {
+        const norm = String(c).toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (upperMap[norm] !== undefined && upperMap[norm] !== '') return upperMap[norm];
+      }
+      return '';
     }
 
     async function loadCoordinator(network, path) {
@@ -361,6 +409,7 @@
         return count;
       } catch (e) { console.error(e); return 0; }
     }
+
     async function loadDateSummary() {
       try {
         const res = await fetch('./data/input/site_date_summary.csv');
@@ -374,6 +423,7 @@
         });
       } catch (e) { console.error('Date summary error', e); }
     }
+
     async function loadCoverage() {
       try {
         const res = await fetch('./data/input/site_variable_coverage.json');
@@ -381,12 +431,34 @@
         coverageData = await res.json();
       } catch (e) { console.error('Coverage error', e); }
     }
+
     async function loadTimeseries() {
       try {
         const res = await fetch('./data/input/site_timeseries.json');
         if (!res.ok) return;
         timeseriesData = await res.json();
       } catch (e) { console.error('Timeseries error', e); }
+    }
+
+    async function loadAcfFftCombined() {
+      acfFftCombined = { CASTNET: [], NTN: [] };
+      const paths = {
+        CASTNET: './data/output/ACF_FFT_combined/CASTNET_ACF_FFT_combined.csv',
+        NTN: './data/output/ACF_FFT_combined/NTN_ACF_FFT_combined.csv'
+      };
+      for (const [net, path] of Object.entries(paths)) {
+        try {
+          const res = await fetch(path);
+          if (!res.ok) {
+            console.warn('Missing ACF/FFT combined:', path);
+            continue;
+          }
+          acfFftCombined[net] = parseCSV(await res.text());
+          console.log(net, 'ACF/FFT rows:', acfFftCombined[net].length);
+        } catch (e) {
+          console.error('loadAcfFftCombined', net, e);
+        }
+      }
     }
 
     function sortNetworkList(mode) {
@@ -466,6 +538,7 @@
       document.getElementById('trend-panel-castnet').classList.remove('visible');
       document.getElementById('trend-panel-ntn').classList.remove('visible');
       document.getElementById('trend-panel-combine').classList.remove('visible');
+      document.getElementById('match-panel').classList.remove('visible');
       renderSiteInfo(site);
     }
 
@@ -555,6 +628,7 @@
         html += `<div class="combine-btns">
           <button onclick="showCombineTrendPlot()">[ COMBINE STATISTICAL-TRENDING ]</button>
           <button onclick="resetCombineTrend()">[ RESET COMBINE STATISTICAL-TRENDING ]</button>
+          <button onclick="showMatchSegment()">[ MATCH SEGMENT ]</button>
         </div></div>`;
       }
       document.getElementById('site-info').innerHTML = html;
@@ -580,7 +654,6 @@
       });
     }
 
-    // ---- Stats on visible window only (high performance) ----
     function computeWindowStats(values, start, end) {
       const nums = [];
       const lo = Math.max(0, start);
@@ -603,11 +676,7 @@
       const median = sorted.length % 2 === 0
         ? (sorted[mid - 1] + sorted[mid]) / 2
         : sorted[mid];
-      return {
-        min, max, median,
-        avg: sum / nums.length,
-        n: nums.length
-      };
+      return { min, max, median, avg: sum / nums.length, n: nums.length };
     }
 
     function formatNum(x) {
@@ -633,25 +702,19 @@
     function applyTrendWindow(network) {
       const state = charts[network];
       if (!state.chart || state.labels.length === 0) return;
-
       const key = network.toLowerCase();
       const zoomSlider = document.getElementById('trend-zoom-' + key);
       const scrollSlider = document.getElementById('trend-scroll-' + key);
-
       const zoomPct = parseInt(zoomSlider.value, 10) / 100;
       const windowSize = Math.max(10, Math.round(state.labels.length * zoomPct));
       const maxStart = Math.max(0, state.labels.length - windowSize);
-
       scrollSlider.max = maxStart;
       if (parseInt(scrollSlider.value, 10) > maxStart) scrollSlider.value = maxStart;
-
       const start = parseInt(scrollSlider.value, 10);
       const end = start + windowSize - 1;
       state.chart.options.scales.x.min = start;
       state.chart.options.scales.x.max = end;
       state.chart.update('none');
-
-      // Live stats for visible window
       updateTrendStats(network, start, end);
     }
 
@@ -753,13 +816,16 @@
       });
       combineVar[network] = el.checked ? el.value : null;
     }
+
     function resetCombineTrend() {
       combineVar = { CASTNET: null, NTN: null };
       document.querySelectorAll('input[name="combine-castnet"], input[name="combine-ntn"]')
               .forEach(cb => { cb.checked = false; });
       if (combineChart) { combineChart.destroy(); combineChart = null; }
       document.getElementById('trend-panel-combine').classList.remove('visible');
+      document.getElementById('match-panel').classList.remove('visible');
     }
+
     function getSeriesMap(network, siteId, variable) {
       const series = (((timeseriesData[network] || {})[siteId]) || {});
       const dates = series.DATEON || [];
@@ -773,6 +839,7 @@
       }
       return map;
     }
+
     function applyCombineWindow() {
       if (!combineChart || combineLabels.length === 0) return;
       const zoomSlider = document.getElementById('trend-zoom-combine');
@@ -787,6 +854,7 @@
       combineChart.options.scales.x.max = start + windowSize - 1;
       combineChart.update('none');
     }
+
     function showCombineTrendPlot() {
       const site = siteRegistry[selectedKey];
       if (!site) { alert('Select a site first.'); return; }
@@ -870,6 +938,101 @@
       panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
+    // ========== MATCH SEGMENT (ACF Lag vs FFT Period) ==========
+    function showMatchSegment() {
+      const site = siteRegistry[selectedKey];
+      if (!site) {
+        alert('Select a site first.');
+        return;
+      }
+
+      const castVar = combineVar.CASTNET;
+      const ntnVar  = combineVar.NTN;
+
+      if (!castVar && !ntnVar) {
+        alert('Check one species under CASTNET and/or NTN.');
+        return;
+      }
+
+      const rows = [];
+
+      function addNetworkRows(network, siteId, variable) {
+        if (!siteId || !variable) return;
+        const data = acfFftCombined[network] || [];
+        data.forEach(r => {
+          const sid = cell(r, 'SITE_ID');
+          if (String(sid).trim() !== String(siteId).trim()) return;
+          rows.push({
+            network,
+            variable,
+            analysis_type: cell(r, 'analysis_type', 'ANALYSIS_TYPE'),
+            site_id: sid,
+            start: cell(r, 'Start_Date', 'START_DATE'),
+            end: cell(r, 'End_Date', 'END_DATE'),
+            num_years: cell(r, 'Num_Years', 'NUM_YEARS'),
+            acf_lag: cell(r, `acf_${variable}_Lag`, `ACF_${variable}_LAG`),
+            fft_period: cell(r, `fft_${variable}_Period`, `FFT_${variable}_PERIOD`)
+          });
+        });
+      }
+
+      if (castVar && site.CASTNET) addNetworkRows('CASTNET', site.CASTNET, castVar);
+      if (ntnVar && site.NTN) addNetworkRows('NTN', site.NTN, ntnVar);
+
+      const panel = document.getElementById('match-panel');
+      const thead = document.getElementById('match-thead');
+      const tbody = document.getElementById('match-tbody');
+
+      const parts = [];
+      if (castVar && site.CASTNET) parts.push(`CASTNET ${site.CASTNET} · ${castVar}`);
+      if (ntnVar && site.NTN) parts.push(`NTN ${site.NTN} · ${ntnVar}`);
+      document.getElementById('match-header').textContent =
+        `MATCH SEGMENT · ${parts.join('  |  ')}  ·  ACF Lag vs FFT Period`;
+
+      if (rows.length === 0) {
+        thead.innerHTML = '';
+        tbody.innerHTML = `<tr><td class="match-empty" colspan="9">No matching segments for this site / species in combined ACF–FFT files.<br>Run src/combine_acf_fft.py and confirm files under data/output/ACF_FFT_combined/</td></tr>`;
+        panel.classList.add('visible');
+        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        return;
+      }
+
+      rows.sort((a, b) => {
+        if (a.network !== b.network) return a.network.localeCompare(b.network);
+        if (a.analysis_type !== b.analysis_type) return String(a.analysis_type).localeCompare(String(b.analysis_type));
+        return (parseFloat(b.num_years) || 0) - (parseFloat(a.num_years) || 0);
+      });
+
+      thead.innerHTML = `
+        <tr>
+          <th>Network</th>
+          <th>Species</th>
+          <th>Analysis</th>
+          <th>SITE_ID</th>
+          <th>Start_Date</th>
+          <th>End_Date</th>
+          <th>Num_Years</th>
+          <th>ACF Lag</th>
+          <th>FFT Period</th>
+        </tr>`;
+
+      tbody.innerHTML = rows.map(r => `
+        <tr>
+          <td>${r.network}</td>
+          <td>${r.variable}</td>
+          <td>${r.analysis_type || '—'}</td>
+          <td>${r.site_id}</td>
+          <td>${r.start || '—'}</td>
+          <td>${r.end || '—'}</td>
+          <td>${r.num_years || '—'}</td>
+          <td>${r.acf_lag === '' || r.acf_lag == null ? '—' : r.acf_lag}</td>
+          <td>${r.fft_period === '' || r.fft_period == null ? '—' : r.fft_period}</td>
+        </tr>`).join('');
+
+      panel.classList.add('visible');
+      panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
     async function loadAllSites() {
       siteRegistry = {};
       selectedKey = null;
@@ -881,15 +1044,20 @@
       document.getElementById('trend-panel-castnet').classList.remove('visible');
       document.getElementById('trend-panel-ntn').classList.remove('visible');
       document.getElementById('trend-panel-combine').classList.remove('visible');
+      document.getElementById('match-panel').classList.remove('visible');
+
       await loadCoordinator('CASTNET', './data/input/CASTNET/CASTNET_coordinator.csv');
       await loadCoordinator('NTN', './data/input/NTN/NTN_coordinator.csv');
       await loadDateSummary();
       await loadCoverage();
       await loadTimeseries();
+      await loadAcfFftCombined();
       buildMarkersAndTable();
+
       document.getElementById('site-info').innerHTML =
         '<div class="placeholder">Click a marker or a row<br>to see details</div>';
     }
+
     window.addEventListener('load', () => setTimeout(loadAllSites, 600));
   </script>
 </body>
