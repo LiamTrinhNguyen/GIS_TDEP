@@ -269,7 +269,50 @@
       text-align: center;
     }
 
-    /* Separate trend panels */
+    /* Combine controls */
+    .combine-box {
+      border: 1px solid #666;
+      padding: 12px;
+      margin-bottom: 8px;
+      background: #0d0d0d;
+    }
+    .combine-box .title {
+      font-size: 13px;
+      color: #aaa;
+      margin-bottom: 10px;
+    }
+    .combine-row {
+      margin-bottom: 10px;
+      font-size: 12px;
+    }
+    .combine-row .net-label {
+      color: #ccc;
+      margin-bottom: 6px;
+      display: block;
+    }
+    .combine-checks {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+    }
+    .combine-checks label {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      color: #bbb;
+      font-size: 12px;
+    }
+    .combine-checks input[type="checkbox"] {
+      accent-color: #fff;
+      cursor: pointer;
+    }
+    .combine-btns {
+      margin-top: 12px;
+      text-align: center;
+    }
+
+    /* Trend panels */
     .trend-panels {
       width: 100%;
       max-width: 1296px;
@@ -287,9 +330,9 @@
       display: none;
     }
     .trend-panel.visible { display: block; }
-
     .trend-panel.castnet-panel { border-color: #e74c3c; }
     .trend-panel.ntn-panel { border-color: #3498db; }
+    .trend-panel.combine-panel { border-color: #fafafa; }
 
     .trend-header {
       font-size: 14px;
@@ -392,7 +435,7 @@
 
       <!-- COLUMN 2 (wide) -->
       <div class="panel-wide">
-        <div class="panel-title">SELECTED SITE(S) · WEEKLY COVERAGE</div>
+        <div class="panel-title">SELECTED SITE(S) · WEEKLY COVERAGE · COMBINE</div>
         <div class="panel-content" id="site-info">
           <div class="placeholder">
             Click a marker or a row<br>
@@ -404,7 +447,7 @@
 
     <!-- SEPARATE TREND PANELS -->
     <div class="trend-panels">
-      <!-- CASTNET trend panel -->
+      <!-- CASTNET -->
       <div class="trend-panel castnet-panel" id="trend-panel-castnet">
         <div class="trend-header" id="trend-header-castnet">CASTNET Time Series</div>
         <div class="trend-body">
@@ -422,7 +465,7 @@
         </div>
       </div>
 
-      <!-- NTN trend panel -->
+      <!-- NTN -->
       <div class="trend-panel ntn-panel" id="trend-panel-ntn">
         <div class="trend-header" id="trend-header-ntn">NTN Time Series</div>
         <div class="trend-body">
@@ -437,6 +480,24 @@
         <div class="trend-scroll-wrap">
           <label>TIME (scroll left / right)</label>
           <input type="range" class="trend-scroll" id="trend-scroll-ntn" min="0" max="100" value="0" step="1" />
+        </div>
+      </div>
+
+      <!-- COMBINE -->
+      <div class="trend-panel combine-panel" id="trend-panel-combine">
+        <div class="trend-header" id="trend-header-combine">COMBINE Time Series</div>
+        <div class="trend-body">
+          <div class="trend-canvas-wrap">
+            <canvas id="trend-chart-combine"></canvas>
+          </div>
+          <div class="trend-zoom-wrap">
+            <label>ZOOM</label>
+            <input type="range" class="trend-zoom" id="trend-zoom-combine" min="20" max="100" value="100" step="1" />
+          </div>
+        </div>
+        <div class="trend-scroll-wrap">
+          <label>TIME (scroll left / right)</label>
+          <input type="range" class="trend-scroll" id="trend-scroll-combine" min="0" max="100" value="0" step="1" />
         </div>
       </div>
     </div>
@@ -465,17 +526,19 @@
     let selectedKey = null;
     let currentSort = 'default';
 
-    // Per-network selection state
     let selected = {
       CASTNET: { siteId: null, variable: null },
       NTN:     { siteId: null, variable: null }
     };
 
-    // Per-network charts
     let charts = {
       CASTNET: { chart: null, labels: [], values: [] },
       NTN:     { chart: null, labels: [], values: [] }
     };
+
+    let combineChart = null;
+    let combineLabels = [];
+    let combineVar = { CASTNET: null, NTN: null };
 
     const VARIABLES = ["SO2","SO4","HNO3","NO3","TNO3","NH4","CA","K","MG","Sodium"];
 
@@ -628,6 +691,7 @@
 
       selected.CASTNET = { siteId: null, variable: null };
       selected.NTN     = { siteId: null, variable: null };
+      combineVar = { CASTNET: null, NTN: null };
 
       if (site.marker) {
         site.marker.setStyle({ weight: 3, color: '#fff', radius: 10 });
@@ -641,9 +705,9 @@
         row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
 
-      // hide trend panels when switching site
       document.getElementById('trend-panel-castnet').classList.remove('visible');
       document.getElementById('trend-panel-ntn').classList.remove('visible');
+      document.getElementById('trend-panel-combine').classList.remove('visible');
 
       renderSiteInfo(site);
     }
@@ -674,6 +738,9 @@
     }
 
     function renderSiteInfo(site) {
+      if (site.CASTNET) selected.CASTNET.siteId = site.CASTNET;
+      if (site.NTN)     selected.NTN.siteId     = site.NTN;
+
       let html = `
         <div class="info-box">
           <div class="title">LOCATION</div>
@@ -723,6 +790,44 @@
               <button onclick="showTrendPlot('NTN')">
                 [ STATISTICAL-TRENDING NTN ]
               </button>
+            </div>
+          </div>`;
+      }
+
+      // Combine box
+      if (site.CASTNET || site.NTN) {
+        html += `
+          <div class="combine-box">
+            <div class="title">COMBINE PARAMETERS (one variable per network)</div>`;
+
+        if (site.CASTNET) {
+          html += `
+            <div class="combine-row">
+              <span class="net-label">CASTNET (dry) — ${site.CASTNET}</span>
+              <div class="combine-checks" id="combine-castnet">
+                ${VARIABLES.map(v =>
+                  `<label><input type="checkbox" name="combine-castnet" value="${v}" onchange="onCombineCheck('CASTNET', this)"> ${v}</label>`
+                ).join('')}
+              </div>
+            </div>`;
+        }
+
+        if (site.NTN) {
+          html += `
+            <div class="combine-row">
+              <span class="net-label">NTN (wet) — ${site.NTN}</span>
+              <div class="combine-checks" id="combine-ntn">
+                ${VARIABLES.map(v =>
+                  `<label><input type="checkbox" name="combine-ntn" value="${v}" onchange="onCombineCheck('NTN', this)"> ${v}</label>`
+                ).join('')}
+              </div>
+            </div>`;
+        }
+
+        html += `
+            <div class="combine-btns">
+              <button onclick="showCombineTrendPlot()">[ COMBINE STATISTICAL-TRENDING ]</button>
+              <button onclick="resetCombineTrend()">[ RESET COMBINE STATISTICAL-TRENDING ]</button>
             </div>
           </div>`;
       }
@@ -813,8 +918,7 @@
       document.getElementById('trend-header-' + key).textContent =
         `${network} · ${sel.siteId} · ${sel.variable}  |  Y-bar = zoom · X-bar = time`;
 
-      const canvasId = 'trend-chart-' + key;
-      const ctx = document.getElementById(canvasId).getContext('2d');
+      const ctx = document.getElementById('trend-chart-' + key).getContext('2d');
       if (charts[network].chart) charts[network].chart.destroy();
 
       const lineColor = (network === 'CASTNET') ? '#e74c3c' : '#3498db';
@@ -824,16 +928,16 @@
         data: {
           labels: labels,
           datasets: [{
-                      label: `${network} ${sel.variable}`,
-                      data: dataVals,
-                      borderColor: lineColor,
-                      backgroundColor: lineColor,   // solid fill (red for CASTNET, blue for NTN)
-                      borderWidth: 1.2,
-                      pointRadius: 0,
-                      pointHoverRadius: 3,
-                      tension: 0,
-                      spanGaps: false
-                    }]
+            label: `${network} ${sel.variable}`,
+            data: dataVals,
+            borderColor: lineColor,
+            backgroundColor: lineColor,
+            borderWidth: 1.2,
+            pointRadius: 0,
+            pointHoverRadius: 3,
+            tension: 0,
+            spanGaps: false
+          }]
         },
         options: {
           responsive: true,
@@ -846,7 +950,12 @@
           },
           plugins: {
             legend: {
-              labels: { color: '#ccc', font: { family: 'Consolas' } }
+              labels: {
+                color: '#ccc',
+                font: { family: 'Consolas' },
+                boxWidth: 12,
+                boxHeight: 12
+              }
             },
             title: {
               display: true,
@@ -894,17 +1003,235 @@
       panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
+    // ========== COMBINE ==========
+    function onCombineCheck(network, el) {
+      const name = (network === 'CASTNET') ? 'combine-castnet' : 'combine-ntn';
+      document.querySelectorAll(`input[name="${name}"]`).forEach(cb => {
+        if (cb !== el) cb.checked = false;
+      });
+      combineVar[network] = el.checked ? el.value : null;
+    }
+
+    function resetCombineTrend() {
+      combineVar = { CASTNET: null, NTN: null };
+      document.querySelectorAll('input[name="combine-castnet"], input[name="combine-ntn"]')
+              .forEach(cb => { cb.checked = false; });
+
+      if (combineChart) {
+        combineChart.destroy();
+        combineChart = null;
+      }
+      document.getElementById('trend-panel-combine').classList.remove('visible');
+    }
+
+    function applyCombineWindow() {
+      if (!combineChart || combineLabels.length === 0) return;
+
+      const zoomSlider = document.getElementById('trend-zoom-combine');
+      const scrollSlider = document.getElementById('trend-scroll-combine');
+
+      const zoomPct = parseInt(zoomSlider.value, 10) / 100;
+      const windowSize = Math.max(10, Math.round(combineLabels.length * zoomPct));
+      const maxStart = Math.max(0, combineLabels.length - windowSize);
+
+      scrollSlider.max = maxStart;
+      if (parseInt(scrollSlider.value, 10) > maxStart) {
+        scrollSlider.value = maxStart;
+      }
+
+      const start = parseInt(scrollSlider.value, 10);
+      combineChart.options.scales.x.min = start;
+      combineChart.options.scales.x.max = start + windowSize - 1;
+      combineChart.update('none');
+    }
+
+    function getSeries(network, siteId, variable) {
+      const series = (((timeseriesData[network] || {})[siteId]) || {});
+      const dates = series.DATEON || [];
+      let values = series[variable] || series['variable_' + variable] || [];
+      const outDates = [];
+      const outVals = [];
+      for (let i = 0; i < dates.length; i++) {
+        outDates.push(dates[i]);
+        const v = values[i];
+        outVals.push((v === null || v === undefined || v === '') ? null : Number(v));
+      }
+      return { dates: outDates, values: outVals };
+    }
+
+    function showCombineTrendPlot() {
+      const site = siteRegistry[selectedKey];
+      if (!site) {
+        alert('Select a site first.');
+        return;
+      }
+
+      const castVar = combineVar.CASTNET;
+      const ntnVar  = combineVar.NTN;
+
+      if (!castVar && !ntnVar) {
+        alert('Check one variable under CASTNET and/or NTN.');
+        return;
+      }
+
+      const datasets = [];
+      let allDates = [];
+
+      if (castVar && site.CASTNET) {
+        const s = getSeries('CASTNET', site.CASTNET, castVar);
+        if (s.dates.length) {
+          allDates = s.dates;
+          datasets.push({
+            label: `CASTNET ${castVar}`,
+            data: s.values,
+            borderColor: '#e74c3c',
+            backgroundColor: '#e74c3c',
+            borderWidth: 1.2,
+            pointRadius: 0,
+            pointHoverRadius: 3,
+            tension: 0,
+            spanGaps: false
+          });
+        }
+      }
+
+      if (ntnVar && site.NTN) {
+        const s = getSeries('NTN', site.NTN, ntnVar);
+        if (s.dates.length) {
+          if (allDates.length === 0) {
+            allDates = s.dates;
+            datasets.push({
+              label: `NTN ${ntnVar}`,
+              data: s.values,
+              borderColor: '#3498db',
+              backgroundColor: '#3498db',
+              borderWidth: 1.2,
+              pointRadius: 0,
+              pointHoverRadius: 3,
+              tension: 0,
+              spanGaps: false
+            });
+          } else {
+            const ntnMap = {};
+            s.dates.forEach((d, i) => { ntnMap[d] = s.values[i]; });
+            const aligned = allDates.map(d => (ntnMap[d] !== undefined ? ntnMap[d] : null));
+            datasets.push({
+              label: `NTN ${ntnVar}`,
+              data: aligned,
+              borderColor: '#3498db',
+              backgroundColor: '#3498db',
+              borderWidth: 1.2,
+              pointRadius: 0,
+              pointHoverRadius: 3,
+              tension: 0,
+              spanGaps: false
+            });
+          }
+        }
+      }
+
+      if (datasets.length === 0 || allDates.length === 0) {
+        alert('No time-series data found for the selected variable(s).');
+        return;
+      }
+
+      combineLabels = allDates;
+
+      const panel = document.getElementById('trend-panel-combine');
+      panel.classList.add('visible');
+
+      const parts = [];
+      if (castVar && site.CASTNET) parts.push(`CASTNET ${site.CASTNET} · ${castVar}`);
+      if (ntnVar && site.NTN)     parts.push(`NTN ${site.NTN} · ${ntnVar}`);
+      document.getElementById('trend-header-combine').textContent =
+        `COMBINE · ${parts.join('  |  ')}  |  Y-bar = zoom · X-bar = time`;
+
+      const ctx = document.getElementById('trend-chart-combine').getContext('2d');
+      if (combineChart) combineChart.destroy();
+
+      combineChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: combineLabels,
+          datasets: datasets
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          interaction: {
+            mode: 'nearest',
+            axis: 'x',
+            intersect: false
+          },
+          plugins: {
+            legend: {
+              labels: {
+                color: '#ccc',
+                font: { family: 'Consolas' },
+                boxWidth: 12,
+                boxHeight: 12
+              }
+            },
+            title: {
+              display: true,
+              text: parts.join('  vs  '),
+              color: '#eee',
+              font: { family: 'Consolas', size: 14 }
+            }
+          },
+          scales: {
+            x: {
+              type: 'category',
+              min: 0,
+              max: combineLabels.length - 1,
+              ticks: {
+                color: '#aaa',
+                maxTicksLimit: 12,
+                font: { family: 'Consolas', size: 11 }
+              },
+              grid: { color: '#222' }
+            },
+            y: {
+              title: {
+                display: true,
+                text: 'value',
+                color: '#aaa'
+              },
+              ticks: {
+                color: '#aaa',
+                font: { family: 'Consolas', size: 11 }
+              },
+              grid: { color: '#222' }
+            }
+          }
+        }
+      });
+
+      document.getElementById('trend-zoom-combine').value = 100;
+      document.getElementById('trend-scroll-combine').value = 0;
+      document.getElementById('trend-scroll-combine').max = 0;
+
+      document.getElementById('trend-zoom-combine').oninput = applyCombineWindow;
+      document.getElementById('trend-scroll-combine').oninput = applyCombineWindow;
+
+      applyCombineWindow();
+      panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
     async function loadAllSites() {
       siteRegistry = {};
       selectedKey = null;
       currentSort = 'default';
       selected.CASTNET = { siteId: null, variable: null };
       selected.NTN     = { siteId: null, variable: null };
+      combineVar = { CASTNET: null, NTN: null };
 
       document.getElementById('site-info').innerHTML =
         '<div class="placeholder">Loading...</div>';
       document.getElementById('trend-panel-castnet').classList.remove('visible');
       document.getElementById('trend-panel-ntn').classList.remove('visible');
+      document.getElementById('trend-panel-combine').classList.remove('visible');
 
       await loadCoordinator('CASTNET', './data/input/CASTNET/CASTNET_coordinator.csv');
       await loadCoordinator('NTN', './data/input/NTN/NTN_coordinator.csv');
