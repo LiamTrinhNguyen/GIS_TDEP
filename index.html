@@ -184,7 +184,6 @@
     .trend-scroll {
       width: 100%; height: 8px; cursor: pointer; accent-color: #fafafa;
     }
-    /* MATCH SEGMENT panel */
     .match-panel {
       width: 100%; max-width: 1296px; margin: 18px auto 0 auto;
       background: #0a0a0a; border: 1px solid #fafafa;
@@ -252,7 +251,8 @@
         </div>
       </div>
     </div>
-    <!-- MATCH SEGMENT -->
+
+    <!-- MATCH SEGMENT — above all plot panels -->
     <div class="match-panel" id="match-panel">
       <div class="match-header" id="match-header">MATCH SEGMENT · ACF Lag vs FFT Period</div>
       <div class="match-table-wrap">
@@ -263,6 +263,7 @@
       </div>
     </div>
 
+    <!-- TREND PANELS -->
     <div class="trend-panels">
       <div class="trend-panel castnet-panel" id="trend-panel-castnet">
         <div class="trend-header" id="trend-header-castnet">CASTNET Time Series</div>
@@ -323,8 +324,6 @@
         </div>
       </div>
     </div>
-
-    
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -376,7 +375,6 @@
       return `${lat.toFixed(5)}_${lon.toFixed(5)}`;
     }
 
-    /** Flexible cell lookup (headers are uppercased by parseCSV) */
     function cell(row, ...candidates) {
       const upperMap = {};
       Object.keys(row).forEach(k => {
@@ -939,7 +937,6 @@
       panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
-    // ========== MATCH SEGMENT (ACF Lag vs FFT Period) ==========
     function showMatchSegment() {
       const site = siteRegistry[selectedKey];
       if (!site) {
@@ -988,7 +985,7 @@
       if (castVar && site.CASTNET) parts.push(`CASTNET ${site.CASTNET} · ${castVar}`);
       if (ntnVar && site.NTN) parts.push(`NTN ${site.NTN} · ${ntnVar}`);
       document.getElementById('match-header').textContent =
-        `MATCH SEGMENT · ${parts.join('  |  ')}  ·  ACF Lag vs FFT Period`;
+        `MATCH SEGMENT · ${parts.join('  |  ')}  ·  ACF Lag vs FFT Period  ·  Num_Years high→low`;
 
       if (rows.length === 0) {
         thead.innerHTML = '';
@@ -998,10 +995,12 @@
         return;
       }
 
+      // Primary: Num_Years high → low; then network; then analysis_type
       rows.sort((a, b) => {
+        const ny = (parseFloat(b.num_years) || 0) - (parseFloat(a.num_years) || 0);
+        if (ny !== 0) return ny;
         if (a.network !== b.network) return a.network.localeCompare(b.network);
-        if (a.analysis_type !== b.analysis_type) return String(a.analysis_type).localeCompare(String(b.analysis_type));
-        return (parseFloat(b.num_years) || 0) - (parseFloat(a.num_years) || 0);
+        return String(a.analysis_type).localeCompare(String(b.analysis_type));
       });
 
       thead.innerHTML = `
@@ -1012,7 +1011,7 @@
           <th>SITE_ID</th>
           <th>Start_Date</th>
           <th>End_Date</th>
-          <th>Num_Years</th>
+          <th>Num_Years ↓</th>
           <th>ACF Lag</th>
           <th>FFT Period</th>
         </tr>`;
