@@ -995,12 +995,11 @@
         return;
       }
 
-      // Primary: Num_Years high → low; then network; then analysis_type
+      // Network A→Z, then Num_Years high → low
       rows.sort((a, b) => {
-        const ny = (parseFloat(b.num_years) || 0) - (parseFloat(a.num_years) || 0);
-        if (ny !== 0) return ny;
-        if (a.network !== b.network) return a.network.localeCompare(b.network);
-        return String(a.analysis_type).localeCompare(String(b.analysis_type));
+        const net = String(a.network).localeCompare(String(b.network));
+        if (net !== 0) return net;
+        return (parseFloat(b.num_years) || 0) - (parseFloat(a.num_years) || 0);
       });
 
       thead.innerHTML = `
