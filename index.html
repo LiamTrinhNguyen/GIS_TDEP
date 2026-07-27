@@ -526,12 +526,12 @@
       combineVar = { CASTNET: null, NTN: null };
       if (site.marker) {
         site.marker.setStyle({
-                              weight: 3,
-                              color: '#00ffff',
-                              fillColor: '#2ecc71',
-                              fillOpacity: 0.9,
-                              radius: 10
-                            });
+          weight: 3,
+          color: '#00ffff',
+          fillColor: '#2ecc71',
+          fillOpacity: 0.9,
+          radius: 10
+        });
         site.marker.openPopup();
         map.panTo([site.lat, site.lon]);
       }
@@ -749,19 +749,30 @@
       const key = network.toLowerCase();
       const panel = document.getElementById('trend-panel-' + key);
       panel.classList.add('visible');
+
+      const isCastnet = (network === 'CASTNET');
+      const yUnit = isCastnet ? 'µg/m³' : 'mg/L';
+      const chartTitle = isCastnet
+        ? `Ambient Air ${sel.variable} Concentrations at ${sel.siteId}`
+        : `Wet Deposition ${sel.variable} Concentrations at ${sel.siteId}`;
+      const yAxisLabel = `${sel.variable} Concentration (${yUnit})`;
+      const legendLabel = isCastnet
+        ? `CASTNET ${sel.variable} (${yUnit})`
+        : `NTN ${sel.variable} (${yUnit})`;
+
       document.getElementById('trend-header-' + key).textContent =
-        `${network} · ${sel.siteId} · ${sel.variable}  |  Y-bar = zoom · X-bar = time`;
+        `${chartTitle}  |  Y-bar = zoom · X-bar = time`;
 
       const ctx = document.getElementById('trend-chart-' + key).getContext('2d');
       if (charts[network].chart) charts[network].chart.destroy();
-      const lineColor = (network === 'CASTNET') ? '#e74c3c' : '#3498db';
+      const lineColor = isCastnet ? '#e74c3c' : '#3498db';
 
       charts[network].chart = new Chart(ctx, {
         type: 'line',
         data: {
           labels: labels,
           datasets: [{
-            label: `${network} ${sel.variable}`,
+            label: legendLabel,
             data: dataVals,
             borderColor: lineColor,
             backgroundColor: lineColor,
@@ -783,7 +794,7 @@
             },
             title: {
               display: true,
-              text: `${sel.siteId}  ${sel.variable}`,
+              text: chartTitle,
               color: '#eee',
               font: { family: 'Consolas', size: 14 }
             }
@@ -797,7 +808,7 @@
               grid: { color: '#222' }
             },
             y: {
-              title: { display: true, text: sel.variable, color: '#aaa' },
+              title: { display: true, text: yAxisLabel, color: '#aaa' },
               ticks: { color: '#aaa', font: { family: 'Consolas', size: 11 } },
               grid: { color: '#222' }
             }
@@ -884,14 +895,16 @@
       const datasets = [];
       if (castVar && site.CASTNET && Object.keys(castMap).length > 0) {
         datasets.push({
-          label: `CASTNET ${castVar}`, data: castVals,
+          label: `CASTNET ${castVar} (µg/m³)`,
+          data: castVals,
           borderColor: '#e74c3c', backgroundColor: '#e74c3c',
           borderWidth: 1.2, pointRadius: 0, pointHoverRadius: 3, tension: 0, spanGaps: false
         });
       }
       if (ntnVar && site.NTN && Object.keys(ntnMap).length > 0) {
         datasets.push({
-          label: `NTN ${ntnVar}`, data: ntnVals,
+          label: `NTN ${ntnVar} (mg/L)`,
+          data: ntnVals,
           borderColor: '#3498db', backgroundColor: '#3498db',
           borderWidth: 1.2, pointRadius: 0, pointHoverRadius: 3, tension: 0, spanGaps: false
         });
@@ -903,11 +916,15 @@
       combineLabels = allDates;
       const panel = document.getElementById('trend-panel-combine');
       panel.classList.add('visible');
-      const parts = [];
-      if (castVar && site.CASTNET) parts.push(`CASTNET ${site.CASTNET} · ${castVar}`);
-      if (ntnVar && site.NTN) parts.push(`NTN ${site.NTN} · ${ntnVar}`);
+
+      const speciesHint = castVar || ntnVar || '';
+      const siteIds = [site.CASTNET, site.NTN].filter(Boolean).join(' / ');
+      const combineTitle =
+        `A Comparison of Atmospheric Dry vs. Wet ${speciesHint} Deposition at ${siteIds}`;
+
       document.getElementById('trend-header-combine').textContent =
-        `COMBINE · ${parts.join('  |  ')}  |  full timeline aligned  |  Y-bar = zoom · X-bar = time`;
+        `${combineTitle}  |  Y-bar = zoom · X-bar = time`;
+
       const ctx = document.getElementById('trend-chart-combine').getContext('2d');
       if (combineChart) combineChart.destroy();
       combineChart = new Chart(ctx, {
@@ -918,7 +935,12 @@
           interaction: { mode: 'nearest', axis: 'x', intersect: false },
           plugins: {
             legend: { labels: { color: '#ccc', font: { family: 'Consolas' }, boxWidth: 12, boxHeight: 12 } },
-            title: { display: true, text: parts.join('  vs  '), color: '#eee', font: { family: 'Consolas', size: 14 } }
+            title: {
+              display: true,
+              text: combineTitle,
+              color: '#eee',
+              font: { family: 'Consolas', size: 14 }
+            }
           },
           scales: {
             x: {
@@ -927,7 +949,11 @@
               grid: { color: '#222' }
             },
             y: {
-              title: { display: true, text: 'value', color: '#aaa' },
+              title: {
+                display: true,
+                text: 'Concentration (CASTNET µg/m³ · NTN mg/L)',
+                color: '#aaa'
+              },
               ticks: { color: '#aaa', font: { family: 'Consolas', size: 11 } },
               grid: { color: '#222' }
             }
@@ -991,7 +1017,7 @@
       if (castVar && site.CASTNET) parts.push(`CASTNET ${site.CASTNET} · ${castVar}`);
       if (ntnVar && site.NTN) parts.push(`NTN ${site.NTN} · ${ntnVar}`);
       document.getElementById('match-header').textContent =
-        `MATCH SEGMENT · ${parts.join('  |  ')}  ·  ACF Lag vs FFT Period  ·  Num_Years high→low`;
+        `MATCH SEGMENT · ${parts.join('  |  ')}  ·  ACF Lag vs FFT Period  ·  Network then Num_Years high→low`;
 
       if (rows.length === 0) {
         thead.innerHTML = '';
@@ -1001,7 +1027,6 @@
         return;
       }
 
-      // Network A→Z, then Num_Years high → low
       rows.sort((a, b) => {
         const net = String(a.network).localeCompare(String(b.network));
         if (net !== 0) return net;
@@ -1016,7 +1041,7 @@
           <th>SITE_ID</th>
           <th>Start_Date</th>
           <th>End_Date</th>
-          <th>Num_Years </th>
+          <th>Num_Years</th>
           <th>ACF Lag (weeks)</th>
           <th>FFT Period (weeks)</th>
         </tr>`;
