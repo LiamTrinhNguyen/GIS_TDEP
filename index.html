@@ -525,7 +525,13 @@
       selected.NTN     = { siteId: null, variable: null };
       combineVar = { CASTNET: null, NTN: null };
       if (site.marker) {
-        site.marker.setStyle({ weight: 3, color: '#fff', radius: 10 });
+        site.marker.setStyle({
+                              weight: 3,
+                              color: '#00ffff',
+                              fillColor: '#2ecc71',
+                              fillOpacity: 0.9,
+                              radius: 10
+                            });
         site.marker.openPopup();
         map.panTo([site.lat, site.lon]);
       }
