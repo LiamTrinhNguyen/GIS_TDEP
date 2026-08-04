@@ -193,6 +193,28 @@
     .match-header {
       font-size: 14px; letter-spacing: 1px; margin-bottom: 10px; color: #aaa;
     }
+    .match-sort-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      font-size: 12px;
+      color: #aaa;
+    }
+    .match-sort-bar label { color: #888; }
+    .match-sort-bar select {
+      background: #111;
+      color: #fff;
+      border: 1px solid #666;
+      padding: 4px 8px;
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .match-sort-bar select:focus {
+      outline: 1px solid #fff;
+    }
     .match-table-wrap {
       max-height: 360px; overflow: auto; border: 1px solid #333;
     }
@@ -255,6 +277,25 @@
     <!-- MATCH SEGMENT — above all plot panels -->
     <div class="match-panel" id="match-panel">
       <div class="match-header" id="match-header">MATCH SEGMENT · ACF Lag vs FFT Period</div>
+      <div class="match-sort-bar">
+        <label for="match-sort-col">Sort by</label>
+        <select id="match-sort-col" onchange="applyMatchSort()">
+          <option value="network">Network</option>
+          <option value="variable">Species</option>
+          <option value="analysis_type">Analysis</option>
+          <option value="site_id">SITE_ID</option>
+          <option value="start">Start_Date</option>
+          <option value="end">End_Date</option>
+          <option value="num_years" selected>Num_Years</option>
+          <option value="acf_lag">ACF Lag</option>
+          <option value="fft_period">FFT Period</option>
+        </select>
+        <label for="match-sort-dir">Order</label>
+        <select id="match-sort-dir" onchange="applyMatchSort()">
+          <option value="desc" selected>High → Low</option>
+          <option value="asc">Low → High</option>
+        </select>
+      </div>
       <div class="match-table-wrap">
         <table class="match-table">
           <thead id="match-thead"></thead>
@@ -356,6 +397,7 @@
     let combineChart = null;
     let combineLabels = [];
     let combineVar = { CASTNET: null, NTN: null };
+    let matchRows = [];
 
     const VARIABLES = ["SO2","SO4","HNO3","NO3","TNO3","NH4","CA","K","MG","Sodium"];
 
@@ -761,7 +803,7 @@
         : `NTN ${sel.variable} (${yUnit})`;
 
       document.getElementById('trend-header-' + key).textContent =
-        `${chartTitle}  |  Y-bar = zoom · X-bar = time`;
+        `${chartTitle} | Y-bar = zoom · X-bar = time`;
 
       const ctx = document.getElementById('trend-chart-' + key).getContext('2d');
       if (charts[network].chart) charts[network].chart.destroy();
@@ -923,7 +965,7 @@
         `A Comparison of Atmospheric Dry vs. Wet ${speciesHint} Deposition at ${siteIds}`;
 
       document.getElementById('trend-header-combine').textContent =
-        `${combineTitle}  |  Y-bar = zoom · X-bar = time`;
+        `${combineTitle} | Y-bar = zoom · X-bar = time`;
 
       const ctx = document.getElementById('trend-chart-combine').getContext('2d');
       if (combineChart) combineChart.destroy();
@@ -969,23 +1011,99 @@
       panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
+    function isNumericMatchField(field) {
+      return field === 'num_years' || field === 'acf_lag' || field === 'fft_period';
+    }
+
+    function sortMatchRows(rows, field, dir) {
+      const desc = (dir === 'desc');
+      const sorted = rows.slice();
+      sorted.sort((a, b) => {
+        let va = a[field];
+        let vb = b[field];
+        if (isNumericMatchField(field)) {
+          const na = parseFloat(va);
+          const nb = parseFloat(vb);
+          const aOk = !isNaN(na);
+          const bOk = !isNaN(nb);
+          if (!aOk && !bOk) return 0;
+          if (!aOk) return 1;
+          if (!bOk) return -1;
+          return desc ? (nb - na) : (na - nb);
+        }
+        const sa = String(va ?? '');
+        const sb = String(vb ?? '');
+        const cmp = sa.localeCompare(sb, undefined, { numeric: true, sensitivity: 'base' });
+        return desc ? -cmp : cmp;
+      });
+      return sorted;
+    }
+
+    function renderMatchTable(rows) {
+      const thead = document.getElementById('match-thead');
+      const tbody = document.getElementById('match-tbody');
+      if (!rows || rows.length === 0) {
+        thead.innerHTML = '';
+        tbody.innerHTML = `<tr><td class="match-empty" colspan="9">No matching segments for this site / species in combined ACF–FFT files.<br>Run src/combine_acf_fft.py and confirm files under data/output/ACF_FFT_combined/</td></tr>`;
+        return;
+      }
+      thead.innerHTML = `
+        <tr>
+          <th>Network</th>
+          <th>Species</th>
+          <th>Analysis</th>
+          <th>SITE_ID</th>
+          <th>Start_Date</th>
+          <th>End_Date</th>
+          <th>Num_Years</th>
+          <th>ACF Lag (weeks)</th>
+          <th>FFT Period (weeks)</th>
+        </tr>`;
+      tbody.innerHTML = rows.map(r => `
+        <tr>
+          <td>${r.network}</td>
+          <td>${r.variable}</td>
+          <td>${r.analysis_type || '—'}</td>
+          <td>${r.site_id}</td>
+          <td>${r.start || '—'}</td>
+          <td>${r.end || '—'}</td>
+          <td>${r.num_years || '—'}</td>
+          <td>${r.acf_lag === '' || r.acf_lag == null ? '—' : r.acf_lag}</td>
+          <td>${r.fft_period === '' || r.fft_period == null ? '—' : r.fft_period}</td>
+        </tr>`).join('');
+    }
+
+    function applyMatchSort() {
+      if (!matchRows.length) {
+        renderMatchTable([]);
+        return;
+      }
+      const field = document.getElementById('match-sort-col').value;
+      const dir = document.getElementById('match-sort-dir').value;
+      const sorted = sortMatchRows(matchRows, field, dir);
+      renderMatchTable(sorted);
+
+      const colLabel = document.getElementById('match-sort-col').selectedOptions[0].text;
+      const dirLabel = dir === 'desc' ? 'High → Low' : 'Low → High';
+      const header = document.getElementById('match-header');
+      const base = header.textContent.split(' · Sort:')[0];
+      header.textContent = `${base} · Sort: ${colLabel} ${dirLabel}`;
+    }
+
     function showMatchSegment() {
       const site = siteRegistry[selectedKey];
       if (!site) {
         alert('Select a site first.');
         return;
       }
-
       const castVar = combineVar.CASTNET;
-      const ntnVar  = combineVar.NTN;
-
+      const ntnVar = combineVar.NTN;
       if (!castVar && !ntnVar) {
         alert('Check one species under CASTNET and/or NTN.');
         return;
       }
 
       const rows = [];
-
       function addNetworkRows(network, siteId, variable) {
         if (!siteId || !variable) return;
         const data = acfFftCombined[network] || [];
@@ -1005,59 +1123,21 @@
           });
         });
       }
-
       if (castVar && site.CASTNET) addNetworkRows('CASTNET', site.CASTNET, castVar);
       if (ntnVar && site.NTN) addNetworkRows('NTN', site.NTN, ntnVar);
 
-      const panel = document.getElementById('match-panel');
-      const thead = document.getElementById('match-thead');
-      const tbody = document.getElementById('match-tbody');
+      matchRows = rows;
 
+      const panel = document.getElementById('match-panel');
       const parts = [];
       if (castVar && site.CASTNET) parts.push(`CASTNET ${site.CASTNET} · ${castVar}`);
       if (ntnVar && site.NTN) parts.push(`NTN ${site.NTN} · ${ntnVar}`);
       document.getElementById('match-header').textContent =
-        `MATCH SEGMENT · ${parts.join('  |  ')}  ·  ACF Lag vs FFT Period  ·  Network then Num_Years high→low`;
+        `MATCH SEGMENT · ${parts.join(' | ')} · ACF Lag vs FFT Period`;
 
-      if (rows.length === 0) {
-        thead.innerHTML = '';
-        tbody.innerHTML = `<tr><td class="match-empty" colspan="9">No matching segments for this site / species in combined ACF–FFT files.<br>Run src/combine_acf_fft.py and confirm files under data/output/ACF_FFT_combined/</td></tr>`;
-        panel.classList.add('visible');
-        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        return;
-      }
-
-      rows.sort((a, b) => {
-        const net = String(a.network).localeCompare(String(b.network));
-        if (net !== 0) return net;
-        return (parseFloat(b.num_years) || 0) - (parseFloat(a.num_years) || 0);
-      });
-
-      thead.innerHTML = `
-        <tr>
-          <th>Network</th>
-          <th>Species</th>
-          <th>Analysis</th>
-          <th>SITE_ID</th>
-          <th>Start_Date</th>
-          <th>End_Date</th>
-          <th>Num_Years</th>
-          <th>ACF Lag (weeks)</th>
-          <th>FFT Period (weeks)</th>
-        </tr>`;
-
-      tbody.innerHTML = rows.map(r => `
-        <tr>
-          <td>${r.network}</td>
-          <td>${r.variable}</td>
-          <td>${r.analysis_type || '—'}</td>
-          <td>${r.site_id}</td>
-          <td>${r.start || '—'}</td>
-          <td>${r.end || '—'}</td>
-          <td>${r.num_years || '—'}</td>
-          <td>${r.acf_lag === '' || r.acf_lag == null ? '—' : r.acf_lag}</td>
-          <td>${r.fft_period === '' || r.fft_period == null ? '—' : r.fft_period}</td>
-        </tr>`).join('');
+      document.getElementById('match-sort-col').value = 'num_years';
+      document.getElementById('match-sort-dir').value = 'desc';
+      applyMatchSort();
 
       panel.classList.add('visible');
       panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1070,6 +1150,7 @@
       selected.CASTNET = { siteId: null, variable: null };
       selected.NTN = { siteId: null, variable: null };
       combineVar = { CASTNET: null, NTN: null };
+      matchRows = [];
       document.getElementById('site-info').innerHTML = '<div class="placeholder">Loading...</div>';
       document.getElementById('trend-panel-castnet').classList.remove('visible');
       document.getElementById('trend-panel-ntn').classList.remove('visible');
