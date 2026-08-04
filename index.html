@@ -613,7 +613,7 @@
         const t = years / maxY[network];
         const fill = colorForRecord(network, t);
         const marker = L.circleMarker([site.lat, site.lon], {
-          radius: 6 + Math.round(t * 4),
+          //radius: 6 + Math.round(t * 4), // remove the radius follow by the number of records 
           fillColor: fill,
           color: '#111',
           weight: 1,
