@@ -30,6 +30,67 @@
     button:hover { background: #333; }
     button.active-var { background: #444; box-shadow: 0 0 6px #fff; }
     button.active-sort { background: #333; box-shadow: 0 0 4px #fff; }
+    button.active-net {
+      background: #333;
+      box-shadow: 0 0 6px #fff;
+    }
+
+    /* Overview map — same width as plot panels, first panel */
+    .overview-map-panel {
+      width: 100%;
+      max-width: 1296px;
+      margin: 0 auto 18px auto;
+      background: #0a0a0a;
+      border: 1px solid #ffffff;
+      padding: 14px;
+    }
+    .overview-map-panel .panel-title {
+      font-size: 14px;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+    .overview-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      font-size: 12px;
+      color: #aaa;
+    }
+    #overview-map {
+      width: 100%;
+      height: 360px;
+      background: #111;
+      border: 1px solid #555;
+    }
+    .overview-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-top: 10px;
+      font-size: 11px;
+      color: #aaa;
+      align-items: center;
+    }
+    .overview-legend .scale {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .overview-legend .swatch {
+      width: 48px;
+      height: 12px;
+      border: 1px solid #444;
+      border-radius: 2px;
+    }
+    .overview-legend .swatch.castnet {
+      background: linear-gradient(to right, #f5b7b1, #c0392b, #7b241c);
+    }
+    .overview-legend .swatch.ntn {
+      background: linear-gradient(to right, #aed6f1, #2980b9, #1a5276);
+    }
+
     .main {
       display: flex; gap: 18px; justify-content: center;
       flex-wrap: wrap; align-items: flex-start;
@@ -212,9 +273,7 @@
       font-size: 12px;
       cursor: pointer;
     }
-    .match-sort-bar select:focus {
-      outline: 1px solid #fff;
-    }
+    .match-sort-bar select:focus { outline: 1px solid #fff; }
     .match-table-wrap {
       max-height: 360px; overflow: auto; border: 1px solid #333;
     }
@@ -242,6 +301,33 @@
     <div class="toolbar">
       <button onclick="loadAllSites()">[ LOAD SITES ]</button>
     </div>
+
+    <!-- 1. OVERVIEW MAP — first panel, same width as plot panels -->
+    <div class="overview-map-panel" id="overview-map-panel">
+      <div class="panel-title">NETWORK OVERVIEW MAP · record length → color intensity</div>
+      <div class="overview-controls">
+        Show network:
+        <button id="ov-net-all" class="active-net" onclick="setOverviewNetwork('ALL')">[ ALL ]</button>
+        <button id="ov-net-castnet" onclick="setOverviewNetwork('CASTNET')">[ CASTNET ]</button>
+        <button id="ov-net-ntn" onclick="setOverviewNetwork('NTN')">[ NTN ]</button>
+        <span id="overview-count" style="margin-left:8px;color:#888;"></span>
+      </div>
+      <div id="overview-map"></div>
+      <div class="overview-legend">
+        <span class="scale">
+          CASTNET (dry)
+          <span class="swatch castnet"></span>
+          short → long record
+        </span>
+        <span class="scale">
+          NTN (wet)
+          <span class="swatch ntn"></span>
+          short → long record
+        </span>
+        <span>Darker dot = more years of record</span>
+      </div>
+    </div>
+
     <div class="main">
       <div class="panel">
         <div class="panel-title">MAP VIEW · ZOOM & EXPLORE</div>
@@ -274,7 +360,6 @@
       </div>
     </div>
 
-    <!-- MATCH SEGMENT — above all plot panels -->
     <div class="match-panel" id="match-panel">
       <div class="match-header" id="match-header">MATCH SEGMENT · ACF Lag vs FFT Period</div>
       <div class="match-sort-bar">
@@ -304,7 +389,6 @@
       </div>
     </div>
 
-    <!-- TREND PANELS -->
     <div class="trend-panels">
       <div class="trend-panel castnet-panel" id="trend-panel-castnet">
         <div class="trend-header" id="trend-header-castnet">CASTNET Time Series</div>
@@ -377,7 +461,18 @@
       attribution: '&copy; OpenStreetMap & CartoDB', maxZoom: 19, minZoom: 3
     }).addTo(map);
 
+    // Overview map (top panel)
+    const overviewMap = L.map('overview-map', {
+      zoomControl: true, scrollWheelZoom: true, doubleClickZoom: true, dragging: true
+    }).setView([39.5, -98.0], 4);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap & CartoDB', maxZoom: 19, minZoom: 3
+    }).addTo(overviewMap);
+
     let allMarkers = [];
+    let overviewMarkers = [];
+    let overviewNetwork = 'ALL'; // ALL | CASTNET | NTN
     let siteRegistry = {};
     let dateSummary = {};
     let coverageData = {};
@@ -427,6 +522,125 @@
         if (upperMap[norm] !== undefined && upperMap[norm] !== '') return upperMap[norm];
       }
       return '';
+    }
+
+    /** Years of record from site_date_summary (first → last). */
+    function recordYears(network, siteId) {
+      if (!siteId) return 0;
+      const range = ((dateSummary[network] || {})[siteId]) || {};
+      const a = range.first;
+      const b = range.last;
+      if (!a || !b) return 0;
+      const t0 = Date.parse(a);
+      const t1 = Date.parse(b);
+      if (isNaN(t0) || isNaN(t1) || t1 < t0) return 0;
+      return (t1 - t0) / (365.25 * 24 * 3600 * 1000);
+    }
+
+    /**
+     * t in [0,1]: short → long
+     * CASTNET = red family, NTN = blue family; darker = more record
+     */
+    function colorForRecord(network, t) {
+      t = Math.max(0, Math.min(1, t));
+      if (network === 'CASTNET') {
+        // light pink-red → deep red
+        const r = Math.round(245 - t * 120);
+        const g = Math.round(180 - t * 145);
+        const b = Math.round(170 - t * 140);
+        return `rgb(${r},${g},${b})`;
+      }
+      // NTN blue
+      const r = Math.round(170 - t * 130);
+      const g = Math.round(210 - t * 100);
+      const b = Math.round(240 - t * 60);
+      return `rgb(${r},${g},${b})`;
+    }
+
+    function setOverviewNetwork(mode) {
+      overviewNetwork = mode;
+      document.getElementById('ov-net-all').classList.toggle('active-net', mode === 'ALL');
+      document.getElementById('ov-net-castnet').classList.toggle('active-net', mode === 'CASTNET');
+      document.getElementById('ov-net-ntn').classList.toggle('active-net', mode === 'NTN');
+      buildOverviewMap();
+    }
+
+    function buildOverviewMap() {
+      overviewMarkers.forEach(m => overviewMap.removeLayer(m));
+      overviewMarkers = [];
+
+      // Collect scores per network for normalization
+      const scores = { CASTNET: [], NTN: [] };
+      Object.values(siteRegistry).forEach(site => {
+        if (site.CASTNET) scores.CASTNET.push(recordYears('CASTNET', site.CASTNET));
+        if (site.NTN) scores.NTN.push(recordYears('NTN', site.NTN));
+      });
+      const maxY = {
+        CASTNET: Math.max(1, ...scores.CASTNET, 0),
+        NTN: Math.max(1, ...scores.NTN, 0)
+      };
+
+      let shown = 0;
+      Object.keys(siteRegistry).forEach(key => {
+        const site = siteRegistry[key];
+        const showCast = (overviewNetwork === 'ALL' || overviewNetwork === 'CASTNET') && site.CASTNET;
+        const showNtn  = (overviewNetwork === 'ALL' || overviewNetwork === 'NTN') && site.NTN;
+
+        // Prefer showing one marker per site; if both networks and ALL, pick longer record network for color
+        // Or plot both with slight offset — here: one marker, color by dominant / filter
+        if (overviewNetwork === 'CASTNET' && !site.CASTNET) return;
+        if (overviewNetwork === 'NTN' && !site.NTN) return;
+        if (overviewNetwork === 'ALL' && !site.CASTNET && !site.NTN) return;
+
+        let network, siteId, years;
+        if (overviewNetwork === 'CASTNET') {
+          network = 'CASTNET'; siteId = site.CASTNET;
+          years = recordYears('CASTNET', siteId);
+        } else if (overviewNetwork === 'NTN') {
+          network = 'NTN'; siteId = site.NTN;
+          years = recordYears('NTN', siteId);
+        } else {
+          // ALL: if both exist, use network with longer record for color; still one dot
+          const yC = site.CASTNET ? recordYears('CASTNET', site.CASTNET) : -1;
+          const yN = site.NTN ? recordYears('NTN', site.NTN) : -1;
+          if (yC >= yN) {
+            network = 'CASTNET'; siteId = site.CASTNET; years = Math.max(0, yC);
+          } else {
+            network = 'NTN'; siteId = site.NTN; years = Math.max(0, yN);
+          }
+        }
+
+        const t = years / maxY[network];
+        const fill = colorForRecord(network, t);
+        const marker = L.circleMarker([site.lat, site.lon], {
+          radius: 6 + Math.round(t * 4),
+          fillColor: fill,
+          color: '#111',
+          weight: 1,
+          opacity: 1,
+          fillOpacity: 0.85
+        }).addTo(overviewMap);
+
+        const label = network === 'CASTNET' ? 'CASTNET (dry)' : 'NTN (wet)';
+        marker.bindPopup(
+          `<b>${label}</b><br>` +
+          `SITE_ID: ${siteId}<br>` +
+          `Record ≈ ${years.toFixed(1)} years<br>` +
+          `${site.lat.toFixed(4)}, ${site.lon.toFixed(4)}`
+        );
+        marker.on('click', () => selectSite(key));
+        overviewMarkers.push(marker);
+        shown++;
+      });
+
+      document.getElementById('overview-count').textContent =
+        `${shown} site(s) · filter: ${overviewNetwork}`;
+
+      if (overviewMarkers.length) {
+        overviewMap.fitBounds(L.featureGroup(overviewMarkers).getBounds().pad(0.12));
+      }
+      // Leaflet needs invalidate after layout
+      setTimeout(() => overviewMap.invalidateSize(), 100);
     }
 
     async function loadCoordinator(network, path) {
@@ -552,6 +766,7 @@
       if (allMarkers.length) {
         map.fitBounds(L.featureGroup(allMarkers).getBounds().pad(0.12));
       }
+      buildOverviewMap();
     }
 
     function selectSite(key) {
