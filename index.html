@@ -35,7 +35,6 @@
       box-shadow: 0 0 6px #fff;
     }
 
-    /* Overview map — same width as plot panels, first panel */
     .overview-map-panel {
       width: 100%;
       max-width: 1296px;
@@ -302,7 +301,6 @@
       <button onclick="loadAllSites()">[ LOAD SITES ]</button>
     </div>
 
-    <!-- 1. OVERVIEW MAP — first panel, same width as plot panels -->
     <div class="overview-map-panel" id="overview-map-panel">
       <div class="panel-title">NETWORK OVERVIEW MAP · record length → color intensity</div>
       <div class="overview-controls">
@@ -324,7 +322,7 @@
           <span class="swatch ntn"></span>
           short → long record
         </span>
-        <span>Darker dot = more years of record</span>
+        <span>Darker dot = more years of record (same size)</span>
       </div>
     </div>
 
@@ -461,7 +459,6 @@
       attribution: '&copy; OpenStreetMap & CartoDB', maxZoom: 19, minZoom: 3
     }).addTo(map);
 
-    // Overview map (top panel)
     const overviewMap = L.map('overview-map', {
       zoomControl: true, scrollWheelZoom: true, doubleClickZoom: true, dragging: true
     }).setView([39.5, -98.0], 4);
@@ -472,7 +469,7 @@
 
     let allMarkers = [];
     let overviewMarkers = [];
-    let overviewNetwork = 'ALL'; // ALL | CASTNET | NTN
+    let overviewNetwork = 'ALL';
     let siteRegistry = {};
     let dateSummary = {};
     let coverageData = {};
@@ -524,7 +521,20 @@
       return '';
     }
 
-    /** Years of record from site_date_summary (first → last). */
+    /** Week index 0..n within calendar year → [start, end] YYYY-MM-DD */
+    function weekInterval(year, weekIndex) {
+      const y = parseInt(year, 10);
+      const start = new Date(Date.UTC(y, 0, 1 + weekIndex * 7));
+      const end = new Date(start);
+      end.setUTCDate(end.getUTCDate() + 6);
+      const fmt = (d) => {
+        const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const dd = String(d.getUTCDate()).padStart(2, '0');
+        return `${d.getUTCFullYear()}-${mm}-${dd}`;
+      };
+      return { start: fmt(start), end: fmt(end) };
+    }
+
     function recordYears(network, siteId) {
       if (!siteId) return 0;
       const range = ((dateSummary[network] || {})[siteId]) || {};
@@ -537,20 +547,14 @@
       return (t1 - t0) / (365.25 * 24 * 3600 * 1000);
     }
 
-    /**
-     * t in [0,1]: short → long
-     * CASTNET = red family, NTN = blue family; darker = more record
-     */
     function colorForRecord(network, t) {
       t = Math.max(0, Math.min(1, t));
       if (network === 'CASTNET') {
-        // light pink-red → deep red
         const r = Math.round(245 - t * 120);
         const g = Math.round(180 - t * 145);
         const b = Math.round(170 - t * 140);
         return `rgb(${r},${g},${b})`;
       }
-      // NTN blue
       const r = Math.round(170 - t * 130);
       const g = Math.round(210 - t * 100);
       const b = Math.round(240 - t * 60);
@@ -569,7 +573,6 @@
       overviewMarkers.forEach(m => overviewMap.removeLayer(m));
       overviewMarkers = [];
 
-      // Collect scores per network for normalization
       const scores = { CASTNET: [], NTN: [] };
       Object.values(siteRegistry).forEach(site => {
         if (site.CASTNET) scores.CASTNET.push(recordYears('CASTNET', site.CASTNET));
@@ -583,11 +586,6 @@
       let shown = 0;
       Object.keys(siteRegistry).forEach(key => {
         const site = siteRegistry[key];
-        const showCast = (overviewNetwork === 'ALL' || overviewNetwork === 'CASTNET') && site.CASTNET;
-        const showNtn  = (overviewNetwork === 'ALL' || overviewNetwork === 'NTN') && site.NTN;
-
-        // Prefer showing one marker per site; if both networks and ALL, pick longer record network for color
-        // Or plot both with slight offset — here: one marker, color by dominant / filter
         if (overviewNetwork === 'CASTNET' && !site.CASTNET) return;
         if (overviewNetwork === 'NTN' && !site.NTN) return;
         if (overviewNetwork === 'ALL' && !site.CASTNET && !site.NTN) return;
@@ -600,7 +598,6 @@
           network = 'NTN'; siteId = site.NTN;
           years = recordYears('NTN', siteId);
         } else {
-          // ALL: if both exist, use network with longer record for color; still one dot
           const yC = site.CASTNET ? recordYears('CASTNET', site.CASTNET) : -1;
           const yN = site.NTN ? recordYears('NTN', site.NTN) : -1;
           if (yC >= yN) {
@@ -613,7 +610,7 @@
         const t = years / maxY[network];
         const fill = colorForRecord(network, t);
         const marker = L.circleMarker([site.lat, site.lon], {
-          //radius: 6 + Math.round(t * 4), // remove the radius follow by the number of records 
+          radius: 7,
           fillColor: fill,
           color: '#111',
           weight: 1,
@@ -639,7 +636,6 @@
       if (overviewMarkers.length) {
         overviewMap.fitBounds(L.featureGroup(overviewMarkers).getBounds().pad(0.12));
       }
-      // Leaflet needs invalidate after layout
       setTimeout(() => overviewMap.invalidateSize(), 100);
     }
 
@@ -812,14 +808,12 @@
       }
       const hasClass = (network === 'CASTNET') ? 'castnet' : 'ntn';
 
-      // Flatten all weeks in year order: '0' / '1'
       const flat = [];
       years.forEach(year => {
         const binary = yearData[year] || '';
         for (const ch of binary) flat.push(ch === '1' ? '1' : '0');
       });
 
-      // Span = first record → last record (ignore leading/trailing empty outside that range)
       let first = -1, last = -1;
       for (let i = 0; i < flat.length; i++) {
         if (flat[i] === '1') {
@@ -852,9 +846,14 @@
       years.forEach(year => {
         const binary = yearData[year] || '';
         html += `<div class="year-row"><div class="year-label">${year}</div><div class="week-boxes">`;
-        for (const ch of binary) {
+        for (let i = 0; i < binary.length; i++) {
+          const ch = binary[i];
           const cls = (ch === '1') ? hasClass : 'missing';
-          html += `<div class="week-box ${cls}" title="${ch === '1' ? 'Has data' : 'Missing'}"></div>`;
+          const { start, end } = weekInterval(year, i);
+          const tip = (ch === '1')
+            ? `Has data: ${start} – ${end}`
+            : `Missing: ${start} – ${end}`;
+          html += `<div class="week-box ${cls}" title="${tip}"></div>`;
         }
         html += `</div></div>`;
       });
