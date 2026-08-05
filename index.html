@@ -811,7 +811,44 @@
         return `<div class="coverage-empty">No coverage data for ${variable}</div>`;
       }
       const hasClass = (network === 'CASTNET') ? 'castnet' : 'ntn';
-      let html = `<div class="plot-title">${variable}</div>`;
+
+      // Flatten all weeks in year order: '0' / '1'
+      const flat = [];
+      years.forEach(year => {
+        const binary = yearData[year] || '';
+        for (const ch of binary) flat.push(ch === '1' ? '1' : '0');
+      });
+
+      // Span = first record → last record (ignore leading/trailing empty outside that range)
+      let first = -1, last = -1;
+      for (let i = 0; i < flat.length; i++) {
+        if (flat[i] === '1') {
+          if (first < 0) first = i;
+          last = i;
+        }
+      }
+
+      let nRecord = 0;
+      let nMissing = 0;
+      if (first >= 0) {
+        for (let i = first; i <= last; i++) {
+          if (flat[i] === '1') nRecord++;
+          else nMissing++;
+        }
+      }
+      const nSpan = nRecord + nMissing;
+      const pct = nSpan > 0 ? ((nRecord / nSpan) * 100).toFixed(1) : '0.0';
+
+      let html = `
+        <div class="plot-title">${variable}</div>
+        <div style="font-size:11px;color:#aaa;margin-bottom:6px;">
+          Record: <b style="color:#fff">${nRecord}</b>
+          · No record: <b style="color:#fff">${nMissing}</b>
+          · Span weeks: ${nSpan}
+          · Coverage: ${pct}%
+          <span style="color:#666">(first→last record only)</span>
+        </div>`;
+
       years.forEach(year => {
         const binary = yearData[year] || '';
         html += `<div class="year-row"><div class="year-label">${year}</div><div class="week-boxes">`;
