@@ -141,15 +141,8 @@
     .network-table tr.selected td {
       background: #333; box-shadow: inset 0 0 0 1px #fff;
     }
-    .site-id-chip {
-      display: inline-block;
-      margin: 1px 2px;
-      padding: 1px 5px;
-      border: 1px solid #555;
-      border-radius: 3px;
-      font-size: 11px;
-      color: #ddd;
-    }
+    .site-id-list { line-height: 1.35; }
+    .site-id-list span { display: block; }
     .info-box {
       border: 1px solid #444; padding: 12px;
       margin-bottom: 12px; background: #111;
@@ -209,21 +202,6 @@
     }
     .combine-checks input[type="checkbox"] { accent-color: #fff; cursor: pointer; }
     .combine-btns { margin-top: 12px; text-align: center; }
-    .site-pick {
-      margin: 6px 0 8px 0;
-      font-size: 12px;
-      color: #aaa;
-    }
-    .site-pick select {
-      background: #111;
-      color: #fff;
-      border: 1px solid #666;
-      padding: 3px 8px;
-      font-family: inherit;
-      font-size: 12px;
-      margin-left: 6px;
-      cursor: pointer;
-    }
     .trend-panels {
       width: 100%; max-width: 1296px; margin: 18px auto 0 auto;
       display: flex; flex-direction: column; gap: 16px;
@@ -503,7 +481,7 @@
     let selectedKey = null;
     let currentSort = 'default';
 
-    // Active SITE_ID for trends / combine (one active per network)
+    // Active selection still one siteId + variable per network
     let selected = {
       CASTNET: { siteId: null, variable: null },
       NTN:     { siteId: null, variable: null }
@@ -547,17 +525,33 @@
       return '';
     }
 
-    /** Normalize to array of site IDs (never overwrite). */
-    function asSiteList(v) {
+    /** Always return array of site IDs for a network at this location */
+    function siteIds(site, network) {
+      if (!site) return [];
+      const v = site[network];
       if (!v) return [];
-      if (Array.isArray(v)) return v.filter(Boolean);
-      return [v];
+      return Array.isArray(v) ? v.slice() : [v];
     }
 
-    function siteListLabel(list) {
-      const arr = asSiteList(list);
-      if (!arr.length) return '—';
-      return arr.map(id => `<span class="site-id-chip">${id}</span>`).join(' ');
+    function formatSiteIdsHTML(ids) {
+      if (!ids || ids.length === 0) return '—';
+      return `<div class="site-id-list">${ids.map(id => `<span>${id}</span>`).join('')}</div>`;
+    }
+
+    function formatSiteIdsText(ids) {
+      if (!ids || ids.length === 0) return '—';
+      return ids.join(', ');
+    }
+
+    /** Longest record years among all site IDs for this network at location */
+    function maxRecordYears(network, ids) {
+      let best = 0;
+      let bestId = null;
+      (ids || []).forEach(id => {
+        const y = recordYears(network, id);
+        if (y > best) { best = y; bestId = id; }
+      });
+      return { years: best, siteId: bestId };
     }
 
     function weekInterval(year, weekIndex) {
@@ -583,26 +577,6 @@
       const t1 = Date.parse(b);
       if (isNaN(t0) || isNaN(t1) || t1 < t0) return 0;
       return (t1 - t0) / (365.25 * 24 * 3600 * 1000);
-    }
-
-    /** Max record years across all SITE_IDs for this network at a location. */
-    function maxRecordYears(network, siteIds) {
-      let maxY = 0;
-      asSiteList(siteIds).forEach(id => {
-        const y = recordYears(network, id);
-        if (y > maxY) maxY = y;
-      });
-      return maxY;
-    }
-
-    /** SITE_ID with longest record (for overview color / popup). */
-    function longestSiteId(network, siteIds) {
-      let best = null, bestY = -1;
-      asSiteList(siteIds).forEach(id => {
-        const y = recordYears(network, id);
-        if (y > bestY) { bestY = y; best = id; }
-      });
-      return best;
     }
 
     function colorForRecord(network, t) {
@@ -633,10 +607,8 @@
 
       const scores = { CASTNET: [], NTN: [] };
       Object.values(siteRegistry).forEach(site => {
-        if (asSiteList(site.CASTNET).length)
-          scores.CASTNET.push(maxRecordYears('CASTNET', site.CASTNET));
-        if (asSiteList(site.NTN).length)
-          scores.NTN.push(maxRecordYears('NTN', site.NTN));
+        siteIds(site, 'CASTNET').forEach(id => scores.CASTNET.push(recordYears('CASTNET', id)));
+        siteIds(site, 'NTN').forEach(id => scores.NTN.push(recordYears('NTN', id)));
       });
       const maxY = {
         CASTNET: Math.max(1, ...scores.CASTNET, 0),
@@ -646,36 +618,29 @@
       let shown = 0;
       Object.keys(siteRegistry).forEach(key => {
         const site = siteRegistry[key];
-        const castList = asSiteList(site.CASTNET);
-        const ntnList = asSiteList(site.NTN);
-        if (overviewNetwork === 'CASTNET' && !castList.length) return;
-        if (overviewNetwork === 'NTN' && !ntnList.length) return;
-        if (overviewNetwork === 'ALL' && !castList.length && !ntnList.length) return;
+        const castIds = siteIds(site, 'CASTNET');
+        const ntnIds = siteIds(site, 'NTN');
 
-        let network, siteId, years, allIds;
+        if (overviewNetwork === 'CASTNET' && castIds.length === 0) return;
+        if (overviewNetwork === 'NTN' && ntnIds.length === 0) return;
+        if (overviewNetwork === 'ALL' && castIds.length === 0 && ntnIds.length === 0) return;
+
+        let network, ids, years, primaryId;
         if (overviewNetwork === 'CASTNET') {
           network = 'CASTNET';
-          allIds = castList;
-          siteId = longestSiteId('CASTNET', castList);
-          years = maxRecordYears('CASTNET', castList);
+          ids = castIds;
+          ({ years, siteId: primaryId } = maxRecordYears('CASTNET', castIds));
         } else if (overviewNetwork === 'NTN') {
           network = 'NTN';
-          allIds = ntnList;
-          siteId = longestSiteId('NTN', ntnList);
-          years = maxRecordYears('NTN', ntnList);
+          ids = ntnIds;
+          ({ years, siteId: primaryId } = maxRecordYears('NTN', ntnIds));
         } else {
-          const yC = castList.length ? maxRecordYears('CASTNET', castList) : -1;
-          const yN = ntnList.length ? maxRecordYears('NTN', ntnList) : -1;
-          if (yC >= yN) {
-            network = 'CASTNET';
-            allIds = castList;
-            siteId = longestSiteId('CASTNET', castList);
-            years = Math.max(0, yC);
+          const c = maxRecordYears('CASTNET', castIds);
+          const n = maxRecordYears('NTN', ntnIds);
+          if (c.years >= n.years && castIds.length) {
+            network = 'CASTNET'; ids = castIds; years = c.years; primaryId = c.siteId;
           } else {
-            network = 'NTN';
-            allIds = ntnList;
-            siteId = longestSiteId('NTN', ntnList);
-            years = Math.max(0, yN);
+            network = 'NTN'; ids = ntnIds; years = n.years; primaryId = n.siteId;
           }
         }
 
@@ -691,13 +656,11 @@
         }).addTo(overviewMap);
 
         const label = network === 'CASTNET' ? 'CASTNET (dry)' : 'NTN (wet)';
-        const idLine = allIds.length > 1
-          ? `SITE_IDs: ${allIds.join(', ')}`
-          : `SITE_ID: ${siteId || allIds[0] || '—'}`;
         marker.bindPopup(
           `<b>${label}</b><br>` +
-          `${idLine}<br>` +
-          `Record ≈ ${years.toFixed(1)} years<br>` +
+          `SITE_ID(s): ${formatSiteIdsText(ids)}<br>` +
+          `Longest record ≈ ${years.toFixed(1)} years` +
+          (primaryId ? ` (${primaryId})` : '') + `<br>` +
           `${site.lat.toFixed(4)}, ${site.lon.toFixed(4)}`
         );
         marker.on('click', () => selectSite(key));
@@ -714,6 +677,10 @@
       setTimeout(() => overviewMap.invalidateSize(), 100);
     }
 
+    /**
+     * Load coordinator: same lat/lon keeps ALL site IDs (no overwrite).
+     * siteRegistry[key][network] is always an array of unique SITE_IDs.
+     */
     async function loadCoordinator(network, path) {
       try {
         const res = await fetch(path);
@@ -723,28 +690,26 @@
         rows.forEach(row => {
           const lat = parseFloat(row.LATITUDE || row.LAT || row.Y);
           const lon = parseFloat(row.LONGITUDE || row.LON || row.LONG || row.X);
-          const siteId = row.SITE_ID || row.SITEID || row.SITE || row.ID;
+          const siteId = (row.SITE_ID || row.SITEID || row.SITE || row.ID || '').trim();
           if (isNaN(lat) || isNaN(lon) || !siteId) return;
           const key = makeKey(lat, lon);
           if (!siteRegistry[key]) {
-            // CASTNET / NTN are arrays — multiple SITE_IDs allowed
             siteRegistry[key] = {
-              lat, lon,
+              lat,
+              lon,
               CASTNET: [],
               NTN: [],
               marker: null
             };
           }
-          const list = siteRegistry[key][network];
-          if (!list.includes(siteId)) {
-            list.push(siteId);
+          if (!Array.isArray(siteRegistry[key][network])) {
+            siteRegistry[key][network] = [];
+          }
+          // Accept multiple site IDs at the same coordinate
+          if (!siteRegistry[key][network].includes(siteId)) {
+            siteRegistry[key][network].push(siteId);
             count++;
           }
-        });
-        // Keep alphabetical order for stable UI
-        Object.values(siteRegistry).forEach(s => {
-          s.CASTNET.sort((a, b) => a.localeCompare(b));
-          s.NTN.sort((a, b) => a.localeCompare(b));
         });
         return count;
       } catch (e) { console.error(e); return 0; }
@@ -812,9 +777,8 @@
       buildMarkersAndTable();
     }
 
-    function firstSiteId(list) {
-      const arr = asSiteList(list);
-      return arr.length ? arr[0] : '';
+    function firstId(ids) {
+      return (ids && ids.length) ? ids[0] : 'zzz';
     }
 
     function buildMarkersAndTable() {
@@ -825,29 +789,31 @@
       let keys = Object.keys(siteRegistry);
       if (currentSort === 'CASTNET') {
         keys.sort((a, b) =>
-          firstSiteId(siteRegistry[a].CASTNET).localeCompare(firstSiteId(siteRegistry[b].CASTNET) || 'zzz')
+          firstId(siteIds(siteRegistry[a], 'CASTNET'))
+            .localeCompare(firstId(siteIds(siteRegistry[b], 'CASTNET')))
         );
       } else if (currentSort === 'NTN') {
         keys.sort((a, b) =>
-          firstSiteId(siteRegistry[a].NTN).localeCompare(firstSiteId(siteRegistry[b].NTN) || 'zzz')
+          firstId(siteIds(siteRegistry[a], 'NTN'))
+            .localeCompare(firstId(siteIds(siteRegistry[b], 'NTN')))
         );
       } else {
         keys.sort((a, b) => siteRegistry[b].lat - siteRegistry[a].lat);
       }
       keys.forEach(key => {
         const site = siteRegistry[key];
-        const castList = asSiteList(site.CASTNET);
-        const ntnList = asSiteList(site.NTN);
-        const color = (castList.length && ntnList.length) ? '#fff'
-                    : castList.length ? '#fff' : '#aaa';
+        const castIds = siteIds(site, 'CASTNET');
+        const ntnIds = siteIds(site, 'NTN');
+        const color = (castIds.length && ntnIds.length) ? '#fff'
+                    : castIds.length ? '#fff' : '#aaa';
         const marker = L.circleMarker([site.lat, site.lon], {
           radius: 7, fillColor: color, color: '#000', weight: 1, opacity: 1, fillOpacity: 0.9
         }).addTo(map);
         site.marker = marker;
         allMarkers.push(marker);
         let popup = '';
-        if (castList.length) popup += `<b>CASTNET:</b> ${castList.join(', ')}<br>`;
-        if (ntnList.length) popup += `<b>NTN:</b> ${ntnList.join(', ')}`;
+        if (castIds.length) popup += `<b>CASTNET:</b> ${formatSiteIdsText(castIds)}<br>`;
+        if (ntnIds.length) popup += `<b>NTN:</b> ${formatSiteIdsText(ntnIds)}`;
         marker.bindPopup(popup || 'No site ID');
         marker.on('click', () => selectSite(key));
         const tr = document.createElement('tr');
@@ -855,8 +821,8 @@
         tr.innerHTML = `
           <td>${site.lat.toFixed(5)}</td>
           <td>${site.lon.toFixed(5)}</td>
-          <td>${siteListLabel(castList)}</td>
-          <td>${siteListLabel(ntnList)}</td>`;
+          <td>${formatSiteIdsHTML(castIds)}</td>
+          <td>${formatSiteIdsHTML(ntnIds)}</td>`;
         tr.onclick = () => selectSite(key);
         tbody.appendChild(tr);
       });
@@ -875,10 +841,8 @@
       selectedKey = key;
       const site = siteRegistry[key];
       if (!site) return;
-      const castList = asSiteList(site.CASTNET);
-      const ntnList = asSiteList(site.NTN);
-      selected.CASTNET = { siteId: castList[0] || null, variable: null };
-      selected.NTN     = { siteId: ntnList[0] || null, variable: null };
+      selected.CASTNET = { siteId: null, variable: null };
+      selected.NTN     = { siteId: null, variable: null };
       combineVar = { CASTNET: null, NTN: null };
       if (site.marker) {
         site.marker.setStyle({
@@ -903,37 +867,11 @@
       renderSiteInfo(site);
     }
 
-    function onActiveSiteChange(network, siteId) {
-      selected[network].siteId = siteId || null;
-      selected[network].variable = null;
-      const targetId = (network === 'CASTNET') ? 'coverage-castnet' : 'coverage-ntn';
-      const target = document.getElementById(targetId);
-      if (target) {
-        target.innerHTML = '<div class="coverage-empty">Click a variable to show weekly coverage</div>';
-      }
-      const btnBox = document.getElementById(
-        network === 'CASTNET' ? 'vars-castnet' : 'vars-ntn'
-      );
-      if (btnBox) {
-        btnBox.querySelectorAll('button').forEach(b => b.classList.remove('active-var'));
-      }
-      // Refresh first/last day line for active site
-      const rangeEl = document.getElementById(
-        network === 'CASTNET' ? 'range-castnet' : 'range-ntn'
-      );
-      if (rangeEl && siteId) {
-        const range = ((dateSummary[network] || {})[siteId]) || {};
-        rangeEl.innerHTML =
-          `Active SITE_ID: <b style="color:#fff">${siteId}</b><br>` +
-          `First day: ${range.first || '—'} · Last day: ${range.last || '—'}`;
-      }
-    }
-
     function buildCoverageHTML(network, siteId, variable) {
       const yearData = (((coverageData[network] || {})[siteId] || {})[variable]) || {};
       const years = Object.keys(yearData).sort();
       if (years.length === 0) {
-        return `<div class="coverage-empty">No coverage data for ${variable} @ ${siteId}</div>`;
+        return `<div class="coverage-empty">No coverage data for ${variable}</div>`;
       }
       const hasClass = (network === 'CASTNET') ? 'castnet' : 'ntn';
 
@@ -990,100 +928,76 @@
     }
 
     function renderSiteInfo(site) {
-      const castList = asSiteList(site.CASTNET);
-      const ntnList = asSiteList(site.NTN);
-      if (castList.length && !selected.CASTNET.siteId) selected.CASTNET.siteId = castList[0];
-      if (ntnList.length && !selected.NTN.siteId) selected.NTN.siteId = ntnList[0];
+      const castIds = siteIds(site, 'CASTNET');
+      const ntnIds = siteIds(site, 'NTN');
 
       let html = `
         <div class="info-box">
           <div class="title">LOCATION</div>
           <div>Latitude: ${site.lat.toFixed(5)}</div>
           <div>Longitude: ${site.lon.toFixed(5)}</div>
+          <div style="margin-top:6px;color:#888;font-size:12px;">
+            CASTNET site IDs: ${formatSiteIdsText(castIds)} ·
+            NTN site IDs: ${formatSiteIdsText(ntnIds)}
+          </div>
         </div>`;
 
-      if (castList.length) {
-        const activeId = selected.CASTNET.siteId || castList[0];
-        const range = (dateSummary.CASTNET || {})[activeId] || {};
-        const pick = castList.length > 1
-          ? `<div class="site-pick">SITE_ID
-              <select id="pick-castnet" onchange="onActiveSiteChange('CASTNET', this.value)">
-                ${castList.map(id =>
-                  `<option value="${id}" ${id === activeId ? 'selected' : ''}>${id}</option>`
-                ).join('')}
-              </select>
-              <span style="color:#666;margin-left:6px;">(${castList.length} at this point)</span>
-            </div>`
-          : '';
+      // One info block per CASTNET site ID
+      castIds.forEach((sid, idx) => {
+        const range = (dateSummary.CASTNET || {})[sid] || {};
+        const safeId = sid.replace(/[^A-Za-z0-9_-]/g, '_');
         html += `
           <div class="info-box">
-            <div class="title">CASTNET — dry · ${castList.join(', ')}</div>
-            ${pick}
-            <div id="range-castnet">
-              Active SITE_ID: <b style="color:#fff">${activeId}</b><br>
-              First day: ${range.first || '—'} · Last day: ${range.last || '—'}
-            </div>
-            <div class="var-buttons" id="vars-castnet"></div>
+            <div class="title">CASTNET — ${sid} (dry)${castIds.length > 1 ? ` · ${idx + 1}/${castIds.length}` : ''}</div>
+            <div>First day: ${range.first || '—'}</div>
+            <div>Last day: ${range.last || '—'}</div>
+            <div class="var-buttons" id="vars-castnet-${safeId}"></div>
             <div class="coverage-legend">
               <span class="legend-item"><span class="legend-dot castnet"></span> dry</span>
               <span class="legend-item"><span class="legend-dot missing"></span> no record</span>
             </div>
-            <div class="coverage-block" id="coverage-castnet">
+            <div class="coverage-block" id="coverage-castnet-${safeId}">
               <div class="coverage-empty">Click a variable to show weekly coverage</div>
             </div>
             <div class="trend-btn-wrap">
-              <button onclick="showTrendPlot('CASTNET')">[ STATISTICAL-TRENDING CASTNET ]</button>
+              <button onclick="showTrendPlot('CASTNET', '${sid}')">[ STATISTICAL-TRENDING CASTNET · ${sid} ]</button>
             </div>
           </div>`;
-      }
+      });
 
-      if (ntnList.length) {
-        const activeId = selected.NTN.siteId || ntnList[0];
-        const range = (dateSummary.NTN || {})[activeId] || {};
-        const pick = ntnList.length > 1
-          ? `<div class="site-pick">SITE_ID
-              <select id="pick-ntn" onchange="onActiveSiteChange('NTN', this.value)">
-                ${ntnList.map(id =>
-                  `<option value="${id}" ${id === activeId ? 'selected' : ''}>${id}</option>`
-                ).join('')}
-              </select>
-              <span style="color:#666;margin-left:6px;">(${ntnList.length} at this point)</span>
-            </div>`
-          : '';
+      // One info block per NTN site ID
+      ntnIds.forEach((sid, idx) => {
+        const range = (dateSummary.NTN || {})[sid] || {};
+        const safeId = sid.replace(/[^A-Za-z0-9_-]/g, '_');
         html += `
           <div class="info-box">
-            <div class="title">NTN (NADP) — wet · ${ntnList.join(', ')}</div>
-            ${pick}
-            <div id="range-ntn">
-              Active SITE_ID: <b style="color:#fff">${activeId}</b><br>
-              First day: ${range.first || '—'} · Last day: ${range.last || '—'}
-            </div>
-            <div class="var-buttons" id="vars-ntn"></div>
+            <div class="title">NTN (NADP) — ${sid} (wet)${ntnIds.length > 1 ? ` · ${idx + 1}/${ntnIds.length}` : ''}</div>
+            <div>First day: ${range.first || '—'}</div>
+            <div>Last day: ${range.last || '—'}</div>
+            <div class="var-buttons" id="vars-ntn-${safeId}"></div>
             <div class="coverage-legend">
               <span class="legend-item"><span class="legend-dot ntn"></span> wet</span>
               <span class="legend-item"><span class="legend-dot missing"></span> no record</span>
             </div>
-            <div class="coverage-block" id="coverage-ntn">
+            <div class="coverage-block" id="coverage-ntn-${safeId}">
               <div class="coverage-empty">Click a variable to show weekly coverage</div>
             </div>
             <div class="trend-btn-wrap">
-              <button onclick="showTrendPlot('NTN')">[ STATISTICAL-TRENDING NTN ]</button>
+              <button onclick="showTrendPlot('NTN', '${sid}')">[ STATISTICAL-TRENDING NTN · ${sid} ]</button>
             </div>
           </div>`;
-      }
+      });
 
-      if (castList.length || ntnList.length) {
-        html += `<div class="combine-box"><div class="title">COMBINE PARAMETERS (one variable per network · uses active SITE_ID)</div>`;
-        if (castList.length) {
-          const activeId = selected.CASTNET.siteId || castList[0];
-          html += `<div class="combine-row"><span class="net-label">CASTNET (dry) — active: ${activeId}</span>
+      if (castIds.length || ntnIds.length) {
+        html += `<div class="combine-box"><div class="title">COMBINE PARAMETERS (one variable per network · uses last selected site ID per network)</div>`;
+        if (castIds.length) {
+          html += `<div class="combine-row"><span class="net-label">CASTNET (dry) — available: ${formatSiteIdsText(castIds)}</span>
             <div class="combine-checks">${VARIABLES.map(v =>
               `<label><input type="checkbox" name="combine-castnet" value="${v}" onchange="onCombineCheck('CASTNET', this)"> ${v}</label>`
             ).join('')}</div></div>`;
         }
-        if (ntnList.length) {
-          const activeId = selected.NTN.siteId || ntnList[0];
-          html += `<div class="combine-row"><span class="net-label">NTN (wet) — active: ${activeId}</span>
+        if (ntnIds.length) {
+          html += `<div class="combine-row"><span class="net-label">NTN (wet) — available: ${formatSiteIdsText(ntnIds)}</span>
             <div class="combine-checks">${VARIABLES.map(v =>
               `<label><input type="checkbox" name="combine-ntn" value="${v}" onchange="onCombineCheck('NTN', this)"> ${v}</label>`
             ).join('')}</div></div>`;
@@ -1094,31 +1008,33 @@
           <button onclick="showMatchSegment()">[ MATCH SEGMENT ]</button>
         </div></div>`;
       }
+
       document.getElementById('site-info').innerHTML = html;
-      if (castList.length) createVarButtons('CASTNET', selected.CASTNET.siteId || castList[0], 'vars-castnet');
-      if (ntnList.length) createVarButtons('NTN', selected.NTN.siteId || ntnList[0], 'vars-ntn');
+
+      castIds.forEach(sid => {
+        const safeId = sid.replace(/[^A-Za-z0-9_-]/g, '_');
+        createVarButtons('CASTNET', sid, `vars-castnet-${safeId}`, `coverage-castnet-${safeId}`);
+      });
+      ntnIds.forEach(sid => {
+        const safeId = sid.replace(/[^A-Za-z0-9_-]/g, '_');
+        createVarButtons('NTN', sid, `vars-ntn-${safeId}`, `coverage-ntn-${safeId}`);
+      });
     }
 
-    function createVarButtons(network, siteId, containerId) {
+    function createVarButtons(network, siteId, containerId, coverageId) {
       const container = document.getElementById(containerId);
       if (!container) return;
-      container.innerHTML = '';
       VARIABLES.forEach(v => {
         const btn = document.createElement('button');
         btn.textContent = v;
         btn.onclick = () => {
-          // Use currently selected SITE_ID from dropdown if present
-          const pick = document.getElementById(
-            network === 'CASTNET' ? 'pick-castnet' : 'pick-ntn'
-          );
-          const activeId = pick ? pick.value : (selected[network].siteId || siteId);
+          // Clear active state only within this site's button group
           container.querySelectorAll('button').forEach(b => b.classList.remove('active-var'));
           btn.classList.add('active-var');
-          selected[network].siteId = activeId;
+          selected[network].siteId = siteId;
           selected[network].variable = v;
-          const targetId = (network === 'CASTNET') ? 'coverage-castnet' : 'coverage-ntn';
-          const target = document.getElementById(targetId);
-          if (target) target.innerHTML = buildCoverageHTML(network, activeId, v);
+          const target = document.getElementById(coverageId);
+          if (target) target.innerHTML = buildCoverageHTML(network, siteId, v);
         };
         container.appendChild(btn);
       });
@@ -1188,16 +1104,16 @@
       updateTrendStats(network, start, end);
     }
 
-    function showTrendPlot(network) {
-      // Sync active SITE_ID from dropdown if present
-      const pick = document.getElementById(
-        network === 'CASTNET' ? 'pick-castnet' : 'pick-ntn'
-      );
-      if (pick && pick.value) selected[network].siteId = pick.value;
-
+    /** siteIdArg optional — uses selected[network].siteId if omitted */
+    function showTrendPlot(network, siteIdArg) {
+      if (siteIdArg) selected[network].siteId = siteIdArg;
       const sel = selected[network];
-      if (!sel.siteId || !sel.variable) {
-        alert('Please select a SITE_ID (if multiple) and a variable under ' + network + ' first.');
+      if (!sel.siteId) {
+        alert('Select a variable under a ' + network + ' site ID first (or use the trend button under that site).');
+        return;
+      }
+      if (!sel.variable) {
+        alert('Please select a variable under ' + network + ' · ' + sel.siteId + ' first.');
         return;
       }
       const series = (((timeseriesData[network] || {})[sel.siteId]) || {});
@@ -1344,22 +1260,18 @@
 
     function showCombineTrendPlot() {
       const site = siteRegistry[selectedKey];
-      if (!site) { alert('Select a site first.'); return; }
-
-      // Sync active IDs from dropdowns
-      const pickC = document.getElementById('pick-castnet');
-      const pickN = document.getElementById('pick-ntn');
-      if (pickC && pickC.value) selected.CASTNET.siteId = pickC.value;
-      if (pickN && pickN.value) selected.NTN.siteId = pickN.value;
-
-      const castId = selected.CASTNET.siteId;
-      const ntnId  = selected.NTN.siteId;
+      if (!site) { alert('Select a location first.'); return; }
       const castVar = combineVar.CASTNET;
       const ntnVar  = combineVar.NTN;
       if (!castVar && !ntnVar) {
         alert('Check one variable under CASTNET and/or NTN.');
         return;
       }
+
+      // Use last-selected siteId per network; fall back to first ID at location
+      const castId = selected.CASTNET.siteId || siteIds(site, 'CASTNET')[0] || null;
+      const ntnId  = selected.NTN.siteId     || siteIds(site, 'NTN')[0] || null;
+
       let castMap = {}, ntnMap = {};
       if (castVar && castId) castMap = getSeriesMap('CASTNET', castId, castVar);
       if (ntnVar && ntnId) ntnMap = getSeriesMap('NTN', ntnId, ntnVar);
@@ -1367,7 +1279,7 @@
         ...Object.keys(castMap), ...Object.keys(ntnMap)
       ])).sort();
       if (allDates.length === 0) {
-        alert('No time-series data found for the selected variable(s).');
+        alert('No time-series data found for the selected variable(s). Click a variable under the desired site ID first.');
         return;
       }
       const castVals = allDates.map(d => (castMap[d] !== undefined ? castMap[d] : null));
@@ -1398,9 +1310,9 @@
       panel.classList.add('visible');
 
       const speciesHint = castVar || ntnVar || '';
-      const siteIds = [castId, ntnId].filter(Boolean).join(' / ');
+      const siteIdsLabel = [castId, ntnId].filter(Boolean).join(' / ');
       const combineTitle =
-        `A Comparison of Atmospheric Dry vs. Wet ${speciesHint} Deposition at ${siteIds}`;
+        `A Comparison of Atmospheric Dry vs. Wet ${speciesHint} Deposition at ${siteIdsLabel}`;
 
       document.getElementById('trend-header-combine').textContent =
         `${combineTitle} | Y-bar = zoom · X-bar = time`;
@@ -1531,14 +1443,9 @@
     function showMatchSegment() {
       const site = siteRegistry[selectedKey];
       if (!site) {
-        alert('Select a site first.');
+        alert('Select a location first.');
         return;
       }
-      const pickC = document.getElementById('pick-castnet');
-      const pickN = document.getElementById('pick-ntn');
-      if (pickC && pickC.value) selected.CASTNET.siteId = pickC.value;
-      if (pickN && pickN.value) selected.NTN.siteId = pickN.value;
-
       const castVar = combineVar.CASTNET;
       const ntnVar = combineVar.NTN;
       if (!castVar && !ntnVar) {
@@ -1546,39 +1453,47 @@
         return;
       }
 
+      const castIds = siteIds(site, 'CASTNET');
+      const ntnIds = siteIds(site, 'NTN');
+      // Prefer last-selected siteId; else search all IDs at this location
+      const castTarget = selected.CASTNET.siteId
+        ? [selected.CASTNET.siteId]
+        : castIds;
+      const ntnTarget = selected.NTN.siteId
+        ? [selected.NTN.siteId]
+        : ntnIds;
+
       const rows = [];
-      function addNetworkRows(network, siteId, variable) {
-        if (!siteId || !variable) return;
+      function addNetworkRows(network, idList, variable) {
+        if (!variable || !idList.length) return;
         const data = acfFftCombined[network] || [];
-        data.forEach(r => {
-          const sid = cell(r, 'SITE_ID');
-          if (String(sid).trim() !== String(siteId).trim()) return;
-          rows.push({
-            network,
-            variable,
-            analysis_type: cell(r, 'analysis_type', 'ANALYSIS_TYPE'),
-            site_id: sid,
-            start: cell(r, 'Start_Date', 'START_DATE'),
-            end: cell(r, 'End_Date', 'END_DATE'),
-            num_years: cell(r, 'Num_Years', 'NUM_YEARS'),
-            acf_lag: cell(r, `acf_${variable}_Lag`, `ACF_${variable}_LAG`),
-            fft_period: cell(r, `fft_${variable}_Period`, `FFT_${variable}_PERIOD`)
+        idList.forEach(siteId => {
+          data.forEach(r => {
+            const sid = cell(r, 'SITE_ID');
+            if (String(sid).trim() !== String(siteId).trim()) return;
+            rows.push({
+              network,
+              variable,
+              analysis_type: cell(r, 'analysis_type', 'ANALYSIS_TYPE'),
+              site_id: sid,
+              start: cell(r, 'Start_Date', 'START_DATE'),
+              end: cell(r, 'End_Date', 'END_DATE'),
+              num_years: cell(r, 'Num_Years', 'NUM_YEARS'),
+              acf_lag: cell(r, `acf_${variable}_Lag`, `ACF_${variable}_LAG`),
+              fft_period: cell(r, `fft_${variable}_Period`, `FFT_${variable}_PERIOD`)
+            });
           });
         });
       }
-      if (castVar && selected.CASTNET.siteId)
-        addNetworkRows('CASTNET', selected.CASTNET.siteId, castVar);
-      if (ntnVar && selected.NTN.siteId)
-        addNetworkRows('NTN', selected.NTN.siteId, ntnVar);
+      if (castVar) addNetworkRows('CASTNET', castTarget, castVar);
+      if (ntnVar) addNetworkRows('NTN', ntnTarget, ntnVar);
 
       matchRows = rows;
 
       const panel = document.getElementById('match-panel');
       const parts = [];
-      if (castVar && selected.CASTNET.siteId)
-        parts.push(`CASTNET ${selected.CASTNET.siteId} · ${castVar}`);
-      if (ntnVar && selected.NTN.siteId)
-        parts.push(`NTN ${selected.NTN.siteId} · ${ntnVar}`);
+      if (castVar) parts.push(`CASTNET ${formatSiteIdsText(castTarget)} · ${castVar}`);
+      if (ntnVar) parts.push(`NTN ${formatSiteIdsText(ntnTarget)} · ${ntnVar}`);
       document.getElementById('match-header').textContent =
         `MATCH SEGMENT · ${parts.join(' | ')} · ACF Lag vs FFT Period`;
 
