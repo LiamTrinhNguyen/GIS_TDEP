@@ -1,13 +1,13 @@
 """
-Generate four lightweight files for the web dashboard:
+Generate lightweight files for the web dashboard:
 
 1. data/input/site_date_summary.csv
 2. data/input/site_variable_coverage.json   (52-week aligned binary flags)
 3. data/input/site_timeseries.json         (actual values for plotting)
-4. data/input/site_completeness.json       (precomputed % + brackets)
+4. data/input/site_completeness.json       (record % first→last + brackets)
 
-Completeness rule (same as weekly coverage UI):
-  - Flatten weeks in year order
+Completeness rule (matches index weekly coverage):
+  - Flatten year-week flags in year order
   - Span = first week with data → last week with data
   - completeness_pct = 100 * n_record / n_span
   - Site-level % = mean of variable-level % (variables with any data only)
@@ -44,16 +44,10 @@ VARIABLES = [
 ]
 
 
-# ---------------------------------------------------------------------------
-# Completeness helpers
-# ---------------------------------------------------------------------------
-
 def completeness_from_binary_years(year_map: dict) -> dict:
     """
     year_map: { "2018": "01011...", "2019": "..." }
-
-    Returns n_record, n_missing, n_span, completeness_pct
-    using only the span from first observed week → last observed week.
+    Returns counts and % using only the span from first to last recorded week.
     """
     if not year_map:
         return {
@@ -90,7 +84,6 @@ def completeness_from_binary_years(year_map: dict) -> dict:
     n_missing = span.count("0")
     n_span = n_record + n_missing
     pct = round(100.0 * n_record / n_span, 1) if n_span else 0.0
-
     return {
         "n_record": n_record,
         "n_missing": n_missing,
@@ -100,7 +93,6 @@ def completeness_from_binary_years(year_map: dict) -> dict:
 
 
 def bracket_for(pct: float) -> str:
-    """Map completeness % into fixed display brackets."""
     if pct < 25:
         return "0-25"
     if pct < 50:
@@ -112,19 +104,11 @@ def bracket_for(pct: float) -> str:
 
 def build_site_completeness(coverage: dict) -> dict:
     """
-    coverage structure (site_variable_coverage.json):
-      coverage[network][site_id][variable][year] = binary string of length 52
-
-    Output:
-      out[network][site_id] = {
-        completeness_pct, bracket,
-        n_record, n_missing, n_span, n_variables,
-        by_variable: { VAR: pct, ... }
-      }
+    coverage[network][site_id][variable][year] = binary week string
+    → completeness[network][site_id] = { completeness_pct, bracket, ... }
     """
     out: dict = {}
-
-    for network, sites in (coverage or {}).items():
+    for network, sites in coverage.items():
         out[network] = {}
         for site_id, vars_map in (sites or {}).items():
             by_var: dict = {}
@@ -143,11 +127,7 @@ def build_site_completeness(coverage: dict) -> dict:
                 total_miss += stats["n_missing"]
                 total_span += stats["n_span"]
 
-            if pcts:
-                site_pct = round(sum(pcts) / len(pcts), 1)
-            else:
-                site_pct = 0.0
-
+            site_pct = round(sum(pcts) / len(pcts), 1) if pcts else 0.0
             out[network][site_id] = {
                 "completeness_pct": site_pct,
                 "bracket": bracket_for(site_pct),
@@ -157,13 +137,8 @@ def build_site_completeness(coverage: dict) -> dict:
                 "n_variables": len(pcts),
                 "by_variable": by_var,
             }
-
     return out
 
-
-# ---------------------------------------------------------------------------
-# Network processing
-# ---------------------------------------------------------------------------
 
 def process_network(csv_path: Path, network_name: str):
     print(f"Processing {network_name} ...")
@@ -178,7 +153,7 @@ def process_network(csv_path: Path, network_name: str):
     df = df.with_columns(
         [
             pl.col("DATEON").dt.year().alias("year"),
-            pl.col("DATEON").dt.week().alias("week"),  # ISO week 1–53
+            pl.col("DATEON").dt.week().alias("week"),
         ]
     )
 
@@ -221,20 +196,19 @@ def process_network(csv_path: Path, network_name: str):
                     week = row["week"]
                     if week is None:
                         continue
-                    # Clamp ISO week into 0..51 (week 53 maps to index 51)
-                    week_idx = min(max(int(week), 1), 52) - 1
+                    week_idx = min(int(week), 52) - 1
+                    if week_idx < 0:
+                        continue
                     if row[var] is not None:
                         flags[week_idx] = "1"
                 year_dict[str(year)] = "".join(flags)
             site_coverage[short] = year_dict
-
         coverage[site_id] = site_coverage
 
         # ---- timeseries (actual values) ----
         ts = {
             "DATEON": [
-                d.isoformat() if d is not None else None
-                for d in site_df["DATEON"].to_list()
+                d.isoformat() if d else None for d in site_df["DATEON"].to_list()
             ]
         }
         for var in VARIABLES:
@@ -257,10 +231,6 @@ def process_network(csv_path: Path, network_name: str):
     return summary, coverage, timeseries
 
 
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
-
 def main():
     all_summaries = []
     all_coverage: dict = {}
@@ -282,33 +252,21 @@ def main():
     else:
         print(f"WARNING: {NADP_WIDE} not found")
 
-    # 1) date summary
+    BASE.mkdir(parents=True, exist_ok=True)
+
     if all_summaries:
-        # Normalize column names expected by index.html (FIRST_DATE / LAST_DATE / NETWORK)
-        combined = pl.concat(all_summaries)
-        # write with uppercase-friendly headers used by parseCSV in index
-        combined = combined.rename(
-            {
-                "SITE_ID": "SITE_ID",
-                "network": "NETWORK",
-                "first_date": "FIRST_DATE",
-                "last_date": "LAST_DATE",
-            }
-        )
-        combined.write_csv(OUT_SUMMARY)
+        pl.concat(all_summaries).write_csv(OUT_SUMMARY)
         print(f"Created: {OUT_SUMMARY}")
 
-    # 2) coverage
     with open(OUT_COVERAGE, "w") as f:
         json.dump(all_coverage, f)
     print(f"Created: {OUT_COVERAGE}")
 
-    # 3) timeseries
     with open(OUT_TIMESERIES, "w") as f:
         json.dump(all_timeseries, f)
     print(f"Created: {OUT_TIMESERIES}")
 
-    # 4) completeness (from coverage we just built)
+    # ----- 4. Completeness (from coverage binary flags) -----
     all_completeness = build_site_completeness(all_coverage)
     with open(OUT_COMPLETENESS, "w") as f:
         json.dump(all_completeness, f, indent=2)
@@ -317,15 +275,10 @@ def main():
     # quick sanity print
     for net, sites in all_completeness.items():
         n = len(sites)
-        if n == 0:
-            print(f"  {net}: 0 sites")
-            continue
-        pcts = [v["completeness_pct"] for v in sites.values()]
-        print(
-            f"  {net}: {n} sites · "
-            f"mean completeness {sum(pcts) / n:.1f}% · "
-            f"min {min(pcts):.1f}% · max {max(pcts):.1f}%"
-        )
+        brackets = {"0-25": 0, "25-50": 0, "50-75": 0, "75-100": 0}
+        for row in sites.values():
+            brackets[row["bracket"]] = brackets.get(row["bracket"], 0) + 1
+        print(f"  {net}: {n} sites · brackets {brackets}")
 
     print("Done.")
 
