@@ -305,7 +305,7 @@
     </div>
 
     <div class="overview-map-panel" id="overview-map-panel">
-      <div class="panel-title">NETWORK OVERVIEW MAP · completeness bracket → color</div>
+      <div class="panel-title">NETWORK OVERVIEW MAP · completeness bracket -> color</div>
             <div class="overview-controls">
               Show network:
               <button id="ov-net-all" class="active-net" onclick="setOverviewNetwork('ALL')">[ ALL ]</button>
@@ -386,8 +386,8 @@
         </select>
         <label for="match-sort-dir">Order</label>
         <select id="match-sort-dir" onchange="applyMatchSort()">
-          <option value="desc" selected>High → Low</option>
-          <option value="asc">Low → High</option>
+          <option value="desc" selected>High -> Low</option>
+          <option value="asc">Low -> High</option>
         </select>
       </div>
       <div class="match-table-wrap">
@@ -954,7 +954,7 @@
           · No record: <b style="color:#fff">${nMissing}</b>
           · Span weeks: ${nSpan}
           · Coverage: ${pct}%
-          <span style="color:#666">(first→last · this variable)</span>
+          <span style="color:#666">(first->last · this variable)</span>
         </div>
         <div style="font-size:11px;color:#888;margin-bottom:6px;">
           Site completeness (all vars): <b style="color:#fff">${siteComp.pct}%</b>
@@ -1484,7 +1484,7 @@
       renderMatchTable(sorted);
 
       const colLabel = document.getElementById('match-sort-col').selectedOptions[0].text;
-      const dirLabel = dir === 'desc' ? 'High → Low' : 'Low → High';
+      const dirLabel = dir === 'desc' ? 'High -> Low' : 'Low -> High';
       const header = document.getElementById('match-header');
       const base = header.textContent.split(' · Sort:')[0];
       header.textContent = `${base} · Sort: ${colLabel} ${dirLabel}`;
