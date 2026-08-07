@@ -481,6 +481,7 @@
     let allMarkers = [];
     let overviewMarkers = [];
     let overviewNetwork = 'ALL';
+    let overviewBracket = 'ALL'; // ALL | 0-25 | 25-50 | 50-75 | 75-100
     let siteRegistry = {};
     let dateSummary = {};
     let coverageData = {};
@@ -632,6 +633,15 @@
       document.getElementById('ov-net-ntn').classList.toggle('active-net', mode === 'NTN');
       buildOverviewMap();
     }
+    function setOverviewBracket(mode) {
+      overviewBracket = mode;
+      ['ALL', '0-25', '25-50', '50-75', '75-100'].forEach(b => {
+        const id = 'ov-br-' + b;
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle('active-net', mode === b);
+      });
+      buildOverviewMap();
+    }
 
     function buildOverviewMap() {
       overviewMarkers.forEach(m => overviewMap.removeLayer(m));
@@ -667,6 +677,9 @@
             network = 'CASTNET'; ids = castIds; comp = c;
           }
         }
+        if (overviewBracket !== 'ALL' && comp.bracket !== overviewBracket) {
+          return;
+        }
 
         const fill = (COMPLETENESS_COLORS[network] || {})[comp.bracket] || '#888';
         const years = comp.siteId ? recordYears(network, comp.siteId) : 0;
@@ -695,7 +708,7 @@
       });
 
       document.getElementById('overview-count').textContent =
-        `${shown} location(s) · filter: ${overviewNetwork}`;
+        `${shown} location(s) · network: ${overviewNetwork} · bracket: ${overviewBracket}`;
 
       if (overviewMarkers.length) {
         overviewMap.fitBounds(L.featureGroup(overviewMarkers).getBounds().pad(0.12));
