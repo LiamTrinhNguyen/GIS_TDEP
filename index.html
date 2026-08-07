@@ -306,13 +306,21 @@
 
     <div class="overview-map-panel" id="overview-map-panel">
       <div class="panel-title">NETWORK OVERVIEW MAP · completeness bracket → color</div>
-      <div class="overview-controls">
-        Show network:
-        <button id="ov-net-all" class="active-net" onclick="setOverviewNetwork('ALL')">[ ALL ]</button>
-        <button id="ov-net-castnet" onclick="setOverviewNetwork('CASTNET')">[ CASTNET ]</button>
-        <button id="ov-net-ntn" onclick="setOverviewNetwork('NTN')">[ NTN ]</button>
-        <span id="overview-count" style="margin-left:8px;color:#888;"></span>
-      </div>
+            <div class="overview-controls">
+              Show network:
+              <button id="ov-net-all" class="active-net" onclick="setOverviewNetwork('ALL')">[ ALL ]</button>
+              <button id="ov-net-castnet" onclick="setOverviewNetwork('CASTNET')">[ CASTNET ]</button>
+              <button id="ov-net-ntn" onclick="setOverviewNetwork('NTN')">[ NTN ]</button>
+              <span id="overview-count" style="margin-left:8px;color:#888;"></span>
+            </div>
+            <div class="overview-controls">
+              Completeness:
+              <button id="ov-br-all" class="active-net" onclick="setOverviewBracket('ALL')">[ ALL ]</button>
+              <button id="ov-br-0-25" onclick="setOverviewBracket('0-25')">[ 0–25% ]</button>
+              <button id="ov-br-25-50" onclick="setOverviewBracket('25-50')">[ 25–50% ]</button>
+              <button id="ov-br-50-75" onclick="setOverviewBracket('50-75')">[ 50–75% ]</button>
+              <button id="ov-br-75-100" onclick="setOverviewBracket('75-100')">[ 75–100% ]</button>
+            </div>
       <div id="overview-map"></div>
       <div class="overview-legend">
         <span class="scale">
