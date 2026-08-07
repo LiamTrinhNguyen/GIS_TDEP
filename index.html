@@ -78,16 +78,16 @@
       gap: 6px;
     }
     .overview-legend .swatch {
-      width: 48px;
+      width: 64px;
       height: 12px;
       border: 1px solid #444;
       border-radius: 2px;
     }
     .overview-legend .swatch.castnet {
-      background: linear-gradient(to right, #f5b7b1, #c0392b, #7b241c);
+      background: linear-gradient(to right, #f5b7b1, #e74c3c, #c0392b, #7b241c);
     }
     .overview-legend .swatch.ntn {
-      background: linear-gradient(to right, #aed6f1, #2980b9, #1a5276);
+      background: linear-gradient(to right, #aed6f1, #5dade2, #2980b9, #1a5276);
     }
 
     .main {
@@ -305,7 +305,7 @@
     </div>
 
     <div class="overview-map-panel" id="overview-map-panel">
-      <div class="panel-title">NETWORK OVERVIEW MAP · record length → color intensity</div>
+      <div class="panel-title">NETWORK OVERVIEW MAP · completeness bracket → color</div>
       <div class="overview-controls">
         Show network:
         <button id="ov-net-all" class="active-net" onclick="setOverviewNetwork('ALL')">[ ALL ]</button>
@@ -318,14 +318,14 @@
         <span class="scale">
           CASTNET (dry)
           <span class="swatch castnet"></span>
-          short → long record
+          0–25 · 25–50 · 50–75 · 75–100%
         </span>
         <span class="scale">
           NTN (wet)
           <span class="swatch ntn"></span>
-          short → long record
+          0–25 · 25–50 · 50–75 · 75–100%
         </span>
-        <span>Darker dot = more years of record (same size)</span>
+        <span>Darker = higher completeness · same dot size</span>
       </div>
     </div>
 
@@ -477,11 +477,11 @@
     let dateSummary = {};
     let coverageData = {};
     let timeseriesData = {};
+    let completenessData = {};
     let acfFftCombined = { CASTNET: [], NTN: [] };
     let selectedKey = null;
     let currentSort = 'default';
 
-    // Active selection still one siteId + variable per network
     let selected = {
       CASTNET: { siteId: null, variable: null },
       NTN:     { siteId: null, variable: null }
@@ -496,6 +496,22 @@
     let matchRows = [];
 
     const VARIABLES = ["SO2","SO4","HNO3","NO3","TNO3","NH4","CA","K","MG","Sodium"];
+
+    // Fixed completeness bracket colors (same radius for all dots)
+    const COMPLETENESS_COLORS = {
+      CASTNET: {
+        '0-25':   '#f5b7b1',
+        '25-50':  '#e74c3c',
+        '50-75':  '#c0392b',
+        '75-100': '#7b241c'
+      },
+      NTN: {
+        '0-25':   '#aed6f1',
+        '25-50':  '#5dade2',
+        '50-75':  '#2980b9',
+        '75-100': '#1a5276'
+      }
+    };
 
     function parseCSV(text) {
       const lines = text.trim().split(/\r?\n/);
@@ -525,7 +541,6 @@
       return '';
     }
 
-    /** Always return array of site IDs for a network at this location */
     function siteIds(site, network) {
       if (!site) return [];
       const v = site[network];
@@ -543,15 +558,38 @@
       return ids.join(', ');
     }
 
-    /** Longest record years among all site IDs for this network at location */
-    function maxRecordYears(network, ids) {
-      let best = 0;
-      let bestId = null;
+    function bracketFromPct(pct) {
+      if (pct < 25) return '0-25';
+      if (pct < 50) return '25-50';
+      if (pct < 75) return '50-75';
+      return '75-100';
+    }
+
+    function getCompleteness(network, siteId) {
+      const row = ((completenessData[network] || {})[siteId]) || null;
+      if (!row) {
+        return { pct: 0, bracket: '0-25', n_record: 0, n_missing: 0, n_span: 0, siteId };
+      }
+      const pct = Number(row.completeness_pct ?? 0);
+      return {
+        pct,
+        bracket: row.bracket || bracketFromPct(pct),
+        n_record: row.n_record ?? 0,
+        n_missing: row.n_missing ?? 0,
+        n_span: row.n_span ?? 0,
+        siteId
+      };
+    }
+
+    /** Among multiple site IDs at one location, pick highest completeness */
+    function maxCompleteness(network, ids) {
+      let best = { pct: -1, bracket: '0-25', n_record: 0, n_missing: 0, n_span: 0, siteId: null };
       (ids || []).forEach(id => {
-        const y = recordYears(network, id);
-        if (y > best) { best = y; bestId = id; }
+        const c = getCompleteness(network, id);
+        if (c.pct > best.pct) best = { ...c, siteId: id };
       });
-      return { years: best, siteId: bestId };
+      if (best.pct < 0) best.pct = 0;
+      return best;
     }
 
     function weekInterval(year, weekIndex) {
@@ -579,20 +617,6 @@
       return (t1 - t0) / (365.25 * 24 * 3600 * 1000);
     }
 
-    function colorForRecord(network, t) {
-      t = Math.max(0, Math.min(1, t));
-      if (network === 'CASTNET') {
-        const r = Math.round(245 - t * 120);
-        const g = Math.round(180 - t * 145);
-        const b = Math.round(170 - t * 140);
-        return `rgb(${r},${g},${b})`;
-      }
-      const r = Math.round(170 - t * 130);
-      const g = Math.round(210 - t * 100);
-      const b = Math.round(240 - t * 60);
-      return `rgb(${r},${g},${b})`;
-    }
-
     function setOverviewNetwork(mode) {
       overviewNetwork = mode;
       document.getElementById('ov-net-all').classList.toggle('active-net', mode === 'ALL');
@@ -605,16 +629,6 @@
       overviewMarkers.forEach(m => overviewMap.removeLayer(m));
       overviewMarkers = [];
 
-      const scores = { CASTNET: [], NTN: [] };
-      Object.values(siteRegistry).forEach(site => {
-        siteIds(site, 'CASTNET').forEach(id => scores.CASTNET.push(recordYears('CASTNET', id)));
-        siteIds(site, 'NTN').forEach(id => scores.NTN.push(recordYears('NTN', id)));
-      });
-      const maxY = {
-        CASTNET: Math.max(1, ...scores.CASTNET, 0),
-        NTN: Math.max(1, ...scores.NTN, 0)
-      };
-
       let shown = 0;
       Object.keys(siteRegistry).forEach(key => {
         const site = siteRegistry[key];
@@ -625,42 +639,46 @@
         if (overviewNetwork === 'NTN' && ntnIds.length === 0) return;
         if (overviewNetwork === 'ALL' && castIds.length === 0 && ntnIds.length === 0) return;
 
-        let network, ids, years, primaryId;
+        let network, ids, comp;
         if (overviewNetwork === 'CASTNET') {
           network = 'CASTNET';
           ids = castIds;
-          ({ years, siteId: primaryId } = maxRecordYears('CASTNET', castIds));
+          comp = maxCompleteness('CASTNET', castIds);
         } else if (overviewNetwork === 'NTN') {
           network = 'NTN';
           ids = ntnIds;
-          ({ years, siteId: primaryId } = maxRecordYears('NTN', ntnIds));
+          comp = maxCompleteness('NTN', ntnIds);
         } else {
-          const c = maxRecordYears('CASTNET', castIds);
-          const n = maxRecordYears('NTN', ntnIds);
-          if (c.years >= n.years && castIds.length) {
-            network = 'CASTNET'; ids = castIds; years = c.years; primaryId = c.siteId;
+          const c = maxCompleteness('CASTNET', castIds);
+          const n = maxCompleteness('NTN', ntnIds);
+          if (c.pct >= n.pct && castIds.length) {
+            network = 'CASTNET'; ids = castIds; comp = c;
+          } else if (ntnIds.length) {
+            network = 'NTN'; ids = ntnIds; comp = n;
           } else {
-            network = 'NTN'; ids = ntnIds; years = n.years; primaryId = n.siteId;
+            network = 'CASTNET'; ids = castIds; comp = c;
           }
         }
 
-        const t = years / maxY[network];
-        const fill = colorForRecord(network, t);
+        const fill = (COMPLETENESS_COLORS[network] || {})[comp.bracket] || '#888';
+        const years = comp.siteId ? recordYears(network, comp.siteId) : 0;
+
         const marker = L.circleMarker([site.lat, site.lon], {
           radius: 7,
           fillColor: fill,
           color: '#111',
           weight: 1,
           opacity: 1,
-          fillOpacity: 0.85
+          fillOpacity: 0.9
         }).addTo(overviewMap);
 
         const label = network === 'CASTNET' ? 'CASTNET (dry)' : 'NTN (wet)';
         marker.bindPopup(
           `<b>${label}</b><br>` +
           `SITE_ID(s): ${formatSiteIdsText(ids)}<br>` +
-          `Longest record ≈ ${years.toFixed(1)} years` +
-          (primaryId ? ` (${primaryId})` : '') + `<br>` +
+          `Completeness: <b>${comp.pct}%</b> · bracket ${comp.bracket}<br>` +
+          `Record weeks: ${comp.n_record} · Missing: ${comp.n_missing}<br>` +
+          (comp.siteId ? `Primary ID: ${comp.siteId} · record ≈ ${years.toFixed(1)} yr<br>` : '') +
           `${site.lat.toFixed(4)}, ${site.lon.toFixed(4)}`
         );
         marker.on('click', () => selectSite(key));
@@ -677,10 +695,6 @@
       setTimeout(() => overviewMap.invalidateSize(), 100);
     }
 
-    /**
-     * Load coordinator: same lat/lon keeps ALL site IDs (no overwrite).
-     * siteRegistry[key][network] is always an array of unique SITE_IDs.
-     */
     async function loadCoordinator(network, path) {
       try {
         const res = await fetch(path);
@@ -694,18 +708,11 @@
           if (isNaN(lat) || isNaN(lon) || !siteId) return;
           const key = makeKey(lat, lon);
           if (!siteRegistry[key]) {
-            siteRegistry[key] = {
-              lat,
-              lon,
-              CASTNET: [],
-              NTN: [],
-              marker: null
-            };
+            siteRegistry[key] = { lat, lon, CASTNET: [], NTN: [], marker: null };
           }
           if (!Array.isArray(siteRegistry[key][network])) {
             siteRegistry[key][network] = [];
           }
-          // Accept multiple site IDs at the same coordinate
           if (!siteRegistry[key][network].includes(siteId)) {
             siteRegistry[key][network].push(siteId);
             count++;
@@ -743,6 +750,22 @@
         if (!res.ok) return;
         timeseriesData = await res.json();
       } catch (e) { console.error('Timeseries error', e); }
+    }
+
+    async function loadCompleteness() {
+      try {
+        const res = await fetch('./data/input/site_completeness.json');
+        if (!res.ok) {
+          console.warn('site_completeness.json missing — overview colors fall back to 0-25');
+          completenessData = {};
+          return;
+        }
+        completenessData = await res.json();
+        console.log('Completeness loaded', Object.keys(completenessData));
+      } catch (e) {
+        console.error('Completeness error', e);
+        completenessData = {};
+      }
     }
 
     async function loadAcfFftCombined() {
@@ -900,6 +923,9 @@
       const nSpan = nRecord + nMissing;
       const pct = nSpan > 0 ? ((nRecord / nSpan) * 100).toFixed(1) : '0.0';
 
+      // Optional: site-level completeness from precomputed file
+      const siteComp = getCompleteness(network, siteId);
+
       let html = `
         <div class="plot-title">${variable} · ${siteId}</div>
         <div style="font-size:11px;color:#aaa;margin-bottom:6px;">
@@ -907,7 +933,11 @@
           · No record: <b style="color:#fff">${nMissing}</b>
           · Span weeks: ${nSpan}
           · Coverage: ${pct}%
-          <span style="color:#666">(first→last record only)</span>
+          <span style="color:#666">(first→last · this variable)</span>
+        </div>
+        <div style="font-size:11px;color:#888;margin-bottom:6px;">
+          Site completeness (all vars): <b style="color:#fff">${siteComp.pct}%</b>
+          · bracket <b style="color:#fff">${siteComp.bracket}</b>
         </div>`;
 
       years.forEach(year => {
@@ -942,15 +972,16 @@
           </div>
         </div>`;
 
-      // One info block per CASTNET site ID
       castIds.forEach((sid, idx) => {
         const range = (dateSummary.CASTNET || {})[sid] || {};
+        const comp = getCompleteness('CASTNET', sid);
         const safeId = sid.replace(/[^A-Za-z0-9_-]/g, '_');
         html += `
           <div class="info-box">
             <div class="title">CASTNET — ${sid} (dry)${castIds.length > 1 ? ` · ${idx + 1}/${castIds.length}` : ''}</div>
             <div>First day: ${range.first || '—'}</div>
             <div>Last day: ${range.last || '—'}</div>
+            <div>Completeness: <b>${comp.pct}%</b> · bracket ${comp.bracket}</div>
             <div class="var-buttons" id="vars-castnet-${safeId}"></div>
             <div class="coverage-legend">
               <span class="legend-item"><span class="legend-dot castnet"></span> dry</span>
@@ -965,15 +996,16 @@
           </div>`;
       });
 
-      // One info block per NTN site ID
       ntnIds.forEach((sid, idx) => {
         const range = (dateSummary.NTN || {})[sid] || {};
+        const comp = getCompleteness('NTN', sid);
         const safeId = sid.replace(/[^A-Za-z0-9_-]/g, '_');
         html += `
           <div class="info-box">
             <div class="title">NTN (NADP) — ${sid} (wet)${ntnIds.length > 1 ? ` · ${idx + 1}/${ntnIds.length}` : ''}</div>
             <div>First day: ${range.first || '—'}</div>
             <div>Last day: ${range.last || '—'}</div>
+            <div>Completeness: <b>${comp.pct}%</b> · bracket ${comp.bracket}</div>
             <div class="var-buttons" id="vars-ntn-${safeId}"></div>
             <div class="coverage-legend">
               <span class="legend-item"><span class="legend-dot ntn"></span> wet</span>
@@ -1028,7 +1060,6 @@
         const btn = document.createElement('button');
         btn.textContent = v;
         btn.onclick = () => {
-          // Clear active state only within this site's button group
           container.querySelectorAll('button').forEach(b => b.classList.remove('active-var'));
           btn.classList.add('active-var');
           selected[network].siteId = siteId;
@@ -1104,12 +1135,11 @@
       updateTrendStats(network, start, end);
     }
 
-    /** siteIdArg optional — uses selected[network].siteId if omitted */
     function showTrendPlot(network, siteIdArg) {
       if (siteIdArg) selected[network].siteId = siteIdArg;
       const sel = selected[network];
       if (!sel.siteId) {
-        alert('Select a variable under a ' + network + ' site ID first (or use the trend button under that site).');
+        alert('Select a variable under a ' + network + ' site ID first.');
         return;
       }
       if (!sel.variable) {
@@ -1268,7 +1298,6 @@
         return;
       }
 
-      // Use last-selected siteId per network; fall back to first ID at location
       const castId = selected.CASTNET.siteId || siteIds(site, 'CASTNET')[0] || null;
       const ntnId  = selected.NTN.siteId     || siteIds(site, 'NTN')[0] || null;
 
@@ -1279,7 +1308,7 @@
         ...Object.keys(castMap), ...Object.keys(ntnMap)
       ])).sort();
       if (allDates.length === 0) {
-        alert('No time-series data found for the selected variable(s). Click a variable under the desired site ID first.');
+        alert('No time-series data found. Click a variable under the desired site ID first.');
         return;
       }
       const castVals = allDates.map(d => (castMap[d] !== undefined ? castMap[d] : null));
@@ -1455,13 +1484,8 @@
 
       const castIds = siteIds(site, 'CASTNET');
       const ntnIds = siteIds(site, 'NTN');
-      // Prefer last-selected siteId; else search all IDs at this location
-      const castTarget = selected.CASTNET.siteId
-        ? [selected.CASTNET.siteId]
-        : castIds;
-      const ntnTarget = selected.NTN.siteId
-        ? [selected.NTN.siteId]
-        : ntnIds;
+      const castTarget = selected.CASTNET.siteId ? [selected.CASTNET.siteId] : castIds;
+      const ntnTarget = selected.NTN.siteId ? [selected.NTN.siteId] : ntnIds;
 
       const rows = [];
       function addNetworkRows(network, idList, variable) {
@@ -1524,6 +1548,7 @@
       await loadDateSummary();
       await loadCoverage();
       await loadTimeseries();
+      await loadCompleteness();
       await loadAcfFftCombined();
       buildMarkersAndTable();
 
