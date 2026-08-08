@@ -6,6 +6,8 @@
   <title>MAP ACTIVE - SIMULATION RUNNING</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -305,7 +307,10 @@
     </div>
 
     <div class="overview-map-panel" id="overview-map-panel">
-      <div class="panel-title">NETWORK OVERVIEW MAP · completeness bracket -> color</div>
+      <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>NETWORK OVERVIEW MAP · completeness bracket → color</span>
+        <button type="button" onclick="exportPanelToPdf('overview-map-panel', 'overview_map')">[ EXPORT PDF ]</button>
+      </div>
             <div class="overview-controls">
               Show network:
               <button id="ov-net-all" class="active-net" onclick="setOverviewNetwork('ALL')">[ ALL ]</button>
@@ -875,7 +880,113 @@
       }
       buildOverviewMap();
     }
+    /**
+     * Export a panel DOM node to a high-resolution multi-page PDF.
+     * scale: 2 = ~150–200 dpi feel; 3 = heavier but sharper for reports.
+     */
+    async function exportPanelToPdf(elementId, filenameBase) {
+      const el = document.getElementById(elementId);
+      if (!el) {
+        alert('Panel not found: ' + elementId);
+        return;
+      }
+      if (typeof html2canvas === 'undefined' || !window.jspdf) {
+        alert('PDF libraries not loaded. Check html2canvas / jsPDF script tags.');
+        return;
+      }
 
+      // Make sure the panel is visible (trend/match may be hidden)
+      const wasHidden = el.style.display === 'none' || !el.classList.contains('visible') && el.classList.contains('trend-panel');
+      if (el.classList.contains('trend-panel') || el.classList.contains('match-panel')) {
+        el.classList.add('visible');
+        el.style.display = 'block';
+      }
+
+      // Leaflet needs size invalidation before capture
+      if (elementId === 'overview-map-panel' && typeof overviewMap !== 'undefined') {
+        overviewMap.invalidateSize();
+        await new Promise(r => setTimeout(r, 400));
+      }
+      if (elementId === 'panel-main-map' && typeof map !== 'undefined') {
+        map.invalidateSize();
+        await new Promise(r => setTimeout(r, 400));
+      }
+
+      const btn = document.activeElement;
+      if (btn && btn.tagName === 'BUTTON') {
+        btn.disabled = true;
+        btn.textContent = '[ EXPORTING… ]';
+      }
+
+      try {
+        const canvas = await html2canvas(el, {
+          scale: 2,                    // high resolution
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#000000',
+          logging: false,
+          windowWidth: el.scrollWidth,
+          windowHeight: el.scrollHeight
+        });
+
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({
+          orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+          unit: 'pt',
+          format: 'letter'
+        });
+
+        const pageW = pdf.internal.pageSize.getWidth();
+        const pageH = pdf.internal.pageSize.getHeight();
+        const margin = 24;
+        const usableW = pageW - margin * 2;
+        const usableH = pageH - margin * 2;
+
+        const imgW = usableW;
+        const imgH = (canvas.height * imgW) / canvas.width;
+
+        // Slice tall panels across pages
+        let yOffset = 0;
+        let page = 0;
+        while (yOffset < imgH) {
+          if (page > 0) pdf.addPage();
+          const srcY = (yOffset / imgH) * canvas.height;
+          const srcH = Math.min(
+            (usableH / imgH) * canvas.height,
+            canvas.height - srcY
+          );
+          const sliceH = (srcH / canvas.height) * imgH;
+
+          const sliceCanvas = document.createElement('canvas');
+          sliceCanvas.width = canvas.width;
+          sliceCanvas.height = Math.max(1, Math.floor(srcH));
+          const ctx = sliceCanvas.getContext('2d');
+          ctx.fillStyle = '#000';
+          ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+          ctx.drawImage(
+            canvas,
+            0, Math.floor(srcY), canvas.width, Math.floor(srcH),
+            0, 0, sliceCanvas.width, sliceCanvas.height
+          );
+
+          const imgData = sliceCanvas.toDataURL('image/png', 1.0);
+          pdf.addImage(imgData, 'PNG', margin, margin, imgW, sliceH);
+          yOffset += usableH;
+          page++;
+        }
+
+        const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+        pdf.save(`${filenameBase}_${stamp}.pdf`);
+      } catch (err) {
+        console.error(err);
+        alert('Export failed: ' + (err.message || err));
+      } finally {
+        if (btn && btn.tagName === 'BUTTON') {
+          btn.disabled = false;
+          btn.textContent = '[ EXPORT PDF ]';
+        }
+      }
+    }
     function selectSite(key) {
       if (selectedKey && siteRegistry[selectedKey]?.marker) {
         siteRegistry[selectedKey].marker.setStyle({ weight: 1, color: '#000', radius: 7 });
