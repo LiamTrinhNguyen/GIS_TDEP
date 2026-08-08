@@ -33,68 +33,33 @@
     button:disabled { opacity: 0.5; cursor: wait; }
     button.active-var { background: #444; box-shadow: 0 0 6px #fff; }
     button.active-sort { background: #333; box-shadow: 0 0 4px #fff; }
-    button.active-net {
-      background: #333;
-      box-shadow: 0 0 6px #fff;
-    }
+    button.active-net { background: #333; box-shadow: 0 0 6px #fff; }
     .title-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-bottom: 10px;
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 10px; flex-wrap: wrap; margin-bottom: 10px;
     }
     .title-row .title-text { flex: 1; min-width: 160px; }
     .title-row .export-btns { display: flex; flex-wrap: wrap; gap: 4px; }
 
     .overview-map-panel {
-      width: 100%;
-      max-width: 1296px;
-      margin: 0 auto 18px auto;
-      background: #0a0a0a;
-      border: 1px solid #ffffff;
-      padding: 14px;
+      width: 100%; max-width: 1296px; margin: 0 auto 18px auto;
+      background: #0a0a0a; border: 1px solid #ffffff; padding: 14px;
     }
-    .overview-map-panel .panel-title {
-      font-size: 14px;
-      letter-spacing: 1px;
-      margin-bottom: 0;
-    }
+    .overview-map-panel .panel-title { font-size: 14px; letter-spacing: 1px; margin-bottom: 0; }
     .overview-controls {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 10px;
-      font-size: 12px;
-      color: #aaa;
+      display: flex; flex-wrap: wrap; align-items: center;
+      gap: 8px; margin-bottom: 10px; font-size: 12px; color: #aaa;
     }
     #overview-map {
-      width: 100%;
-      height: 560px;
-      background: #111;
-      border: 1px solid #555;
+      width: 100%; height: 560px; background: #111; border: 1px solid #555;
     }
     .overview-legend {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 16px;
-      margin-top: 10px;
-      font-size: 11px;
-      color: #aaa;
-      align-items: center;
+      display: flex; flex-wrap: wrap; gap: 16px; margin-top: 10px;
+      font-size: 11px; color: #aaa; align-items: center;
     }
-    .overview-legend .scale {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
+    .overview-legend .scale { display: inline-flex; align-items: center; gap: 6px; }
     .overview-legend .swatch {
-      width: 64px;
-      height: 12px;
-      border: 1px solid #444;
-      border-radius: 2px;
+      width: 64px; height: 12px; border: 1px solid #444; border-radius: 2px;
     }
     .overview-legend .swatch.castnet {
       background: linear-gradient(to right, #f5b7b1, #e74c3c, #c0392b, #7b241c);
@@ -117,18 +82,14 @@
       border: 1px solid #ffffff; padding: 12px;
       display: flex; flex-direction: column;
     }
-    .panel-title {
-      font-size: 14px; letter-spacing: 1px;
-      margin-bottom: 0; flex-shrink: 0;
-    }
+    .panel-title { font-size: 14px; letter-spacing: 1px; margin-bottom: 0; flex-shrink: 0; }
     .panel-content { flex: 1; overflow-y: auto; overflow-x: hidden; }
     #map {
       width: 100%; height: 220px; background: #111;
       border: 1px solid #555; margin-bottom: 8px; flex-shrink: 0;
     }
     .leaflet-control-zoom a {
-      background: #111 !important; color: #fff !important;
-      border: 1px solid #fff !important;
+      background: #111 !important; color: #fff !important; border: 1px solid #fff !important;
     }
     .sort-bar { margin-bottom: 6px; font-size: 11px; color: #aaa; }
     .sort-bar button { font-size: 11px; padding: 3px 8px; }
@@ -147,26 +108,17 @@
       padding: 5px 8px; text-align: left; color: #aaa; font-weight: normal;
     }
     .network-table td {
-      padding: 4px 8px; border-bottom: 1px solid #222; cursor: pointer;
-      vertical-align: top;
+      padding: 4px 8px; border-bottom: 1px solid #222; cursor: pointer; vertical-align: top;
     }
     .network-table tr:hover td { background: #222; }
-    .network-table tr.selected td {
-      background: #333; box-shadow: inset 0 0 0 1px #fff;
-    }
+    .network-table tr.selected td { background: #333; box-shadow: inset 0 0 0 1px #fff; }
     .site-id-list { line-height: 1.35; }
     .site-id-list span { display: block; }
-    .info-box {
-      border: 1px solid #444; padding: 12px;
-      margin-bottom: 12px; background: #111;
-    }
+    .info-box { border: 1px solid #444; padding: 12px; margin-bottom: 12px; background: #111; }
     .info-box .title { font-size: 13px; color: #aaa; margin-bottom: 6px; }
     .var-buttons { margin-top: 10px; }
     .var-buttons button { font-size: 11px; padding: 4px 7px; }
-    .placeholder {
-      color: #666; font-size: 13px; margin-top: 40px;
-      text-align: center; line-height: 1.6;
-    }
+    .placeholder { color: #666; font-size: 13px; margin-top: 40px; text-align: center; line-height: 1.6; }
     .coverage-legend {
       display: flex; align-items: center; gap: 10px;
       font-size: 11px; color: #aaa; margin: 8px 0 6px 0;
@@ -184,9 +136,7 @@
       padding-top: 8px; max-height: 260px; overflow-y: auto;
     }
     .coverage-block .plot-title { font-size: 12px; color: #aaa; margin-bottom: 6px; }
-    .year-row {
-      display: flex; align-items: center; margin-bottom: 3px; height: 13px;
-    }
+    .year-row { display: flex; align-items: center; margin-bottom: 3px; height: 13px; }
     .year-label {
       width: 36px; color: #8b949e; flex-shrink: 0;
       font-size: 11px; text-align: right; padding-right: 8px;
@@ -201,10 +151,7 @@
     .week-box.ntn { background: #3498db; border-color: #2980b9; }
     .coverage-empty { color: #555; font-size: 12px; padding: 6px 0; }
     .trend-btn-wrap { margin-top: 10px; text-align: center; }
-    .combine-box {
-      border: 1px solid #666; padding: 12px;
-      margin-bottom: 8px; background: #0d0d0d;
-    }
+    .combine-box { border: 1px solid #666; padding: 12px; margin-bottom: 8px; background: #0d0d0d; }
     .combine-box .title { font-size: 13px; color: #aaa; margin-bottom: 10px; }
     .combine-row { margin-bottom: 10px; font-size: 12px; }
     .combine-row .net-label { color: #ccc; margin-bottom: 6px; display: block; }
@@ -227,9 +174,7 @@
     .trend-panel.castnet-panel { border-color: #e74c3c; }
     .trend-panel.ntn-panel { border-color: #3498db; }
     .trend-panel.combine-panel { border-color: #fafafa; }
-    .trend-header {
-      font-size: 14px; letter-spacing: 1px; margin-bottom: 0; color: #aaa;
-    }
+    .trend-header { font-size: 14px; letter-spacing: 1px; margin-bottom: 0; color: #aaa; }
     .trend-stats {
       font-size: 12px; color: #ccc; margin-bottom: 10px;
       padding: 6px 10px; background: #111; border: 1px solid #333;
@@ -238,9 +183,7 @@
     .trend-stats span { white-space: nowrap; }
     .trend-stats .lab { color: #888; }
     .trend-body { display: flex; gap: 10px; align-items: stretch; }
-    .trend-canvas-wrap {
-      position: relative; height: 300px; flex: 1; min-width: 0;
-    }
+    .trend-canvas-wrap { position: relative; height: 300px; flex: 1; min-width: 0; }
     .trend-zoom-wrap {
       display: flex; flex-direction: column; align-items: center;
       justify-content: center; width: 28px; flex-shrink: 0;
@@ -254,57 +197,33 @@
       width: 8px; height: 240px; cursor: pointer; accent-color: #fafafa;
     }
     .trend-scroll-wrap { margin-top: 10px; padding: 0 4px; }
-    .trend-scroll-wrap label {
-      font-size: 11px; color: #888; display: block; margin-bottom: 4px;
-    }
-    .trend-scroll {
-      width: 100%; height: 8px; cursor: pointer; accent-color: #fafafa;
-    }
+    .trend-scroll-wrap label { font-size: 11px; color: #888; display: block; margin-bottom: 4px; }
+    .trend-scroll { width: 100%; height: 8px; cursor: pointer; accent-color: #fafafa; }
     .match-panel {
       width: 100%; max-width: 1296px; margin: 18px auto 0 auto;
-      background: #0a0a0a; border: 1px solid #fafafa;
-      padding: 14px; display: none;
+      background: #0a0a0a; border: 1px solid #fafafa; padding: 14px; display: none;
     }
     .match-panel.visible { display: block; }
-    .match-header {
-      font-size: 14px; letter-spacing: 1px; margin-bottom: 0; color: #aaa;
-    }
+    .match-header { font-size: 14px; letter-spacing: 1px; margin-bottom: 0; color: #aaa; }
     .match-sort-bar {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 10px;
-      font-size: 12px;
-      color: #aaa;
+      display: flex; flex-wrap: wrap; align-items: center;
+      gap: 10px; margin-bottom: 10px; font-size: 12px; color: #aaa;
     }
     .match-sort-bar label { color: #888; }
     .match-sort-bar select {
-      background: #111;
-      color: #fff;
-      border: 1px solid #666;
-      padding: 4px 8px;
-      font-family: inherit;
-      font-size: 12px;
-      cursor: pointer;
+      background: #111; color: #fff; border: 1px solid #666;
+      padding: 4px 8px; font-family: inherit; font-size: 12px; cursor: pointer;
     }
     .match-sort-bar select:focus { outline: 1px solid #fff; }
-    .match-table-wrap {
-      max-height: 360px; overflow: auto; border: 1px solid #333;
-    }
+    .match-table-wrap { max-height: 360px; overflow: auto; border: 1px solid #333; }
     .match-table { width: 100%; border-collapse: collapse; font-size: 12px; }
     .match-table th {
       position: sticky; top: 0; background: #1a1a1a; color: #aaa;
-      text-align: left; padding: 6px 8px; border-bottom: 1px solid #444;
-      white-space: nowrap;
+      text-align: left; padding: 6px 8px; border-bottom: 1px solid #444; white-space: nowrap;
     }
-    .match-table td {
-      padding: 5px 8px; border-bottom: 1px solid #222; color: #ddd;
-    }
+    .match-table td { padding: 5px 8px; border-bottom: 1px solid #222; color: #ddd; }
     .match-table tr:hover td { background: #1a1a1a; }
-    .match-empty {
-      color: #666; font-size: 13px; padding: 20px; text-align: center;
-    }
+    .match-empty { color: #666; font-size: 13px; padding: 20px; text-align: center; }
   </style>
 </head>
 <body>
@@ -342,16 +261,8 @@
       </div>
       <div id="overview-map"></div>
       <div class="overview-legend">
-        <span class="scale">
-          CASTNET (dry)
-          <span class="swatch castnet"></span>
-          0–25 · 25–50 · 50–75 · 75–100%
-        </span>
-        <span class="scale">
-          NTN (wet)
-          <span class="swatch ntn"></span>
-          0–25 · 25–50 · 50–75 · 75–100%
-        </span>
+        <span class="scale">CASTNET (dry) <span class="swatch castnet"></span> 0–25 · 25–50 · 50–75 · 75–100%</span>
+        <span class="scale">NTN (wet) <span class="swatch ntn"></span> 0–25 · 25–50 · 50–75 · 75–100%</span>
         <span>Darker = higher completeness · same dot size</span>
       </div>
     </div>
@@ -377,9 +288,7 @@
           <div class="network-list-container">
             <table class="network-table">
               <thead>
-                <tr>
-                  <th>Latitude</th><th>Longitude</th><th>CASTNET</th><th>NTN</th>
-                </tr>
+                <tr><th>Latitude</th><th>Longitude</th><th>CASTNET</th><th>NTN</th></tr>
               </thead>
               <tbody id="network-tbody"></tbody>
             </table>
@@ -438,7 +347,6 @@
         <div class="title-row">
           <div class="trend-header title-text" id="trend-header-castnet">CASTNET Time Series</div>
           <div class="export-btns">
-            <button type="button" onclick="exportChartToPdf('CASTNET')">[ EXPORT CHART ]</button>
             <button type="button" onclick="exportPanelToPdf('trend-panel-castnet', 'trend_castnet_panel')">[ EXPORT PANEL ]</button>
           </div>
         </div>
@@ -466,7 +374,6 @@
         <div class="title-row">
           <div class="trend-header title-text" id="trend-header-ntn">NTN Time Series</div>
           <div class="export-btns">
-            <button type="button" onclick="exportChartToPdf('NTN')">[ EXPORT CHART ]</button>
             <button type="button" onclick="exportPanelToPdf('trend-panel-ntn', 'trend_ntn_panel')">[ EXPORT PANEL ]</button>
           </div>
         </div>
@@ -494,7 +401,6 @@
         <div class="title-row">
           <div class="trend-header title-text" id="trend-header-combine">COMBINE Time Series</div>
           <div class="export-btns">
-            <button type="button" onclick="exportChartToPdf('COMBINE')">[ EXPORT CHART ]</button>
             <button type="button" onclick="exportPanelToPdf('trend-panel-combine', 'trend_combine_panel')">[ EXPORT PANEL ]</button>
           </div>
         </div>
@@ -520,7 +426,7 @@
     }).setView([39.5, -98.0], 4);
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap & CartoDB', maxZoom: 19, minZoom: 3
+      attribution: '&copy; OpenStreetMap & CartoDB', maxZoom: 19, minZoom: 3, crossOrigin: true
     }).addTo(map);
 
     const overviewMap = L.map('overview-map', {
@@ -528,7 +434,7 @@
     }).setView([39.5, -98.0], 4);
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap & CartoDB', maxZoom: 19, minZoom: 3
+      attribution: '&copy; OpenStreetMap & CartoDB', maxZoom: 19, minZoom: 3, crossOrigin: true
     }).addTo(overviewMap);
 
     let allMarkers = [];
@@ -558,20 +464,9 @@
     let matchRows = [];
 
     const VARIABLES = ["SO2","SO4","HNO3","NO3","TNO3","NH4","CA","K","MG","Sodium"];
-
     const COMPLETENESS_COLORS = {
-      CASTNET: {
-        '0-25':   '#f5b7b1',
-        '25-50':  '#e74c3c',
-        '50-75':  '#c0392b',
-        '75-100': '#7b241c'
-      },
-      NTN: {
-        '0-25':   '#aed6f1',
-        '25-50':  '#5dade2',
-        '50-75':  '#2980b9',
-        '75-100': '#1a5276'
-      }
+      CASTNET: { '0-25': '#f5b7b1', '25-50': '#e74c3c', '50-75': '#c0392b', '75-100': '#7b241c' },
+      NTN:     { '0-25': '#aed6f1', '25-50': '#5dade2', '50-75': '#2980b9', '75-100': '#1a5276' }
     };
 
     function parseCSV(text) {
@@ -585,63 +480,45 @@
         return obj;
       });
     }
-
-    function makeKey(lat, lon) {
-      return `${lat.toFixed(5)}_${lon.toFixed(5)}`;
-    }
-
+    function makeKey(lat, lon) { return `${lat.toFixed(5)}_${lon.toFixed(5)}`; }
     function cell(row, ...candidates) {
       const upperMap = {};
-      Object.keys(row).forEach(k => {
-        upperMap[k.toUpperCase().replace(/[^A-Z0-9]/g, '')] = row[k];
-      });
+      Object.keys(row).forEach(k => { upperMap[k.toUpperCase().replace(/[^A-Z0-9]/g, '')] = row[k]; });
       for (const c of candidates) {
         const norm = String(c).toUpperCase().replace(/[^A-Z0-9]/g, '');
         if (upperMap[norm] !== undefined && upperMap[norm] !== '') return upperMap[norm];
       }
       return '';
     }
-
     function siteIds(site, network) {
       if (!site) return [];
       const v = site[network];
       if (!v) return [];
       return Array.isArray(v) ? v.slice() : [v];
     }
-
     function formatSiteIdsHTML(ids) {
-      if (!ids || ids.length === 0) return '—';
+      if (!ids || !ids.length) return '—';
       return `<div class="site-id-list">${ids.map(id => `<span>${id}</span>`).join('')}</div>`;
     }
-
     function formatSiteIdsText(ids) {
-      if (!ids || ids.length === 0) return '—';
+      if (!ids || !ids.length) return '—';
       return ids.join(', ');
     }
-
     function bracketFromPct(pct) {
       if (pct < 25) return '0-25';
       if (pct < 50) return '25-50';
       if (pct < 75) return '50-75';
       return '75-100';
     }
-
     function getCompleteness(network, siteId) {
       const row = ((completenessData[network] || {})[siteId]) || null;
-      if (!row) {
-        return { pct: 0, bracket: '0-25', n_record: 0, n_missing: 0, n_span: 0, siteId };
-      }
+      if (!row) return { pct: 0, bracket: '0-25', n_record: 0, n_missing: 0, n_span: 0, siteId };
       const pct = Number(row.completeness_pct ?? 0);
       return {
-        pct,
-        bracket: row.bracket || bracketFromPct(pct),
-        n_record: row.n_record ?? 0,
-        n_missing: row.n_missing ?? 0,
-        n_span: row.n_span ?? 0,
-        siteId
+        pct, bracket: row.bracket || bracketFromPct(pct),
+        n_record: row.n_record ?? 0, n_missing: row.n_missing ?? 0, n_span: row.n_span ?? 0, siteId
       };
     }
-
     function maxCompleteness(network, ids) {
       let best = { pct: -1, bracket: '0-25', n_record: 0, n_missing: 0, n_span: 0, siteId: null };
       (ids || []).forEach(id => {
@@ -651,7 +528,6 @@
       if (best.pct < 0) best.pct = 0;
       return best;
     }
-
     function weekInterval(year, weekIndex) {
       const y = parseInt(year, 10);
       const start = new Date(Date.UTC(y, 0, 1 + weekIndex * 7));
@@ -664,15 +540,12 @@
       };
       return { start: fmt(start), end: fmt(end) };
     }
-
     function recordYears(network, siteId) {
       if (!siteId) return 0;
       const range = ((dateSummary[network] || {})[siteId]) || {};
-      const a = range.first;
-      const b = range.last;
+      const a = range.first, b = range.last;
       if (!a || !b) return 0;
-      const t0 = Date.parse(a);
-      const t1 = Date.parse(b);
+      const t0 = Date.parse(a), t1 = Date.parse(b);
       if (isNaN(t0) || isNaN(t1) || t1 < t0) return 0;
       return (t1 - t0) / (365.25 * 24 * 3600 * 1000);
     }
@@ -684,12 +557,10 @@
       document.getElementById('ov-net-ntn').classList.toggle('active-net', mode === 'NTN');
       buildOverviewMap();
     }
-
     function setOverviewBracket(mode) {
       overviewBracket = mode;
       ['ALL', '0-25', '25-50', '50-75', '75-100'].forEach(b => {
-        const id = 'ov-br-' + b;
-        const el = document.getElementById(id);
+        const el = document.getElementById('ov-br-' + b);
         if (el) el.classList.toggle('active-net', mode === b);
       });
       buildOverviewMap();
@@ -698,57 +569,37 @@
     function buildOverviewMap() {
       overviewMarkers.forEach(m => overviewMap.removeLayer(m));
       overviewMarkers = [];
-
       let shown = 0;
       Object.keys(siteRegistry).forEach(key => {
         const site = siteRegistry[key];
         const castIds = siteIds(site, 'CASTNET');
         const ntnIds = siteIds(site, 'NTN');
-
-        if (overviewNetwork === 'CASTNET' && castIds.length === 0) return;
-        if (overviewNetwork === 'NTN' && ntnIds.length === 0) return;
-        if (overviewNetwork === 'ALL' && castIds.length === 0 && ntnIds.length === 0) return;
+        if (overviewNetwork === 'CASTNET' && !castIds.length) return;
+        if (overviewNetwork === 'NTN' && !ntnIds.length) return;
+        if (overviewNetwork === 'ALL' && !castIds.length && !ntnIds.length) return;
 
         let network, ids, comp;
         if (overviewNetwork === 'CASTNET') {
-          network = 'CASTNET';
-          ids = castIds;
-          comp = maxCompleteness('CASTNET', castIds);
+          network = 'CASTNET'; ids = castIds; comp = maxCompleteness('CASTNET', castIds);
         } else if (overviewNetwork === 'NTN') {
-          network = 'NTN';
-          ids = ntnIds;
-          comp = maxCompleteness('NTN', ntnIds);
+          network = 'NTN'; ids = ntnIds; comp = maxCompleteness('NTN', ntnIds);
         } else {
           const c = maxCompleteness('CASTNET', castIds);
           const n = maxCompleteness('NTN', ntnIds);
-          if (c.pct >= n.pct && castIds.length) {
-            network = 'CASTNET'; ids = castIds; comp = c;
-          } else if (ntnIds.length) {
-            network = 'NTN'; ids = ntnIds; comp = n;
-          } else {
-            network = 'CASTNET'; ids = castIds; comp = c;
-          }
+          if (c.pct >= n.pct && castIds.length) { network = 'CASTNET'; ids = castIds; comp = c; }
+          else if (ntnIds.length) { network = 'NTN'; ids = ntnIds; comp = n; }
+          else { network = 'CASTNET'; ids = castIds; comp = c; }
         }
-        if (overviewBracket !== 'ALL' && comp.bracket !== overviewBracket) {
-          return;
-        }
+        if (overviewBracket !== 'ALL' && comp.bracket !== overviewBracket) return;
 
         const fill = (COMPLETENESS_COLORS[network] || {})[comp.bracket] || '#888';
         const years = comp.siteId ? recordYears(network, comp.siteId) : 0;
-
         const marker = L.circleMarker([site.lat, site.lon], {
-          radius: 7,
-          fillColor: fill,
-          color: '#111',
-          weight: 1,
-          opacity: 1,
-          fillOpacity: 0.9
+          radius: 7, fillColor: fill, color: '#111', weight: 1, opacity: 1, fillOpacity: 0.9
         }).addTo(overviewMap);
-
         const label = network === 'CASTNET' ? 'CASTNET (dry)' : 'NTN (wet)';
         marker.bindPopup(
-          `<b>${label}</b><br>` +
-          `SITE_ID(s): ${formatSiteIdsText(ids)}<br>` +
+          `<b>${label}</b><br>SITE_ID(s): ${formatSiteIdsText(ids)}<br>` +
           `Completeness: <b>${comp.pct}%</b> · bracket ${comp.bracket}<br>` +
           `Record weeks: ${comp.n_record} · Missing: ${comp.n_missing}<br>` +
           (comp.siteId ? `Primary ID: ${comp.siteId} · record ≈ ${years.toFixed(1)} yr<br>` : '') +
@@ -758,91 +609,56 @@
         overviewMarkers.push(marker);
         shown++;
       });
-
       document.getElementById('overview-count').textContent =
         `${shown} location(s) · network: ${overviewNetwork} · bracket: ${overviewBracket}`;
-
       if (overviewMarkers.length) {
         overviewMap.fitBounds(L.featureGroup(overviewMarkers).getBounds().pad(0.12));
       }
       setTimeout(() => overviewMap.invalidateSize(), 100);
     }
 
-    // ========== EXPORT: sync current view then capture ==========
+    // ========== EXPORT (maps: long settle after pan/zoom; plots: panel only) ==========
     function stampName(base) {
       return `${base}_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}`;
     }
 
-    /** Wait until map has finished pan/zoom and tiles can settle */
-    async function waitForMapReady(leafletMap, settleMs = 700) {
+    async function waitForMapReady(leafletMap, settleMs = 1200) {
       if (!leafletMap) return;
       leafletMap.invalidateSize(true);
       leafletMap.eachLayer(layer => {
-        if (typeof layer.redraw === 'function') {
-          try { layer.redraw(); } catch (e) { /* ignore */ }
-        }
+        try { if (typeof layer.redraw === 'function') layer.redraw(); } catch (e) {}
       });
       await new Promise(resolve => {
-        let finished = false;
-        const done = () => {
-          if (finished) return;
-          finished = true;
-          resolve();
-        };
-        // If user just moved the map, wait for moveend + settle
-        const onMoveEnd = () => setTimeout(done, settleMs);
-        leafletMap.once('moveend', onMoveEnd);
-        // Always also timeout so idle maps still export
-        setTimeout(done, settleMs);
+        let done = false;
+        const finish = () => { if (done) return; done = true; resolve(); };
+        leafletMap.once('moveend', () => setTimeout(finish, settleMs));
+        setTimeout(finish, settleMs);
       });
-      // Second paint cycle for markers/tiles
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      await new Promise(r => setTimeout(r, 250));
     }
 
-    /** Force every open chart to redraw with current zoom/scroll window */
-    function syncAllCharts() {
-      if (charts.CASTNET.chart) {
-        applyTrendWindow('CASTNET');
-        charts.CASTNET.chart.update('none');
-      }
-      if (charts.NTN.chart) {
-        applyTrendWindow('NTN');
-        charts.NTN.chart.update('none');
-      }
-      if (combineChart) {
-        applyCombineWindow();
-        combineChart.update('none');
-      }
-    }
-
-    /**
-     * High-accuracy map-only PDF (current pan/zoom).
-     * Prefer this over panel export when the map was moved.
-     */
     async function exportMapToPdf(leafletMap, mapDivId, filenameBase) {
       const el = document.getElementById(mapDivId);
-      if (!el || !leafletMap) {
-        alert('Map not found.');
-        return;
-      }
+      if (!el || !leafletMap) { alert('Map not found.'); return; }
       if (typeof html2canvas === 'undefined' || !window.jspdf) {
-        alert('PDF libraries not loaded.');
-        return;
+        alert('PDF libraries not loaded.'); return;
       }
       const btn = document.activeElement;
       const prev = btn && btn.tagName === 'BUTTON' ? btn.textContent : null;
-      if (btn && btn.tagName === 'BUTTON') {
-        btn.disabled = true;
-        btn.textContent = '[ EXPORTING… ]';
-      }
+      if (btn && btn.tagName === 'BUTTON') { btn.disabled = true; btn.textContent = '[ EXPORTING… ]'; }
       try {
-        await waitForMapReady(leafletMap, 800);
+        await waitForMapReady(leafletMap, 1200);
         const canvas = await html2canvas(el, {
           scale: 2,
           useCORS: true,
           allowTaint: true,
           backgroundColor: '#111111',
-          logging: false
+          logging: false,
+          width: el.offsetWidth,
+          height: el.offsetHeight,
+          windowWidth: document.documentElement.clientWidth,
+          windowHeight: document.documentElement.clientHeight
         });
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter' });
@@ -864,91 +680,22 @@
       }
     }
 
-    /**
-     * High-accuracy chart-only PDF (current zoom/scroll window).
-     * Uses Chart.js canvas pixels — exact match to on-screen series.
-     */
-    async function exportChartToPdf(networkOrCombine) {
-      if (!window.jspdf) {
-        alert('jsPDF not loaded.');
-        return;
-      }
-      let chartObj = null;
-      let statsText = '';
-      let title = 'trend';
-
-      if (networkOrCombine === 'COMBINE') {
-        if (combineChart) {
-          applyCombineWindow();
-          combineChart.update('none');
-        }
-        chartObj = combineChart;
-        title = 'trend_combine';
-      } else {
-        const net = networkOrCombine;
-        if (charts[net]?.chart) {
-          applyTrendWindow(net);
-          charts[net].chart.update('none');
-        }
-        chartObj = charts[net]?.chart;
-        title = 'trend_' + net.toLowerCase();
-        const statsEl = document.getElementById('trend-stats-' + net.toLowerCase());
-        if (statsEl) statsText = statsEl.innerText.replace(/\s+/g, ' ').trim();
-      }
-
-      if (!chartObj) {
-        alert('No chart open. Run STATISTICAL-TRENDING first.');
-        return;
-      }
-
-      // One more paint so canvas matches current scales
-      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-
-      const url = chartObj.toBase64Image('image/png', 1.0);
-      const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter' });
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
-      const margin = 28;
-      const imgH = pageH - margin * 2 - (statsText ? 20 : 0);
-      pdf.addImage(url, 'PNG', margin, margin, pageW - margin * 2, imgH);
-      if (statsText) {
-        pdf.setFont('courier', 'normal');
-        pdf.setFontSize(9);
-        pdf.setTextColor(60);
-        pdf.text(statsText, margin, pageH - 12);
-      }
-      pdf.save(stampName(title) + '.pdf');
-    }
-
-    /**
-     * Full panel PDF. Syncs maps + charts first so post-adjustment view is used.
-     */
     async function exportPanelToPdf(elementId, filenameBase) {
       const el = document.getElementById(elementId);
-      if (!el) {
-        alert('Panel not found: ' + elementId);
-        return;
-      }
+      if (!el) { alert('Panel not found: ' + elementId); return; }
       if (typeof html2canvas === 'undefined' || !window.jspdf) {
-        alert('PDF libraries not loaded.');
-        return;
+        alert('PDF libraries not loaded.'); return;
       }
-
       if (el.classList.contains('trend-panel') || el.classList.contains('match-panel')) {
         el.classList.add('visible');
         el.style.display = 'block';
       }
 
-      // Sync BOTH map and chart state before any panel capture
-      syncAllCharts();
-      if (elementId === 'overview-map-panel') {
-        await waitForMapReady(overviewMap, 800);
-      }
-      if (elementId === 'panel-main-map') {
-        await waitForMapReady(map, 800);
-      }
-      // Trend panels: re-apply window so canvas inside panel is current
+      // Maps: wait after any pan/zoom
+      if (elementId === 'overview-map-panel') await waitForMapReady(overviewMap, 1200);
+      if (elementId === 'panel-main-map') await waitForMapReady(map, 1200);
+
+      // Plots: re-apply current zoom/scroll window before capture
       if (elementId === 'trend-panel-castnet' && charts.CASTNET.chart) {
         applyTrendWindow('CASTNET');
         charts.CASTNET.chart.update('none');
@@ -965,10 +712,7 @@
 
       const btn = document.activeElement;
       const prevLabel = btn && btn.tagName === 'BUTTON' ? btn.textContent : null;
-      if (btn && btn.tagName === 'BUTTON') {
-        btn.disabled = true;
-        btn.textContent = '[ EXPORTING… ]';
-      }
+      if (btn && btn.tagName === 'BUTTON') { btn.disabled = true; btn.textContent = '[ EXPORTING… ]'; }
 
       try {
         const canvas = await html2canvas(el, {
@@ -980,14 +724,11 @@
           windowWidth: el.scrollWidth,
           windowHeight: el.scrollHeight
         });
-
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF({
           orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
-          unit: 'pt',
-          format: 'letter'
+          unit: 'pt', format: 'letter'
         });
-
         const pageW = pdf.internal.pageSize.getWidth();
         const pageH = pdf.internal.pageSize.getHeight();
         const margin = 24;
@@ -995,26 +736,20 @@
         const usableH = pageH - margin * 2;
         const imgW = usableW;
         const imgH = (canvas.height * imgW) / canvas.width;
-
-        let yOffset = 0;
-        let page = 0;
+        let yOffset = 0, page = 0;
         while (yOffset < imgH) {
           if (page > 0) pdf.addPage();
           const srcY = (yOffset / imgH) * canvas.height;
           const srcH = Math.min((usableH / imgH) * canvas.height, canvas.height - srcY);
           const sliceH = (srcH / canvas.height) * imgH;
-
           const sliceCanvas = document.createElement('canvas');
           sliceCanvas.width = canvas.width;
           sliceCanvas.height = Math.max(1, Math.floor(srcH));
           const ctx = sliceCanvas.getContext('2d');
           ctx.fillStyle = '#000';
           ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-          ctx.drawImage(
-            canvas,
-            0, Math.floor(srcY), canvas.width, Math.floor(srcH),
-            0, 0, sliceCanvas.width, sliceCanvas.height
-          );
+          ctx.drawImage(canvas, 0, Math.floor(srcY), canvas.width, Math.floor(srcH),
+            0, 0, sliceCanvas.width, sliceCanvas.height);
           pdf.addImage(sliceCanvas.toDataURL('image/png', 1.0), 'PNG', margin, margin, imgW, sliceH);
           yOffset += usableH;
           page++;
@@ -1043,12 +778,8 @@
           const siteId = (row.SITE_ID || row.SITEID || row.SITE || row.ID || '').trim();
           if (isNaN(lat) || isNaN(lon) || !siteId) return;
           const key = makeKey(lat, lon);
-          if (!siteRegistry[key]) {
-            siteRegistry[key] = { lat, lon, CASTNET: [], NTN: [], marker: null };
-          }
-          if (!Array.isArray(siteRegistry[key][network])) {
-            siteRegistry[key][network] = [];
-          }
+          if (!siteRegistry[key]) siteRegistry[key] = { lat, lon, CASTNET: [], NTN: [], marker: null };
+          if (!Array.isArray(siteRegistry[key][network])) siteRegistry[key][network] = [];
           if (!siteRegistry[key][network].includes(siteId)) {
             siteRegistry[key][network].push(siteId);
             count++;
@@ -1057,7 +788,6 @@
         return count;
       } catch (e) { console.error(e); return 0; }
     }
-
     async function loadDateSummary() {
       try {
         const res = await fetch('./data/input/site_date_summary.csv');
@@ -1065,44 +795,30 @@
         const rows = parseCSV(await res.text());
         dateSummary = { CASTNET: {}, NTN: {} };
         rows.forEach(r => {
-          const net = r.NETWORK;
-          if (!dateSummary[net]) dateSummary[net] = {};
-          dateSummary[net][r.SITE_ID] = { first: r.FIRST_DATE, last: r.LAST_DATE };
+          if (!dateSummary[r.NETWORK]) dateSummary[r.NETWORK] = {};
+          dateSummary[r.NETWORK][r.SITE_ID] = { first: r.FIRST_DATE, last: r.LAST_DATE };
         });
-      } catch (e) { console.error('Date summary error', e); }
+      } catch (e) { console.error(e); }
     }
-
     async function loadCoverage() {
       try {
         const res = await fetch('./data/input/site_variable_coverage.json');
-        if (!res.ok) return;
-        coverageData = await res.json();
-      } catch (e) { console.error('Coverage error', e); }
+        if (res.ok) coverageData = await res.json();
+      } catch (e) { console.error(e); }
     }
-
     async function loadTimeseries() {
       try {
         const res = await fetch('./data/input/site_timeseries.json');
-        if (!res.ok) return;
-        timeseriesData = await res.json();
-      } catch (e) { console.error('Timeseries error', e); }
+        if (res.ok) timeseriesData = await res.json();
+      } catch (e) { console.error(e); }
     }
-
     async function loadCompleteness() {
       try {
         const res = await fetch('./data/input/site_completeness.json');
-        if (!res.ok) {
-          console.warn('site_completeness.json missing');
-          completenessData = {};
-          return;
-        }
+        if (!res.ok) { completenessData = {}; return; }
         completenessData = await res.json();
-      } catch (e) {
-        console.error('Completeness error', e);
-        completenessData = {};
-      }
+      } catch (e) { completenessData = {}; }
     }
-
     async function loadAcfFftCombined() {
       acfFftCombined = { CASTNET: [], NTN: [] };
       const paths = {
@@ -1112,28 +828,21 @@
       for (const [net, path] of Object.entries(paths)) {
         try {
           const res = await fetch(path);
-          if (!res.ok) continue;
-          acfFftCombined[net] = parseCSV(await res.text());
-        } catch (e) {
-          console.error('loadAcfFftCombined', net, e);
-        }
+          if (res.ok) acfFftCombined[net] = parseCSV(await res.text());
+        } catch (e) { console.error(e); }
       }
     }
 
     function sortNetworkList(mode) {
       currentSort = mode;
-      document.getElementById('sort-default').classList.remove('active-sort');
-      document.getElementById('sort-castnet').classList.remove('active-sort');
-      document.getElementById('sort-ntn').classList.remove('active-sort');
+      ['sort-default', 'sort-castnet', 'sort-ntn'].forEach(id =>
+        document.getElementById(id).classList.remove('active-sort'));
       if (mode === 'default') document.getElementById('sort-default').classList.add('active-sort');
       if (mode === 'CASTNET') document.getElementById('sort-castnet').classList.add('active-sort');
       if (mode === 'NTN') document.getElementById('sort-ntn').classList.add('active-sort');
       buildMarkersAndTable();
     }
-
-    function firstId(ids) {
-      return (ids && ids.length) ? ids[0] : 'zzz';
-    }
+    function firstId(ids) { return (ids && ids.length) ? ids[0] : 'zzz'; }
 
     function buildMarkersAndTable() {
       allMarkers.forEach(m => map.removeLayer(m));
@@ -1142,15 +851,11 @@
       tbody.innerHTML = '';
       let keys = Object.keys(siteRegistry);
       if (currentSort === 'CASTNET') {
-        keys.sort((a, b) =>
-          firstId(siteIds(siteRegistry[a], 'CASTNET'))
-            .localeCompare(firstId(siteIds(siteRegistry[b], 'CASTNET')))
-        );
+        keys.sort((a, b) => firstId(siteIds(siteRegistry[a], 'CASTNET'))
+          .localeCompare(firstId(siteIds(siteRegistry[b], 'CASTNET'))));
       } else if (currentSort === 'NTN') {
-        keys.sort((a, b) =>
-          firstId(siteIds(siteRegistry[a], 'NTN'))
-            .localeCompare(firstId(siteIds(siteRegistry[b], 'NTN')))
-        );
+        keys.sort((a, b) => firstId(siteIds(siteRegistry[a], 'NTN'))
+          .localeCompare(firstId(siteIds(siteRegistry[b], 'NTN'))));
       } else {
         keys.sort((a, b) => siteRegistry[b].lat - siteRegistry[a].lat);
       }
@@ -1158,8 +863,7 @@
         const site = siteRegistry[key];
         const castIds = siteIds(site, 'CASTNET');
         const ntnIds = siteIds(site, 'NTN');
-        const color = (castIds.length && ntnIds.length) ? '#fff'
-                    : castIds.length ? '#fff' : '#aaa';
+        const color = castIds.length ? '#fff' : '#aaa';
         const marker = L.circleMarker([site.lat, site.lon], {
           radius: 7, fillColor: color, color: '#000', weight: 1, opacity: 1, fillOpacity: 0.9
         }).addTo(map);
@@ -1180,9 +884,7 @@
         tr.onclick = () => selectSite(key);
         tbody.appendChild(tr);
       });
-      if (allMarkers.length) {
-        map.fitBounds(L.featureGroup(allMarkers).getBounds().pad(0.12));
-      }
+      if (allMarkers.length) map.fitBounds(L.featureGroup(allMarkers).getBounds().pad(0.12));
       buildOverviewMap();
     }
 
@@ -1190,21 +892,16 @@
       if (selectedKey && siteRegistry[selectedKey]?.marker) {
         siteRegistry[selectedKey].marker.setStyle({ weight: 1, color: '#000', radius: 7 });
       }
-      document.querySelectorAll('#network-tbody tr.selected')
-              .forEach(r => r.classList.remove('selected'));
+      document.querySelectorAll('#network-tbody tr.selected').forEach(r => r.classList.remove('selected'));
       selectedKey = key;
       const site = siteRegistry[key];
       if (!site) return;
       selected.CASTNET = { siteId: null, variable: null };
-      selected.NTN     = { siteId: null, variable: null };
+      selected.NTN = { siteId: null, variable: null };
       combineVar = { CASTNET: null, NTN: null };
       if (site.marker) {
         site.marker.setStyle({
-          weight: 3,
-          color: '#00ffff',
-          fillColor: '#2ecc71',
-          fillOpacity: 0.9,
-          radius: 10
+          weight: 3, color: '#00ffff', fillColor: '#2ecc71', fillOpacity: 0.9, radius: 10
         });
         site.marker.openPopup();
         map.panTo([site.lat, site.lon]);
@@ -1224,27 +921,20 @@
     function buildCoverageHTML(network, siteId, variable) {
       const yearData = (((coverageData[network] || {})[siteId] || {})[variable]) || {};
       const years = Object.keys(yearData).sort();
-      if (years.length === 0) {
-        return `<div class="coverage-empty">No coverage data for ${variable}</div>`;
-      }
-      const hasClass = (network === 'CASTNET') ? 'castnet' : 'ntn';
+      if (!years.length) return `<div class="coverage-empty">No coverage data for ${variable}</div>`;
+      const hasClass = network === 'CASTNET' ? 'castnet' : 'ntn';
       const flat = [];
       years.forEach(year => {
-        const binary = yearData[year] || '';
-        for (const ch of binary) flat.push(ch === '1' ? '1' : '0');
+        for (const ch of (yearData[year] || '')) flat.push(ch === '1' ? '1' : '0');
       });
       let first = -1, last = -1;
       for (let i = 0; i < flat.length; i++) {
-        if (flat[i] === '1') {
-          if (first < 0) first = i;
-          last = i;
-        }
+        if (flat[i] === '1') { if (first < 0) first = i; last = i; }
       }
       let nRecord = 0, nMissing = 0;
       if (first >= 0) {
         for (let i = first; i <= last; i++) {
-          if (flat[i] === '1') nRecord++;
-          else nMissing++;
+          if (flat[i] === '1') nRecord++; else nMissing++;
         }
       }
       const nSpan = nRecord + nMissing;
@@ -1255,8 +945,7 @@
         <div style="font-size:11px;color:#aaa;margin-bottom:6px;">
           Record: <b style="color:#fff">${nRecord}</b>
           · No record: <b style="color:#fff">${nMissing}</b>
-          · Span weeks: ${nSpan}
-          · Coverage: ${pct}%
+          · Span: ${nSpan} · Coverage: ${pct}%
         </div>
         <div style="font-size:11px;color:#888;margin-bottom:6px;">
           Site completeness: <b style="color:#fff">${siteComp.pct}%</b>
@@ -1267,9 +956,9 @@
         html += `<div class="year-row"><div class="year-label">${year}</div><div class="week-boxes">`;
         for (let i = 0; i < binary.length; i++) {
           const ch = binary[i];
-          const cls = (ch === '1') ? hasClass : 'missing';
+          const cls = ch === '1' ? hasClass : 'missing';
           const { start, end } = weekInterval(year, i);
-          const tip = (ch === '1') ? `Has data: ${start} – ${end}` : `Missing: ${start} – ${end}`;
+          const tip = ch === '1' ? `Has data: ${start} – ${end}` : `Missing: ${start} – ${end}`;
           html += `<div class="week-box ${cls}" title="${tip}"></div>`;
         }
         html += `</div></div>`;
@@ -1386,33 +1075,23 @@
 
     function computeWindowStats(values, start, end) {
       const nums = [];
-      const lo = Math.max(0, start);
-      const hi = Math.min(values.length - 1, end);
-      for (let i = lo; i <= hi; i++) {
+      for (let i = Math.max(0, start); i <= Math.min(values.length - 1, end); i++) {
         const v = values[i];
         if (v !== null && v !== undefined && !Number.isNaN(v)) nums.push(v);
       }
-      if (nums.length === 0) return { min: null, max: null, median: null, avg: null, n: 0 };
+      if (!nums.length) return { min: null, max: null, median: null, avg: null, n: 0 };
       let min = nums[0], max = nums[0], sum = 0;
-      for (const v of nums) {
-        if (v < min) min = v;
-        if (v > max) max = v;
-        sum += v;
-      }
+      for (const v of nums) { if (v < min) min = v; if (v > max) max = v; sum += v; }
       const sorted = nums.slice().sort((a, b) => a - b);
       const mid = Math.floor(sorted.length / 2);
-      const median = sorted.length % 2 === 0
-        ? (sorted[mid - 1] + sorted[mid]) / 2
-        : sorted[mid];
+      const median = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
       return { min, max, median, avg: sum / nums.length, n: nums.length };
     }
-
     function formatNum(x) {
       if (x === null || x === undefined) return '—';
       if (Math.abs(x) >= 100 || Math.abs(x) < 0.01) return x.toExponential(3);
       return x.toFixed(4).replace(/\.?0+$/, '') || '0';
     }
-
     function updateTrendStats(network, start, end) {
       const state = charts[network];
       if (!state || !state.values.length) return;
@@ -1426,10 +1105,9 @@
         <span><span class="lab">avg</span> ${formatNum(s.avg)}</span>
         <span><span class="lab">n</span> ${s.n}</span>`;
     }
-
     function applyTrendWindow(network) {
       const state = charts[network];
-      if (!state.chart || state.labels.length === 0) return;
+      if (!state.chart || !state.labels.length) return;
       const key = network.toLowerCase();
       const zoomSlider = document.getElementById('trend-zoom-' + key);
       const scrollSlider = document.getElementById('trend-scroll-' + key);
@@ -1440,33 +1118,22 @@
       scrollSlider.max = maxStart;
       if (parseInt(scrollSlider.value, 10) > maxStart) scrollSlider.value = maxStart;
       const start = parseInt(scrollSlider.value, 10);
-      const end = start + windowSize - 1;
       state.chart.options.scales.x.min = start;
-      state.chart.options.scales.x.max = end;
+      state.chart.options.scales.x.max = start + windowSize - 1;
       state.chart.update('none');
-      updateTrendStats(network, start, end);
+      updateTrendStats(network, start, start + windowSize - 1);
     }
 
     function showTrendPlot(network, siteIdArg) {
       if (siteIdArg) selected[network].siteId = siteIdArg;
       const sel = selected[network];
-      if (!sel.siteId) {
-        alert('Select a variable under a ' + network + ' site ID first.');
-        return;
-      }
-      if (!sel.variable) {
-        alert('Please select a variable under ' + network + ' · ' + sel.siteId + ' first.');
-        return;
-      }
+      if (!sel.siteId) { alert('Select a variable under a ' + network + ' site ID first.'); return; }
+      if (!sel.variable) { alert('Select a variable under ' + network + ' · ' + sel.siteId + ' first.'); return; }
       const series = (((timeseriesData[network] || {})[sel.siteId]) || {});
       const dates = series.DATEON || [];
       let values = series[sel.variable] || series['variable_' + sel.variable] || [];
-      if (dates.length === 0) {
-        alert('No time-series data for ' + network + ' / ' + sel.siteId + ' / ' + sel.variable);
-        return;
-      }
-      const labels = [];
-      const dataVals = [];
+      if (!dates.length) { alert('No time-series data.'); return; }
+      const labels = [], dataVals = [];
       for (let i = 0; i < dates.length; i++) {
         labels.push(dates[i]);
         const v = values[i];
@@ -1474,77 +1141,50 @@
       }
       charts[network].labels = labels;
       charts[network].values = dataVals;
-
       const key = network.toLowerCase();
       const panel = document.getElementById('trend-panel-' + key);
       panel.classList.add('visible');
-
-      const isCastnet = (network === 'CASTNET');
+      const isCastnet = network === 'CASTNET';
       const yUnit = isCastnet ? 'µg/m³' : 'mg/L';
       const chartTitle = isCastnet
         ? `Ambient Air ${sel.variable} Concentrations at ${sel.siteId}`
         : `Wet Deposition ${sel.variable} Concentrations at ${sel.siteId}`;
-      const yAxisLabel = `${sel.variable} Concentration (${yUnit})`;
-      const legendLabel = isCastnet
-        ? `CASTNET ${sel.variable} (${yUnit})`
-        : `NTN ${sel.variable} (${yUnit})`;
-
       document.getElementById('trend-header-' + key).textContent =
         `${chartTitle} | Y-bar = zoom · X-bar = time`;
-
       const ctx = document.getElementById('trend-chart-' + key).getContext('2d');
       if (charts[network].chart) charts[network].chart.destroy();
       const lineColor = isCastnet ? '#e74c3c' : '#3498db';
-
       charts[network].chart = new Chart(ctx, {
         type: 'line',
         data: {
-          labels: labels,
+          labels,
           datasets: [{
-            label: legendLabel,
-            data: dataVals,
-            borderColor: lineColor,
-            backgroundColor: lineColor,
-            borderWidth: 1.2,
-            pointRadius: 0,
-            pointHoverRadius: 3,
-            tension: 0,
-            spanGaps: false
+            label: `${network} ${sel.variable} (${yUnit})`,
+            data: dataVals, borderColor: lineColor, backgroundColor: lineColor,
+            borderWidth: 1.2, pointRadius: 0, pointHoverRadius: 3, tension: 0, spanGaps: false
           }]
         },
         options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          animation: false,
+          responsive: true, maintainAspectRatio: false, animation: false,
           interaction: { mode: 'nearest', axis: 'x', intersect: false },
           plugins: {
-            legend: {
-              labels: { color: '#ccc', font: { family: 'Consolas' }, boxWidth: 12, boxHeight: 12 }
-            },
-            title: {
-              display: true,
-              text: chartTitle,
-              color: '#eee',
-              font: { family: 'Consolas', size: 14 }
-            }
+            legend: { labels: { color: '#ccc', font: { family: 'Consolas' }, boxWidth: 12, boxHeight: 12 } },
+            title: { display: true, text: chartTitle, color: '#eee', font: { family: 'Consolas', size: 14 } }
           },
           scales: {
             x: {
-              type: 'category',
-              min: 0,
-              max: labels.length - 1,
+              type: 'category', min: 0, max: labels.length - 1,
               ticks: { color: '#aaa', maxTicksLimit: 12, font: { family: 'Consolas', size: 11 } },
               grid: { color: '#222' }
             },
             y: {
-              title: { display: true, text: yAxisLabel, color: '#aaa' },
+              title: { display: true, text: `${sel.variable} Concentration (${yUnit})`, color: '#aaa' },
               ticks: { color: '#aaa', font: { family: 'Consolas', size: 11 } },
               grid: { color: '#222' }
             }
           }
         }
       });
-
       document.getElementById('trend-zoom-' + key).value = 100;
       document.getElementById('trend-scroll-' + key).value = 0;
       document.getElementById('trend-scroll-' + key).max = 0;
@@ -1555,38 +1195,32 @@
     }
 
     function onCombineCheck(network, el) {
-      const name = (network === 'CASTNET') ? 'combine-castnet' : 'combine-ntn';
-      document.querySelectorAll(`input[name="${name}"]`).forEach(cb => {
-        if (cb !== el) cb.checked = false;
-      });
+      const name = network === 'CASTNET' ? 'combine-castnet' : 'combine-ntn';
+      document.querySelectorAll(`input[name="${name}"]`).forEach(cb => { if (cb !== el) cb.checked = false; });
       combineVar[network] = el.checked ? el.value : null;
     }
-
     function resetCombineTrend() {
       combineVar = { CASTNET: null, NTN: null };
       document.querySelectorAll('input[name="combine-castnet"], input[name="combine-ntn"]')
-              .forEach(cb => { cb.checked = false; });
+        .forEach(cb => { cb.checked = false; });
       if (combineChart) { combineChart.destroy(); combineChart = null; }
       document.getElementById('trend-panel-combine').classList.remove('visible');
       document.getElementById('match-panel').classList.remove('visible');
     }
-
     function getSeriesMap(network, siteId, variable) {
       const series = (((timeseriesData[network] || {})[siteId]) || {});
       const dates = series.DATEON || [];
       let values = series[variable] || series['variable_' + variable] || [];
       const map = {};
       for (let i = 0; i < dates.length; i++) {
-        const d = dates[i];
-        if (!d) continue;
+        if (!dates[i]) continue;
         const v = values[i];
-        map[d] = (v === null || v === undefined || v === '') ? null : Number(v);
+        map[dates[i]] = (v === null || v === undefined || v === '') ? null : Number(v);
       }
       return map;
     }
-
     function applyCombineWindow() {
-      if (!combineChart || combineLabels.length === 0) return;
+      if (!combineChart || !combineLabels.length) return;
       const zoomSlider = document.getElementById('trend-zoom-combine');
       const scrollSlider = document.getElementById('trend-scroll-combine');
       if (!zoomSlider || !scrollSlider) return;
@@ -1604,57 +1238,41 @@
     function showCombineTrendPlot() {
       const site = siteRegistry[selectedKey];
       if (!site) { alert('Select a location first.'); return; }
-      const castVar = combineVar.CASTNET;
-      const ntnVar  = combineVar.NTN;
-      if (!castVar && !ntnVar) {
-        alert('Check one variable under CASTNET and/or NTN.');
-        return;
-      }
+      const castVar = combineVar.CASTNET, ntnVar = combineVar.NTN;
+      if (!castVar && !ntnVar) { alert('Check one variable under CASTNET and/or NTN.'); return; }
       const castId = selected.CASTNET.siteId || siteIds(site, 'CASTNET')[0] || null;
-      const ntnId  = selected.NTN.siteId     || siteIds(site, 'NTN')[0] || null;
+      const ntnId = selected.NTN.siteId || siteIds(site, 'NTN')[0] || null;
       let castMap = {}, ntnMap = {};
       if (castVar && castId) castMap = getSeriesMap('CASTNET', castId, castVar);
       if (ntnVar && ntnId) ntnMap = getSeriesMap('NTN', ntnId, ntnVar);
-      const allDates = Array.from(new Set([
-        ...Object.keys(castMap), ...Object.keys(ntnMap)
-      ])).sort();
-      if (allDates.length === 0) {
-        alert('No time-series data found.');
-        return;
-      }
-      const castVals = allDates.map(d => (castMap[d] !== undefined ? castMap[d] : null));
-      const ntnVals  = allDates.map(d => (ntnMap[d]  !== undefined ? ntnMap[d]  : null));
+      const allDates = Array.from(new Set([...Object.keys(castMap), ...Object.keys(ntnMap)])).sort();
+      if (!allDates.length) { alert('No time-series data found.'); return; }
       const datasets = [];
-      if (castVar && castId && Object.keys(castMap).length > 0) {
+      if (castVar && castId && Object.keys(castMap).length) {
         datasets.push({
           label: `CASTNET ${castId} ${castVar} (µg/m³)`,
-          data: castVals,
+          data: allDates.map(d => castMap[d] !== undefined ? castMap[d] : null),
           borderColor: '#e74c3c', backgroundColor: '#e74c3c',
           borderWidth: 1.2, pointRadius: 0, pointHoverRadius: 3, tension: 0, spanGaps: false
         });
       }
-      if (ntnVar && ntnId && Object.keys(ntnMap).length > 0) {
+      if (ntnVar && ntnId && Object.keys(ntnMap).length) {
         datasets.push({
           label: `NTN ${ntnId} ${ntnVar} (mg/L)`,
-          data: ntnVals,
+          data: allDates.map(d => ntnMap[d] !== undefined ? ntnMap[d] : null),
           borderColor: '#3498db', backgroundColor: '#3498db',
           borderWidth: 1.2, pointRadius: 0, pointHoverRadius: 3, tension: 0, spanGaps: false
         });
       }
-      if (datasets.length === 0) {
-        alert('No time-series data for selected variable(s).');
-        return;
-      }
+      if (!datasets.length) { alert('No time-series data.'); return; }
       combineLabels = allDates;
       const panel = document.getElementById('trend-panel-combine');
       panel.classList.add('visible');
       const speciesHint = castVar || ntnVar || '';
       const siteIdsLabel = [castId, ntnId].filter(Boolean).join(' / ');
-      const combineTitle =
-        `A Comparison of Atmospheric Dry vs. Wet ${speciesHint} Deposition at ${siteIdsLabel}`;
+      const combineTitle = `A Comparison of Atmospheric Dry vs. Wet ${speciesHint} Deposition at ${siteIdsLabel}`;
       document.getElementById('trend-header-combine').textContent =
         `${combineTitle} | Y-bar = zoom · X-bar = time`;
-
       const ctx = document.getElementById('trend-chart-combine').getContext('2d');
       if (combineChart) combineChart.destroy();
       combineChart = new Chart(ctx, {
@@ -1665,12 +1283,7 @@
           interaction: { mode: 'nearest', axis: 'x', intersect: false },
           plugins: {
             legend: { labels: { color: '#ccc', font: { family: 'Consolas' }, boxWidth: 12, boxHeight: 12 } },
-            title: {
-              display: true,
-              text: combineTitle,
-              color: '#eee',
-              font: { family: 'Consolas', size: 14 }
-            }
+            title: { display: true, text: combineTitle, color: '#eee', font: { family: 'Consolas', size: 14 } }
           },
           scales: {
             x: {
@@ -1679,11 +1292,7 @@
               grid: { color: '#222' }
             },
             y: {
-              title: {
-                display: true,
-                text: 'Concentration (CASTNET µg/m³ · NTN mg/L)',
-                color: '#aaa'
-              },
+              title: { display: true, text: 'Concentration (CASTNET µg/m³ · NTN mg/L)', color: '#aaa' },
               ticks: { color: '#aaa', font: { family: 'Consolas', size: 11 } },
               grid: { color: '#222' }
             }
@@ -1702,81 +1311,56 @@
     function isNumericMatchField(field) {
       return field === 'num_years' || field === 'acf_lag' || field === 'fft_period';
     }
-
     function sortMatchRows(rows, field, dir) {
-      const desc = (dir === 'desc');
-      const sorted = rows.slice();
-      sorted.sort((a, b) => {
+      const desc = dir === 'desc';
+      return rows.slice().sort((a, b) => {
         let va = a[field], vb = b[field];
         if (isNumericMatchField(field)) {
           const na = parseFloat(va), nb = parseFloat(vb);
-          const aOk = !isNaN(na), bOk = !isNaN(nb);
-          if (!aOk && !bOk) return 0;
-          if (!aOk) return 1;
-          if (!bOk) return -1;
-          return desc ? (nb - na) : (na - nb);
+          if (isNaN(na) && isNaN(nb)) return 0;
+          if (isNaN(na)) return 1;
+          if (isNaN(nb)) return -1;
+          return desc ? nb - na : na - nb;
         }
         const cmp = String(va ?? '').localeCompare(String(vb ?? ''), undefined, { numeric: true, sensitivity: 'base' });
         return desc ? -cmp : cmp;
       });
-      return sorted;
     }
-
     function renderMatchTable(rows) {
       const thead = document.getElementById('match-thead');
       const tbody = document.getElementById('match-tbody');
-      if (!rows || rows.length === 0) {
+      if (!rows || !rows.length) {
         thead.innerHTML = '';
         tbody.innerHTML = `<tr><td class="match-empty" colspan="9">No matching segments.</td></tr>`;
         return;
       }
-      thead.innerHTML = `
-        <tr>
-          <th>Network</th><th>Species</th><th>Analysis</th><th>SITE_ID</th>
-          <th>Start_Date</th><th>End_Date</th><th>Num_Years</th>
-          <th>ACF Lag</th><th>FFT Period</th>
-        </tr>`;
-      tbody.innerHTML = rows.map(r => `
-        <tr>
-          <td>${r.network}</td>
-          <td>${r.variable}</td>
-          <td>${r.analysis_type || '—'}</td>
-          <td>${r.site_id}</td>
-          <td>${r.start || '—'}</td>
-          <td>${r.end || '—'}</td>
-          <td>${r.num_years || '—'}</td>
-          <td>${r.acf_lag === '' || r.acf_lag == null ? '—' : r.acf_lag}</td>
-          <td>${r.fft_period === '' || r.fft_period == null ? '—' : r.fft_period}</td>
-        </tr>`).join('');
+      thead.innerHTML = `<tr>
+        <th>Network</th><th>Species</th><th>Analysis</th><th>SITE_ID</th>
+        <th>Start_Date</th><th>End_Date</th><th>Num_Years</th>
+        <th>ACF Lag</th><th>FFT Period</th></tr>`;
+      tbody.innerHTML = rows.map(r => `<tr>
+        <td>${r.network}</td><td>${r.variable}</td><td>${r.analysis_type || '—'}</td>
+        <td>${r.site_id}</td><td>${r.start || '—'}</td><td>${r.end || '—'}</td>
+        <td>${r.num_years || '—'}</td>
+        <td>${r.acf_lag === '' || r.acf_lag == null ? '—' : r.acf_lag}</td>
+        <td>${r.fft_period === '' || r.fft_period == null ? '—' : r.fft_period}</td>
+      </tr>`).join('');
     }
-
     function applyMatchSort() {
-      if (!matchRows.length) {
-        renderMatchTable([]);
-        return;
-      }
+      if (!matchRows.length) { renderMatchTable([]); return; }
       const field = document.getElementById('match-sort-col').value;
       const dir = document.getElementById('match-sort-dir').value;
       renderMatchTable(sortMatchRows(matchRows, field, dir));
       const colLabel = document.getElementById('match-sort-col').selectedOptions[0].text;
       const dirLabel = dir === 'desc' ? 'High → Low' : 'Low → High';
       const header = document.getElementById('match-header-text');
-      const base = header.textContent.split(' · Sort:')[0];
-      header.textContent = `${base} · Sort: ${colLabel} ${dirLabel}`;
+      header.textContent = header.textContent.split(' · Sort:')[0] + ` · Sort: ${colLabel} ${dirLabel}`;
     }
-
     function showMatchSegment() {
       const site = siteRegistry[selectedKey];
-      if (!site) {
-        alert('Select a location first.');
-        return;
-      }
-      const castVar = combineVar.CASTNET;
-      const ntnVar = combineVar.NTN;
-      if (!castVar && !ntnVar) {
-        alert('Check one species under CASTNET and/or NTN.');
-        return;
-      }
+      if (!site) { alert('Select a location first.'); return; }
+      const castVar = combineVar.CASTNET, ntnVar = combineVar.NTN;
+      if (!castVar && !ntnVar) { alert('Check one species under CASTNET and/or NTN.'); return; }
       const castIds = siteIds(site, 'CASTNET');
       const ntnIds = siteIds(site, 'NTN');
       const castTarget = selected.CASTNET.siteId ? [selected.CASTNET.siteId] : castIds;
@@ -1784,16 +1368,13 @@
       const rows = [];
       function addNetworkRows(network, idList, variable) {
         if (!variable || !idList.length) return;
-        const data = acfFftCombined[network] || [];
-        idList.forEach(siteId => {
-          data.forEach(r => {
-            const sid = cell(r, 'SITE_ID');
-            if (String(sid).trim() !== String(siteId).trim()) return;
+        (acfFftCombined[network] || []).forEach(r => {
+          idList.forEach(siteId => {
+            if (String(cell(r, 'SITE_ID')).trim() !== String(siteId).trim()) return;
             rows.push({
-              network,
-              variable,
+              network, variable,
               analysis_type: cell(r, 'analysis_type', 'ANALYSIS_TYPE'),
-              site_id: sid,
+              site_id: cell(r, 'SITE_ID'),
               start: cell(r, 'Start_Date', 'START_DATE'),
               end: cell(r, 'End_Date', 'END_DATE'),
               num_years: cell(r, 'Num_Years', 'NUM_YEARS'),
@@ -1806,7 +1387,6 @@
       if (castVar) addNetworkRows('CASTNET', castTarget, castVar);
       if (ntnVar) addNetworkRows('NTN', ntnTarget, ntnVar);
       matchRows = rows;
-      const panel = document.getElementById('match-panel');
       const parts = [];
       if (castVar) parts.push(`CASTNET ${formatSiteIdsText(castTarget)} · ${castVar}`);
       if (ntnVar) parts.push(`NTN ${formatSiteIdsText(ntnTarget)} · ${ntnVar}`);
@@ -1815,8 +1395,8 @@
       document.getElementById('match-sort-col').value = 'num_years';
       document.getElementById('match-sort-dir').value = 'desc';
       applyMatchSort();
-      panel.classList.add('visible');
-      panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      document.getElementById('match-panel').classList.add('visible');
+      document.getElementById('match-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
     async function loadAllSites() {
@@ -1828,11 +1408,8 @@
       combineVar = { CASTNET: null, NTN: null };
       matchRows = [];
       document.getElementById('site-info').innerHTML = '<div class="placeholder">Loading...</div>';
-      document.getElementById('trend-panel-castnet').classList.remove('visible');
-      document.getElementById('trend-panel-ntn').classList.remove('visible');
-      document.getElementById('trend-panel-combine').classList.remove('visible');
-      document.getElementById('match-panel').classList.remove('visible');
-
+      ['trend-panel-castnet', 'trend-panel-ntn', 'trend-panel-combine', 'match-panel']
+        .forEach(id => document.getElementById(id).classList.remove('visible'));
       await loadCoordinator('CASTNET', './data/input/CASTNET/CASTNET_coordinator.csv');
       await loadCoordinator('NTN', './data/input/NTN/NTN_coordinator.csv');
       await loadDateSummary();
@@ -1841,7 +1418,6 @@
       await loadCompleteness();
       await loadAcfFftCombined();
       buildMarkersAndTable();
-
       document.getElementById('site-info').innerHTML =
         '<div class="placeholder">Click a marker or a row<br>to see details</div>';
     }
