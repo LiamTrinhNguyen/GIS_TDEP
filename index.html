@@ -247,7 +247,7 @@
       <div class="title-row">
         <div class="panel-title title-text">NETWORK OVERVIEW MAP · completeness bracket → color</div>
         <div class="export-btns">
-          <button type="button" id="btn-export-ov-map"
+          <button type="button"
             onclick="exportMapToPdf(overviewMap, 'overview-map', 'overview_map_view', 'ov-snap-status')">
             [ EXPORT MAP ]
           </button>
@@ -442,8 +442,10 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
+    // preferCanvas: true → circle markers drawn on canvas so html2canvas includes pins
     const map = L.map('map', {
-      zoomControl: true, scrollWheelZoom: true, doubleClickZoom: true, dragging: true
+      zoomControl: true, scrollWheelZoom: true, doubleClickZoom: true, dragging: true,
+      preferCanvas: true
     }).setView([39.5, -98.0], 4);
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
@@ -452,7 +454,8 @@
     }).addTo(map);
 
     const overviewMap = L.map('overview-map', {
-      zoomControl: true, scrollWheelZoom: true, doubleClickZoom: true, dragging: true
+      zoomControl: true, scrollWheelZoom: true, doubleClickZoom: true, dragging: true,
+      preferCanvas: true
     }).setView([39.5, -98.0], 4);
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
@@ -489,11 +492,7 @@
     let combineVar = { CASTNET: null, NTN: null };
     let matchRows = [];
 
-    // Last successful map snapshot (memory) — overwritten on every EXPORT MAP
-    const mapSnapshots = {
-      'overview-map': null,
-      'map': null
-    };
+    const mapSnapshots = { 'overview-map': null, 'map': null };
 
     const VARIABLES = ["SO2","SO4","HNO3","NO3","TNO3","NH4","CA","K","MG","Sodium"];
 
@@ -675,7 +674,7 @@
       setTimeout(() => overviewMap.invalidateSize(true), 100);
     }
 
-    // ========== MAP SNAPSHOT + EXPORT (one-button flow) ==========
+    // ========== MAP CAPTURE (includes pins via preferCanvas + refresh) ==========
     function stampName(base) {
       return `${base}_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}`;
     }
@@ -687,7 +686,16 @@
         try {
           if (typeof layer.redraw === 'function') layer.redraw();
           if (typeof layer.update === 'function') layer.update();
-          if (layer.getLatLng && layer.setLatLng) layer.setLatLng(layer.getLatLng());
+          if (layer.getLatLng && layer.setLatLng) {
+            layer.setLatLng(layer.getLatLng());
+          }
+          if (layer.setStyle && (layer instanceof L.CircleMarker || layer instanceof L.Circle)) {
+            const s = layer.options || {};
+            layer.setStyle({
+              opacity: 1,
+              fillOpacity: s.fillOpacity != null ? s.fillOpacity : 0.9
+            });
+          }
         } catch (e) {}
       });
       try {
@@ -730,10 +738,6 @@
       });
     }
 
-    /**
-     * Capture current map into memory (always overwrites previous snapshot).
-     * Called automatically by EXPORT MAP / map EXPORT PANEL.
-     */
     async function captureMapView(leafletMap, mapDivId, statusElId) {
       const el = document.getElementById(mapDivId);
       if (!el || !leafletMap) throw new Error('Map not found');
@@ -741,15 +745,17 @@
 
       const status = statusElId ? document.getElementById(statusElId) : null;
       if (status) {
-        status.textContent = 'Syncing view…';
+        status.textContent = 'Syncing view + pins…';
         status.style.color = '#f1c40f';
       }
 
       await waitForMapReady(leafletMap, 1400);
+      // Second pass so circleMarkers land on canvas pane after tiles settle
+      forceMapStructuralRefresh(leafletMap);
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-      await new Promise(r => setTimeout(r, 150));
+      await new Promise(r => setTimeout(r, 250));
 
-      if (status) status.textContent = 'Capturing…';
+      if (status) status.textContent = 'Capturing map + pins…';
 
       const canvas = await html2canvas(el, {
         scale: 2,
@@ -771,18 +777,12 @@
       mapSnapshots[mapDivId] = snap;
 
       if (status) {
-        status.textContent = 'Captured · ' + new Date().toLocaleTimeString();
+        status.textContent = 'Captured (with pins) · ' + new Date().toLocaleTimeString();
         status.style.color = '#2ecc71';
       }
       return snap;
     }
 
-    /**
-     * One-button EXPORT MAP:
-     * 1) force current pan/zoom/markers into DOM
-     * 2) snapshot into memory
-     * 3) write PDF from that snapshot
-     */
     async function exportMapToPdf(leafletMap, mapDivId, filenameBase, statusElId) {
       if (!window.jspdf) {
         alert('jsPDF not loaded.');
@@ -821,9 +821,6 @@
       }
     }
 
-    /**
-     * Panel export. If mapInstance + mapDivId given, sync map first so panel includes current view.
-     */
     async function exportPanelToPdf(elementId, filenameBase, mapInstance, mapDivId) {
       const el = document.getElementById(elementId);
       if (!el) {
@@ -840,18 +837,20 @@
         el.style.display = 'block';
       }
 
-      // Map panels: refresh live view into DOM before full-panel capture
       if (mapInstance && mapDivId) {
         try {
           await captureMapView(mapInstance, mapDivId, null);
         } catch (e) {
-          console.warn('Map pre-capture for panel failed, continuing', e);
+          console.warn('Map pre-capture for panel failed', e);
           await waitForMapReady(mapInstance, 1200);
+          forceMapStructuralRefresh(mapInstance);
         }
       } else if (elementId === 'overview-map-panel') {
         await waitForMapReady(overviewMap, 1400);
+        forceMapStructuralRefresh(overviewMap);
       } else if (elementId === 'panel-main-map') {
         await waitForMapReady(map, 1400);
+        forceMapStructuralRefresh(map);
       }
 
       if (elementId === 'trend-panel-castnet' && charts.CASTNET.chart) {
@@ -868,7 +867,7 @@
       }
 
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-      await new Promise(r => setTimeout(r, 100));
+      await new Promise(r => setTimeout(r, 150));
 
       const btn = document.activeElement;
       const prevLabel = btn && btn.tagName === 'BUTTON' ? btn.textContent : null;
