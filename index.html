@@ -73,18 +73,33 @@
       display: flex; gap: 18px; justify-content: center;
       flex-wrap: wrap; align-items: flex-start;
     }
+    /* Auto-height panels: grow with weekly coverage (no fixed 1200px) */
     .panel {
-      width: 420px; height: 1200px; background: #0a0a0a;
-      border: 1px solid #ffffff; padding: 12px;
-      display: flex; flex-direction: column;
+      width: 420px;
+      min-height: 620px;
+      height: auto;
+      background: #0a0a0a;
+      border: 1px solid #ffffff;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
     }
     .panel-wide {
-      width: 860px; height: 1200px; background: #0a0a0a;
-      border: 1px solid #ffffff; padding: 12px;
-      display: flex; flex-direction: column;
+      width: 860px;
+      min-height: 620px;
+      height: auto;
+      background: #0a0a0a;
+      border: 1px solid #ffffff;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
     }
     .panel-title { font-size: 14px; letter-spacing: 1px; margin-bottom: 0; flex-shrink: 0; }
-    .panel-content { flex: 1; overflow-y: auto; overflow-x: hidden; }
+    /* Site info expands fully — no inner panel scroll */
+    .panel-content {
+      flex: 1 1 auto;
+      overflow: visible;
+    }
     #map {
       width: 100%; height: 220px; background: #111;
       border: 1px solid #555; margin-bottom: 8px; flex-shrink: 0;
@@ -92,11 +107,16 @@
     .leaflet-control-zoom a {
       background: #111 !important; color: #fff !important; border: 1px solid #fff !important;
     }
-    .sort-bar { margin-bottom: 6px; font-size: 11px; color: #aaa; }
+    .sort-bar { margin-bottom: 6px; font-size: 11px; color: #aaa; flex-shrink: 0; }
     .sort-bar button { font-size: 11px; padding: 3px 8px; }
+    /* Network list: still scrollable if many sites (independent of coverage height) */
     .network-list-box {
-      border: 1px solid #555; flex: 1;
-      display: flex; flex-direction: column; min-height: 0;
+      border: 1px solid #555;
+      flex: 1 1 auto;
+      min-height: 280px;
+      max-height: 520px;
+      display: flex;
+      flex-direction: column;
     }
     .network-list-title {
       padding: 6px 10px; font-size: 13px;
@@ -134,9 +154,13 @@
     .legend-dot.castnet { background: #e74c3c; border-color: #c0392b; }
     .legend-dot.ntn { background: #3498db; border-color: #2980b9; }
     .legend-dot.missing { background: #161b22; border-color: #1b1f23; }
+    /* Weekly coverage: show ALL years — no max-height / no scroll */
     .coverage-block {
-      margin-top: 10px; border-top: 1px solid #333;
-      padding-top: 8px; max-height: 260px; overflow-y: auto;
+      margin-top: 10px;
+      border-top: 1px solid #333;
+      padding-top: 8px;
+      max-height: none;
+      overflow: visible;
     }
     .coverage-block .plot-title { font-size: 12px; color: #aaa; margin-bottom: 6px; }
     .year-row { display: flex; align-items: center; margin-bottom: 3px; height: 13px; }
@@ -442,7 +466,6 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    // preferCanvas: true → circle markers drawn on canvas so html2canvas includes pins
     const map = L.map('map', {
       zoomControl: true, scrollWheelZoom: true, doubleClickZoom: true, dragging: true,
       preferCanvas: true
@@ -491,11 +514,9 @@
     let combineLabels = [];
     let combineVar = { CASTNET: null, NTN: null };
     let matchRows = [];
-
     const mapSnapshots = { 'overview-map': null, 'map': null };
 
     const VARIABLES = ["SO2","SO4","HNO3","NO3","TNO3","NH4","CA","K","MG","Sodium"];
-
     const COMPLETENESS_COLORS = {
       CASTNET: {
         '0-25': '#f5b7b1', '25-50': '#e74c3c', '50-75': '#c0392b', '75-100': '#7b241c'
@@ -516,11 +537,7 @@
         return obj;
       });
     }
-
-    function makeKey(lat, lon) {
-      return `${lat.toFixed(5)}_${lon.toFixed(5)}`;
-    }
-
+    function makeKey(lat, lon) { return `${lat.toFixed(5)}_${lon.toFixed(5)}`; }
     function cell(row, ...candidates) {
       const upperMap = {};
       Object.keys(row).forEach(k => {
@@ -532,47 +549,35 @@
       }
       return '';
     }
-
     function siteIds(site, network) {
       if (!site) return [];
       const v = site[network];
       if (!v) return [];
       return Array.isArray(v) ? v.slice() : [v];
     }
-
     function formatSiteIdsHTML(ids) {
       if (!ids || ids.length === 0) return '—';
       return `<div class="site-id-list">${ids.map(id => `<span>${id}</span>`).join('')}</div>`;
     }
-
     function formatSiteIdsText(ids) {
       if (!ids || ids.length === 0) return '—';
       return ids.join(', ');
     }
-
     function bracketFromPct(pct) {
       if (pct < 25) return '0-25';
       if (pct < 50) return '25-50';
       if (pct < 75) return '50-75';
       return '75-100';
     }
-
     function getCompleteness(network, siteId) {
       const row = ((completenessData[network] || {})[siteId]) || null;
-      if (!row) {
-        return { pct: 0, bracket: '0-25', n_record: 0, n_missing: 0, n_span: 0, siteId };
-      }
+      if (!row) return { pct: 0, bracket: '0-25', n_record: 0, n_missing: 0, n_span: 0, siteId };
       const pct = Number(row.completeness_pct ?? 0);
       return {
-        pct,
-        bracket: row.bracket || bracketFromPct(pct),
-        n_record: row.n_record ?? 0,
-        n_missing: row.n_missing ?? 0,
-        n_span: row.n_span ?? 0,
-        siteId
+        pct, bracket: row.bracket || bracketFromPct(pct),
+        n_record: row.n_record ?? 0, n_missing: row.n_missing ?? 0, n_span: row.n_span ?? 0, siteId
       };
     }
-
     function maxCompleteness(network, ids) {
       let best = { pct: -1, bracket: '0-25', n_record: 0, n_missing: 0, n_span: 0, siteId: null };
       (ids || []).forEach(id => {
@@ -582,7 +587,6 @@
       if (best.pct < 0) best.pct = 0;
       return best;
     }
-
     function weekInterval(year, weekIndex) {
       const y = parseInt(year, 10);
       const start = new Date(Date.UTC(y, 0, 1 + weekIndex * 7));
@@ -595,7 +599,6 @@
       };
       return { start: fmt(start), end: fmt(end) };
     }
-
     function recordYears(network, siteId) {
       if (!siteId) return 0;
       const range = ((dateSummary[network] || {})[siteId]) || {};
@@ -613,7 +616,6 @@
       document.getElementById('ov-net-ntn').classList.toggle('active-net', mode === 'NTN');
       buildOverviewMap();
     }
-
     function setOverviewBracket(mode) {
       overviewBracket = mode;
       ['ALL', '0-25', '25-50', '50-75', '75-100'].forEach(b => {
@@ -622,7 +624,6 @@
       });
       buildOverviewMap();
     }
-
     function buildOverviewMap() {
       overviewMarkers.forEach(m => overviewMap.removeLayer(m));
       overviewMarkers = [];
@@ -634,7 +635,6 @@
         if (overviewNetwork === 'CASTNET' && castIds.length === 0) return;
         if (overviewNetwork === 'NTN' && ntnIds.length === 0) return;
         if (overviewNetwork === 'ALL' && castIds.length === 0 && ntnIds.length === 0) return;
-
         let network, ids, comp;
         if (overviewNetwork === 'CASTNET') {
           network = 'CASTNET'; ids = castIds; comp = maxCompleteness('CASTNET', castIds);
@@ -648,7 +648,6 @@
           else { network = 'CASTNET'; ids = castIds; comp = c; }
         }
         if (overviewBracket !== 'ALL' && comp.bracket !== overviewBracket) return;
-
         const fill = (COMPLETENESS_COLORS[network] || {})[comp.bracket] || '#888';
         const years = comp.siteId ? recordYears(network, comp.siteId) : 0;
         const marker = L.circleMarker([site.lat, site.lon], {
@@ -674,11 +673,9 @@
       setTimeout(() => overviewMap.invalidateSize(true), 100);
     }
 
-    // ========== MAP CAPTURE (includes pins via preferCanvas + refresh) ==========
     function stampName(base) {
       return `${base}_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}`;
     }
-
     function forceMapStructuralRefresh(activeMap) {
       if (!activeMap) return;
       activeMap.invalidateSize(true);
@@ -686,9 +683,7 @@
         try {
           if (typeof layer.redraw === 'function') layer.redraw();
           if (typeof layer.update === 'function') layer.update();
-          if (layer.getLatLng && layer.setLatLng) {
-            layer.setLatLng(layer.getLatLng());
-          }
+          if (layer.getLatLng && layer.setLatLng) layer.setLatLng(layer.getLatLng());
           if (layer.setStyle && (layer instanceof L.CircleMarker || layer instanceof L.Circle)) {
             const s = layer.options || {};
             layer.setStyle({
@@ -702,98 +697,59 @@
         activeMap.setView(activeMap.getCenter(), activeMap.getZoom(), { animate: false });
       } catch (e) {}
     }
-
     function waitForMapReady(activeMap, timeout = 1400) {
       return new Promise((resolve) => {
         if (!activeMap) { resolve(); return; }
         forceMapStructuralRefresh(activeMap);
         let done = false;
-        const finish = () => {
-          if (done) return;
-          done = true;
-          resolve();
-        };
+        const finish = () => { if (done) return; done = true; resolve(); };
         setTimeout(finish, timeout);
         try {
           activeMap.whenReady(() => {
             activeMap.once('load', finish);
             let quiet = null;
-            const onTile = () => {
-              clearTimeout(quiet);
-              quiet = setTimeout(finish, 350);
-            };
+            const onTile = () => { clearTimeout(quiet); quiet = setTimeout(finish, 350); };
             activeMap.on('tileload', onTile);
             activeMap.on('tileerror', onTile);
             setTimeout(() => {
-              try {
-                activeMap.off('tileload', onTile);
-                activeMap.off('tileerror', onTile);
-              } catch (e) {}
+              try { activeMap.off('tileload', onTile); activeMap.off('tileerror', onTile); } catch (e) {}
             }, timeout + 50);
             setTimeout(finish, 500);
           });
-        } catch (e) {
-          setTimeout(finish, 500);
-        }
+        } catch (e) { setTimeout(finish, 500); }
       });
     }
-
     async function captureMapView(leafletMap, mapDivId, statusElId) {
       const el = document.getElementById(mapDivId);
       if (!el || !leafletMap) throw new Error('Map not found');
       if (typeof html2canvas === 'undefined') throw new Error('html2canvas not loaded');
-
       const status = statusElId ? document.getElementById(statusElId) : null;
-      if (status) {
-        status.textContent = 'Syncing view + pins…';
-        status.style.color = '#f1c40f';
-      }
-
+      if (status) { status.textContent = 'Syncing view + pins…'; status.style.color = '#f1c40f'; }
       await waitForMapReady(leafletMap, 1400);
-      // Second pass so circleMarkers land on canvas pane after tiles settle
       forceMapStructuralRefresh(leafletMap);
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
       await new Promise(r => setTimeout(r, 250));
-
       if (status) status.textContent = 'Capturing map + pins…';
-
       const canvas = await html2canvas(el, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#111111',
-        logging: false,
-        width: el.offsetWidth,
-        height: el.offsetHeight,
-        foreignObjectRendering: false
+        scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#111111',
+        logging: false, width: el.offsetWidth, height: el.offsetHeight, foreignObjectRendering: false
       });
-
       const snap = {
         dataUrl: canvas.toDataURL('image/png', 1.0),
-        width: canvas.width,
-        height: canvas.height,
-        at: new Date().toISOString()
+        width: canvas.width, height: canvas.height, at: new Date().toISOString()
       };
       mapSnapshots[mapDivId] = snap;
-
       if (status) {
         status.textContent = 'Captured (with pins) · ' + new Date().toLocaleTimeString();
         status.style.color = '#2ecc71';
       }
       return snap;
     }
-
     async function exportMapToPdf(leafletMap, mapDivId, filenameBase, statusElId) {
-      if (!window.jspdf) {
-        alert('jsPDF not loaded.');
-        return;
-      }
+      if (!window.jspdf) { alert('jsPDF not loaded.'); return; }
       const btn = document.activeElement;
       const prev = btn && btn.tagName === 'BUTTON' ? btn.textContent : null;
-      if (btn && btn.tagName === 'BUTTON') {
-        btn.disabled = true;
-        btn.textContent = '[ EXPORTING… ]';
-      }
+      if (btn && btn.tagName === 'BUTTON') { btn.disabled = true; btn.textContent = '[ EXPORTING… ]'; }
       try {
         const snap = await captureMapView(leafletMap, mapDivId, statusElId);
         const { jsPDF } = window.jspdf;
@@ -808,40 +764,27 @@
       } catch (err) {
         console.error(err);
         const status = statusElId ? document.getElementById(statusElId) : null;
-        if (status) {
-          status.textContent = 'Export failed';
-          status.style.color = '#e74c3c';
-        }
+        if (status) { status.textContent = 'Export failed'; status.style.color = '#e74c3c'; }
         alert('Map export failed: ' + (err.message || err));
       } finally {
         if (btn && btn.tagName === 'BUTTON') {
-          btn.disabled = false;
-          btn.textContent = prev || '[ EXPORT MAP ]';
+          btn.disabled = false; btn.textContent = prev || '[ EXPORT MAP ]';
         }
       }
     }
-
     async function exportPanelToPdf(elementId, filenameBase, mapInstance, mapDivId) {
       const el = document.getElementById(elementId);
-      if (!el) {
-        alert('Panel not found: ' + elementId);
-        return;
-      }
+      if (!el) { alert('Panel not found: ' + elementId); return; }
       if (typeof html2canvas === 'undefined' || !window.jspdf) {
-        alert('PDF libraries not loaded.');
-        return;
+        alert('PDF libraries not loaded.'); return;
       }
-
       if (el.classList.contains('trend-panel') || el.classList.contains('match-panel')) {
-        el.classList.add('visible');
-        el.style.display = 'block';
+        el.classList.add('visible'); el.style.display = 'block';
       }
-
       if (mapInstance && mapDivId) {
-        try {
-          await captureMapView(mapInstance, mapDivId, null);
-        } catch (e) {
-          console.warn('Map pre-capture for panel failed', e);
+        try { await captureMapView(mapInstance, mapDivId, null); }
+        catch (e) {
+          console.warn(e);
           await waitForMapReady(mapInstance, 1200);
           forceMapStructuralRefresh(mapInstance);
         }
@@ -852,49 +795,31 @@
         await waitForMapReady(map, 1400);
         forceMapStructuralRefresh(map);
       }
-
       if (elementId === 'trend-panel-castnet' && charts.CASTNET.chart) {
-        applyTrendWindow('CASTNET');
-        charts.CASTNET.chart.update('none');
+        applyTrendWindow('CASTNET'); charts.CASTNET.chart.update('none');
       }
       if (elementId === 'trend-panel-ntn' && charts.NTN.chart) {
-        applyTrendWindow('NTN');
-        charts.NTN.chart.update('none');
+        applyTrendWindow('NTN'); charts.NTN.chart.update('none');
       }
       if (elementId === 'trend-panel-combine' && combineChart) {
-        applyCombineWindow();
-        combineChart.update('none');
+        applyCombineWindow(); combineChart.update('none');
       }
-
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
       await new Promise(r => setTimeout(r, 150));
-
       const btn = document.activeElement;
       const prevLabel = btn && btn.tagName === 'BUTTON' ? btn.textContent : null;
-      if (btn && btn.tagName === 'BUTTON') {
-        btn.disabled = true;
-        btn.textContent = '[ EXPORTING… ]';
-      }
-
+      if (btn && btn.tagName === 'BUTTON') { btn.disabled = true; btn.textContent = '[ EXPORTING… ]'; }
       try {
         const canvas = await html2canvas(el, {
-          scale: 2,
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: '#000000',
-          logging: false,
-          windowWidth: el.scrollWidth,
-          windowHeight: el.scrollHeight,
+          scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#000000',
+          logging: false, windowWidth: el.scrollWidth, windowHeight: el.scrollHeight,
           foreignObjectRendering: false
         });
-
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF({
           orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
-          unit: 'pt',
-          format: 'letter'
+          unit: 'pt', format: 'letter'
         });
-
         const pageW = pdf.internal.pageSize.getWidth();
         const pageH = pdf.internal.pageSize.getHeight();
         const margin = 24;
@@ -902,9 +827,7 @@
         const usableH = pageH - margin * 2;
         const imgW = usableW;
         const imgH = (canvas.height * imgW) / canvas.width;
-
-        let yOffset = 0;
-        let page = 0;
+        let yOffset = 0, page = 0;
         while (yOffset < imgH) {
           if (page > 0) pdf.addPage();
           const srcY = (yOffset / imgH) * canvas.height;
@@ -916,14 +839,10 @@
           const ctx = sliceCanvas.getContext('2d');
           ctx.fillStyle = '#000';
           ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-          ctx.drawImage(
-            canvas,
-            0, Math.floor(srcY), canvas.width, Math.floor(srcH),
-            0, 0, sliceCanvas.width, sliceCanvas.height
-          );
+          ctx.drawImage(canvas, 0, Math.floor(srcY), canvas.width, Math.floor(srcH),
+            0, 0, sliceCanvas.width, sliceCanvas.height);
           pdf.addImage(sliceCanvas.toDataURL('image/png', 1.0), 'PNG', margin, margin, imgW, sliceH);
-          yOffset += usableH;
-          page++;
+          yOffset += usableH; page++;
         }
         pdf.save(stampName(filenameBase) + '.pdf');
       } catch (err) {
@@ -931,8 +850,7 @@
         alert('Export failed: ' + (err.message || err));
       } finally {
         if (btn && btn.tagName === 'BUTTON') {
-          btn.disabled = false;
-          btn.textContent = prevLabel || '[ EXPORT PANEL ]';
+          btn.disabled = false; btn.textContent = prevLabel || '[ EXPORT PANEL ]';
         }
       }
     }
@@ -954,14 +872,12 @@
           }
           if (!Array.isArray(siteRegistry[key][network])) siteRegistry[key][network] = [];
           if (!siteRegistry[key][network].includes(siteId)) {
-            siteRegistry[key][network].push(siteId);
-            count++;
+            siteRegistry[key][network].push(siteId); count++;
           }
         });
         return count;
       } catch (e) { console.error(e); return 0; }
     }
-
     async function loadDateSummary() {
       try {
         const res = await fetch('./data/input/site_date_summary.csv');
@@ -973,25 +889,22 @@
           if (!dateSummary[net]) dateSummary[net] = {};
           dateSummary[net][r.SITE_ID] = { first: r.FIRST_DATE, last: r.LAST_DATE };
         });
-      } catch (e) { console.error('Date summary error', e); }
+      } catch (e) { console.error(e); }
     }
-
     async function loadCoverage() {
       try {
         const res = await fetch('./data/input/site_variable_coverage.json');
         if (!res.ok) return;
         coverageData = await res.json();
-      } catch (e) { console.error('Coverage error', e); }
+      } catch (e) { console.error(e); }
     }
-
     async function loadTimeseries() {
       try {
         const res = await fetch('./data/input/site_timeseries.json');
         if (!res.ok) return;
         timeseriesData = await res.json();
-      } catch (e) { console.error('Timeseries error', e); }
+      } catch (e) { console.error(e); }
     }
-
     async function loadCompleteness() {
       try {
         const res = await fetch('./data/input/site_completeness.json');
@@ -999,7 +912,6 @@
         completenessData = await res.json();
       } catch (e) { completenessData = {}; }
     }
-
     async function loadAcfFftCombined() {
       acfFftCombined = { CASTNET: [], NTN: [] };
       const paths = {
@@ -1025,9 +937,7 @@
       if (mode === 'NTN') document.getElementById('sort-ntn').classList.add('active-sort');
       buildMarkersAndTable();
     }
-
     function firstId(ids) { return (ids && ids.length) ? ids[0] : 'zzz'; }
-
     function buildMarkersAndTable() {
       allMarkers.forEach(m => map.removeLayer(m));
       allMarkers = [];
@@ -1071,7 +981,6 @@
       if (allMarkers.length) map.fitBounds(L.featureGroup(allMarkers).getBounds().pad(0.12));
       buildOverviewMap();
     }
-
     function selectSite(key) {
       if (selectedKey && siteRegistry[selectedKey]?.marker) {
         siteRegistry[selectedKey].marker.setStyle({ weight: 1, color: '#000', radius: 7 });
@@ -1147,7 +1056,6 @@
       });
       return html;
     }
-
     function renderSiteInfo(site) {
       const castIds = siteIds(site, 'CASTNET');
       const ntnIds = siteIds(site, 'NTN');
@@ -1236,7 +1144,6 @@
         createVarButtons('NTN', sid, `vars-ntn-${safeId}`, `coverage-ntn-${safeId}`);
       });
     }
-
     function createVarButtons(network, siteId, containerId, coverageId) {
       const container = document.getElementById(containerId);
       if (!container) return;
@@ -1269,13 +1176,11 @@
       const median = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
       return { min, max, median, avg: sum / nums.length, n: nums.length };
     }
-
     function formatNum(x) {
       if (x === null || x === undefined) return '—';
       if (Math.abs(x) >= 100 || Math.abs(x) < 0.01) return x.toExponential(3);
       return x.toFixed(4).replace(/\.?0+$/, '') || '0';
     }
-
     function updateTrendStats(network, start, end) {
       const state = charts[network];
       if (!state || !state.values.length) return;
@@ -1289,7 +1194,6 @@
         <span><span class="lab">avg</span> ${formatNum(s.avg)}</span>
         <span><span class="lab">n</span> ${s.n}</span>`;
     }
-
     function applyTrendWindow(network) {
       const state = charts[network];
       if (!state.chart || state.labels.length === 0) return;
@@ -1309,7 +1213,6 @@
       state.chart.update('none');
       updateTrendStats(network, start, end);
     }
-
     function showTrendPlot(network, siteIdArg) {
       if (siteIdArg) selected[network].siteId = siteIdArg;
       const sel = selected[network];
@@ -1385,7 +1288,6 @@
       document.querySelectorAll(`input[name="${name}"]`).forEach(cb => { if (cb !== el) cb.checked = false; });
       combineVar[network] = el.checked ? el.value : null;
     }
-
     function resetCombineTrend() {
       combineVar = { CASTNET: null, NTN: null };
       document.querySelectorAll('input[name="combine-castnet"], input[name="combine-ntn"]')
@@ -1394,7 +1296,6 @@
       document.getElementById('trend-panel-combine').classList.remove('visible');
       document.getElementById('match-panel').classList.remove('visible');
     }
-
     function getSeriesMap(network, siteId, variable) {
       const series = (((timeseriesData[network] || {})[siteId]) || {});
       const dates = series.DATEON || [];
@@ -1407,7 +1308,6 @@
       }
       return mapObj;
     }
-
     function applyCombineWindow() {
       if (!combineChart || !combineLabels.length) return;
       const zoomSlider = document.getElementById('trend-zoom-combine');
@@ -1423,7 +1323,6 @@
       combineChart.options.scales.x.max = start + windowSize - 1;
       combineChart.update('none');
     }
-
     function showCombineTrendPlot() {
       const site = siteRegistry[selectedKey];
       if (!site) { alert('Select a location first.'); return; }
@@ -1497,7 +1396,6 @@
     function isNumericMatchField(field) {
       return field === 'num_years' || field === 'acf_lag' || field === 'fft_period';
     }
-
     function sortMatchRows(rows, field, dir) {
       const desc = dir === 'desc';
       return rows.slice().sort((a, b) => {
@@ -1513,7 +1411,6 @@
         return desc ? -cmp : cmp;
       });
     }
-
     function renderMatchTable(rows) {
       const thead = document.getElementById('match-thead');
       const tbody = document.getElementById('match-tbody');
@@ -1535,7 +1432,6 @@
         <td>${r.fft_period === '' || r.fft_period == null ? '—' : r.fft_period}</td>
       </tr>`).join('');
     }
-
     function applyMatchSort() {
       if (!matchRows.length) { renderMatchTable([]); return; }
       const field = document.getElementById('match-sort-col').value;
@@ -1546,7 +1442,6 @@
       const header = document.getElementById('match-header-text');
       header.textContent = `${header.textContent.split(' · Sort:')[0]} · Sort: ${colLabel} ${dirLabel}`;
     }
-
     function showMatchSegment() {
       const site = siteRegistry[selectedKey];
       if (!site) { alert('Select a location first.'); return; }
@@ -1609,7 +1504,6 @@
       const mainS = document.getElementById('main-snap-status');
       if (ovS) { ovS.textContent = 'Adjust view, then EXPORT'; ovS.style.color = '#888'; }
       if (mainS) { mainS.textContent = 'Adjust view, then EXPORT'; mainS.style.color = '#888'; }
-
       await loadCoordinator('CASTNET', './data/input/CASTNET/CASTNET_coordinator.csv');
       await loadCoordinator('NTN', './data/input/NTN/NTN_coordinator.csv');
       await loadDateSummary();
@@ -1621,7 +1515,6 @@
       document.getElementById('site-info').innerHTML =
         '<div class="placeholder">Click a marker or a row<br>to see details</div>';
     }
-
     window.addEventListener('load', () => setTimeout(loadAllSites, 600));
   </script>
 </body>
