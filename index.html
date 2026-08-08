@@ -39,7 +39,8 @@
       gap: 10px; flex-wrap: wrap; margin-bottom: 10px;
     }
     .title-row .title-text { flex: 1; min-width: 160px; }
-    .title-row .export-btns { display: flex; flex-wrap: wrap; gap: 4px; }
+    .title-row .export-btns { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+    .snap-status { font-size: 11px; color: #888; margin-left: 6px; }
 
     .overview-map-panel {
       width: 100%; max-width: 1296px; margin: 0 auto 18px auto;
@@ -246,8 +247,15 @@
       <div class="title-row">
         <div class="panel-title title-text">NETWORK OVERVIEW MAP · completeness bracket → color</div>
         <div class="export-btns">
-          <button type="button" onclick="exportMapToPdf(overviewMap, 'overview-map', 'overview_map_view')">[ EXPORT MAP ]</button>
-          <button type="button" onclick="exportPanelToPdf('overview-map-panel', 'overview_panel')">[ EXPORT PANEL ]</button>
+          <button type="button" id="btn-export-ov-map"
+            onclick="exportMapToPdf(overviewMap, 'overview-map', 'overview_map_view', 'ov-snap-status')">
+            [ EXPORT MAP ]
+          </button>
+          <button type="button"
+            onclick="exportPanelToPdf('overview-map-panel', 'overview_panel', overviewMap, 'overview-map')">
+            [ EXPORT PANEL ]
+          </button>
+          <span class="snap-status" id="ov-snap-status">Adjust view, then EXPORT</span>
         </div>
       </div>
       <div class="overview-controls">
@@ -278,8 +286,15 @@
         <div class="title-row">
           <div class="panel-title title-text">MAP VIEW · ZOOM & EXPLORE</div>
           <div class="export-btns">
-            <button type="button" onclick="exportMapToPdf(map, 'map', 'main_map_view')">[ EXPORT MAP ]</button>
-            <button type="button" onclick="exportPanelToPdf('panel-main-map', 'map_network_list')">[ EXPORT PANEL ]</button>
+            <button type="button"
+              onclick="exportMapToPdf(map, 'map', 'main_map_view', 'main-snap-status')">
+              [ EXPORT MAP ]
+            </button>
+            <button type="button"
+              onclick="exportPanelToPdf('panel-main-map', 'map_network_list', map, 'map')">
+              [ EXPORT PANEL ]
+            </button>
+            <span class="snap-status" id="main-snap-status">Adjust view, then EXPORT</span>
           </div>
         </div>
         <div id="map"></div>
@@ -445,7 +460,6 @@
       maxZoom: 19, minZoom: 3, crossOrigin: true
     }).addTo(overviewMap);
 
-    // Expose for export hooks
     window.map = map;
     window.overviewMap = overviewMap;
 
@@ -474,6 +488,12 @@
     let combineLabels = [];
     let combineVar = { CASTNET: null, NTN: null };
     let matchRows = [];
+
+    // Last successful map snapshot (memory) — overwritten on every EXPORT MAP
+    const mapSnapshots = {
+      'overview-map': null,
+      'map': null
+    };
 
     const VARIABLES = ["SO2","SO4","HNO3","NO3","TNO3","NH4","CA","K","MG","Sodium"];
 
@@ -655,85 +675,53 @@
       setTimeout(() => overviewMap.invalidateSize(true), 100);
     }
 
-    // ========== DYNAMIC MAP SYNC + EXPORT ==========
+    // ========== MAP SNAPSHOT + EXPORT (one-button flow) ==========
     function stampName(base) {
       return `${base}_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}`;
     }
 
-    /**
-     * Force Leaflet internal state (center/zoom/tiles/markers) into the live DOM
-     * so html2canvas sees the view after pan/zoom/filter changes.
-     */
     function forceMapStructuralRefresh(activeMap) {
       if (!activeMap) return;
-      // Recalculate container size and tile matrix for current center/zoom
       activeMap.invalidateSize(true);
-
-      // Re-project every marker / path to current map transform
       activeMap.eachLayer(layer => {
         try {
           if (typeof layer.redraw === 'function') layer.redraw();
           if (typeof layer.update === 'function') layer.update();
-          // CircleMarker / Path often need setLatLng to refresh DOM position
-          if (layer.getLatLng && layer.setLatLng) {
-            layer.setLatLng(layer.getLatLng());
-          }
-        } catch (e) { /* ignore per-layer errors */ }
+          if (layer.getLatLng && layer.setLatLng) layer.setLatLng(layer.getLatLng());
+        } catch (e) {}
       });
-
-      // Nudge a zero-pan so tile layers re-request / re-position for current bounds
       try {
-        const c = activeMap.getCenter();
-        const z = activeMap.getZoom();
-        activeMap.setView(c, z, { animate: false });
+        activeMap.setView(activeMap.getCenter(), activeMap.getZoom(), { animate: false });
       } catch (e) {}
     }
 
-    /**
-     * Wait until map is ready and tiles have had time to settle after last interaction.
-     */
     function waitForMapReady(activeMap, timeout = 1400) {
       return new Promise((resolve) => {
-        if (!activeMap) {
-          resolve();
-          return;
-        }
-
+        if (!activeMap) { resolve(); return; }
         forceMapStructuralRefresh(activeMap);
-
-        let resolved = false;
+        let done = false;
         const finish = () => {
-          if (resolved) return;
-          resolved = true;
-          clearTimeout(timer);
+          if (done) return;
+          done = true;
           resolve();
         };
-
-        const timer = setTimeout(finish, timeout);
-
-        // Prefer tile/load completion when the map supports it
+        setTimeout(finish, timeout);
         try {
           activeMap.whenReady(() => {
-            // load fires when tiles for current view finish; may already have passed
             activeMap.once('load', finish);
-            // Also listen for a quiet period after tileload
-            let tileQuiet = null;
+            let quiet = null;
             const onTile = () => {
-              clearTimeout(tileQuiet);
-              tileQuiet = setTimeout(finish, 350);
+              clearTimeout(quiet);
+              quiet = setTimeout(finish, 350);
             };
             activeMap.on('tileload', onTile);
             activeMap.on('tileerror', onTile);
-            // Cleanup listeners when we finish
-            const origFinish = finish;
-            // wrap once
             setTimeout(() => {
               try {
                 activeMap.off('tileload', onTile);
                 activeMap.off('tileerror', onTile);
               } catch (e) {}
             }, timeout + 50);
-            // Fallback if load already happened
             setTimeout(finish, 500);
           });
         } catch (e) {
@@ -742,14 +730,62 @@
       });
     }
 
-    async function exportMapToPdf(leafletMap, mapDivId, filenameBase) {
+    /**
+     * Capture current map into memory (always overwrites previous snapshot).
+     * Called automatically by EXPORT MAP / map EXPORT PANEL.
+     */
+    async function captureMapView(leafletMap, mapDivId, statusElId) {
       const el = document.getElementById(mapDivId);
-      if (!el || !leafletMap) {
-        alert('Map not found.');
-        return;
+      if (!el || !leafletMap) throw new Error('Map not found');
+      if (typeof html2canvas === 'undefined') throw new Error('html2canvas not loaded');
+
+      const status = statusElId ? document.getElementById(statusElId) : null;
+      if (status) {
+        status.textContent = 'Syncing view…';
+        status.style.color = '#f1c40f';
       }
-      if (typeof html2canvas === 'undefined' || !window.jspdf) {
-        alert('PDF libraries not loaded.');
+
+      await waitForMapReady(leafletMap, 1400);
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      await new Promise(r => setTimeout(r, 150));
+
+      if (status) status.textContent = 'Capturing…';
+
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#111111',
+        logging: false,
+        width: el.offsetWidth,
+        height: el.offsetHeight,
+        foreignObjectRendering: false
+      });
+
+      const snap = {
+        dataUrl: canvas.toDataURL('image/png', 1.0),
+        width: canvas.width,
+        height: canvas.height,
+        at: new Date().toISOString()
+      };
+      mapSnapshots[mapDivId] = snap;
+
+      if (status) {
+        status.textContent = 'Captured · ' + new Date().toLocaleTimeString();
+        status.style.color = '#2ecc71';
+      }
+      return snap;
+    }
+
+    /**
+     * One-button EXPORT MAP:
+     * 1) force current pan/zoom/markers into DOM
+     * 2) snapshot into memory
+     * 3) write PDF from that snapshot
+     */
+    async function exportMapToPdf(leafletMap, mapDivId, filenameBase, statusElId) {
+      if (!window.jspdf) {
+        alert('jsPDF not loaded.');
         return;
       }
       const btn = document.activeElement;
@@ -759,37 +795,23 @@
         btn.textContent = '[ EXPORTING… ]';
       }
       try {
-        // 1) Push current interactive state into DOM
-        await waitForMapReady(leafletMap, 1400);
-        // 2) Extra paint frames after tiles
-        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-        await new Promise(r => setTimeout(r, 150));
-
-        const canvas = await html2canvas(el, {
-          scale: 2,
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: '#111111',
-          logging: false,
-          width: el.offsetWidth,
-          height: el.offsetHeight,
-          windowWidth: document.documentElement.clientWidth,
-          windowHeight: document.documentElement.clientHeight,
-          // Avoid capturing off-screen transform artifacts when possible
-          foreignObjectRendering: false
-        });
-
+        const snap = await captureMapView(leafletMap, mapDivId, statusElId);
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter' });
         const pageW = pdf.internal.pageSize.getWidth();
         const pageH = pdf.internal.pageSize.getHeight();
         const margin = 24;
         const w = pageW - margin * 2;
-        const h = Math.min((canvas.height * w) / canvas.width, pageH - margin * 2);
-        pdf.addImage(canvas.toDataURL('image/png', 1.0), 'PNG', margin, margin, w, h);
+        const h = Math.min((snap.height * w) / snap.width, pageH - margin * 2);
+        pdf.addImage(snap.dataUrl, 'PNG', margin, margin, w, h);
         pdf.save(stampName(filenameBase) + '.pdf');
       } catch (err) {
         console.error(err);
+        const status = statusElId ? document.getElementById(statusElId) : null;
+        if (status) {
+          status.textContent = 'Export failed';
+          status.style.color = '#e74c3c';
+        }
         alert('Map export failed: ' + (err.message || err));
       } finally {
         if (btn && btn.tagName === 'BUTTON') {
@@ -799,7 +821,10 @@
       }
     }
 
-    async function exportPanelToPdf(elementId, filenameBase) {
+    /**
+     * Panel export. If mapInstance + mapDivId given, sync map first so panel includes current view.
+     */
+    async function exportPanelToPdf(elementId, filenameBase, mapInstance, mapDivId) {
       const el = document.getElementById(elementId);
       if (!el) {
         alert('Panel not found: ' + elementId);
@@ -815,14 +840,20 @@
         el.style.display = 'block';
       }
 
-      // Maps: always force live center/zoom/markers into DOM before capture
-      if (elementId === 'overview-map-panel' || elementId === 'panel-main-map') {
-        const active =
-          elementId === 'overview-map-panel' ? overviewMap : map;
-        await waitForMapReady(active, 1400);
+      // Map panels: refresh live view into DOM before full-panel capture
+      if (mapInstance && mapDivId) {
+        try {
+          await captureMapView(mapInstance, mapDivId, null);
+        } catch (e) {
+          console.warn('Map pre-capture for panel failed, continuing', e);
+          await waitForMapReady(mapInstance, 1200);
+        }
+      } else if (elementId === 'overview-map-panel') {
+        await waitForMapReady(overviewMap, 1400);
+      } else if (elementId === 'panel-main-map') {
+        await waitForMapReady(map, 1400);
       }
 
-      // Plots: re-apply current zoom/scroll window into Chart.js canvas
       if (elementId === 'trend-panel-castnet' && charts.CASTNET.chart) {
         applyTrendWindow('CASTNET');
         charts.CASTNET.chart.update('none');
@@ -1568,11 +1599,18 @@
       selected.NTN = { siteId: null, variable: null };
       combineVar = { CASTNET: null, NTN: null };
       matchRows = [];
+      mapSnapshots['overview-map'] = null;
+      mapSnapshots['map'] = null;
       document.getElementById('site-info').innerHTML = '<div class="placeholder">Loading...</div>';
       document.getElementById('trend-panel-castnet').classList.remove('visible');
       document.getElementById('trend-panel-ntn').classList.remove('visible');
       document.getElementById('trend-panel-combine').classList.remove('visible');
       document.getElementById('match-panel').classList.remove('visible');
+      const ovS = document.getElementById('ov-snap-status');
+      const mainS = document.getElementById('main-snap-status');
+      if (ovS) { ovS.textContent = 'Adjust view, then EXPORT'; ovS.style.color = '#888'; }
+      if (mainS) { mainS.textContent = 'Adjust view, then EXPORT'; mainS.style.color = '#888'; }
+
       await loadCoordinator('CASTNET', './data/input/CASTNET/CASTNET_coordinator.csv');
       await loadCoordinator('NTN', './data/input/NTN/NTN_coordinator.csv');
       await loadDateSummary();
