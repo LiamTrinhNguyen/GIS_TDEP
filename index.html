@@ -118,7 +118,9 @@
     .info-box .title { font-size: 13px; color: #aaa; margin-bottom: 6px; }
     .var-buttons { margin-top: 10px; }
     .var-buttons button { font-size: 11px; padding: 4px 7px; }
-    .placeholder { color: #666; font-size: 13px; margin-top: 40px; text-align: center; line-height: 1.6; }
+    .placeholder {
+      color: #666; font-size: 13px; margin-top: 40px; text-align: center; line-height: 1.6;
+    }
     .coverage-legend {
       display: flex; align-items: center; gap: 10px;
       font-size: 11px; color: #aaa; margin: 8px 0 6px 0;
@@ -151,7 +153,9 @@
     .week-box.ntn { background: #3498db; border-color: #2980b9; }
     .coverage-empty { color: #555; font-size: 12px; padding: 6px 0; }
     .trend-btn-wrap { margin-top: 10px; text-align: center; }
-    .combine-box { border: 1px solid #666; padding: 12px; margin-bottom: 8px; background: #0d0d0d; }
+    .combine-box {
+      border: 1px solid #666; padding: 12px; margin-bottom: 8px; background: #0d0d0d;
+    }
     .combine-box .title { font-size: 13px; color: #aaa; margin-bottom: 10px; }
     .combine-row { margin-bottom: 10px; font-size: 12px; }
     .combine-row .net-label { color: #ccc; margin-bottom: 6px; display: block; }
@@ -197,7 +201,9 @@
       width: 8px; height: 240px; cursor: pointer; accent-color: #fafafa;
     }
     .trend-scroll-wrap { margin-top: 10px; padding: 0 4px; }
-    .trend-scroll-wrap label { font-size: 11px; color: #888; display: block; margin-bottom: 4px; }
+    .trend-scroll-wrap label {
+      font-size: 11px; color: #888; display: block; margin-bottom: 4px;
+    }
     .trend-scroll { width: 100%; height: 8px; cursor: pointer; accent-color: #fafafa; }
     .match-panel {
       width: 100%; max-width: 1296px; margin: 18px auto 0 auto;
@@ -426,7 +432,8 @@
     }).setView([39.5, -98.0], 4);
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap & CartoDB', maxZoom: 19, minZoom: 3, crossOrigin: true
+      attribution: '&copy; OpenStreetMap & CartoDB',
+      maxZoom: 19, minZoom: 3, crossOrigin: true
     }).addTo(map);
 
     const overviewMap = L.map('overview-map', {
@@ -434,7 +441,8 @@
     }).setView([39.5, -98.0], 4);
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap & CartoDB', maxZoom: 19, minZoom: 3, crossOrigin: true
+      attribution: '&copy; OpenStreetMap & CartoDB',
+      maxZoom: 19, minZoom: 3, crossOrigin: true
     }).addTo(overviewMap);
 
     let allMarkers = [];
@@ -464,9 +472,14 @@
     let matchRows = [];
 
     const VARIABLES = ["SO2","SO4","HNO3","NO3","TNO3","NH4","CA","K","MG","Sodium"];
+
     const COMPLETENESS_COLORS = {
-      CASTNET: { '0-25': '#f5b7b1', '25-50': '#e74c3c', '50-75': '#c0392b', '75-100': '#7b241c' },
-      NTN:     { '0-25': '#aed6f1', '25-50': '#5dade2', '50-75': '#2980b9', '75-100': '#1a5276' }
+      CASTNET: {
+        '0-25': '#f5b7b1', '25-50': '#e74c3c', '50-75': '#c0392b', '75-100': '#7b241c'
+      },
+      NTN: {
+        '0-25': '#aed6f1', '25-50': '#5dade2', '50-75': '#2980b9', '75-100': '#1a5276'
+      }
     };
 
     function parseCSV(text) {
@@ -480,45 +493,63 @@
         return obj;
       });
     }
-    function makeKey(lat, lon) { return `${lat.toFixed(5)}_${lon.toFixed(5)}`; }
+
+    function makeKey(lat, lon) {
+      return `${lat.toFixed(5)}_${lon.toFixed(5)}`;
+    }
+
     function cell(row, ...candidates) {
       const upperMap = {};
-      Object.keys(row).forEach(k => { upperMap[k.toUpperCase().replace(/[^A-Z0-9]/g, '')] = row[k]; });
+      Object.keys(row).forEach(k => {
+        upperMap[k.toUpperCase().replace(/[^A-Z0-9]/g, '')] = row[k];
+      });
       for (const c of candidates) {
         const norm = String(c).toUpperCase().replace(/[^A-Z0-9]/g, '');
         if (upperMap[norm] !== undefined && upperMap[norm] !== '') return upperMap[norm];
       }
       return '';
     }
+
     function siteIds(site, network) {
       if (!site) return [];
       const v = site[network];
       if (!v) return [];
       return Array.isArray(v) ? v.slice() : [v];
     }
+
     function formatSiteIdsHTML(ids) {
-      if (!ids || !ids.length) return '—';
+      if (!ids || ids.length === 0) return '—';
       return `<div class="site-id-list">${ids.map(id => `<span>${id}</span>`).join('')}</div>`;
     }
+
     function formatSiteIdsText(ids) {
-      if (!ids || !ids.length) return '—';
+      if (!ids || ids.length === 0) return '—';
       return ids.join(', ');
     }
+
     function bracketFromPct(pct) {
       if (pct < 25) return '0-25';
       if (pct < 50) return '25-50';
       if (pct < 75) return '50-75';
       return '75-100';
     }
+
     function getCompleteness(network, siteId) {
       const row = ((completenessData[network] || {})[siteId]) || null;
-      if (!row) return { pct: 0, bracket: '0-25', n_record: 0, n_missing: 0, n_span: 0, siteId };
+      if (!row) {
+        return { pct: 0, bracket: '0-25', n_record: 0, n_missing: 0, n_span: 0, siteId };
+      }
       const pct = Number(row.completeness_pct ?? 0);
       return {
-        pct, bracket: row.bracket || bracketFromPct(pct),
-        n_record: row.n_record ?? 0, n_missing: row.n_missing ?? 0, n_span: row.n_span ?? 0, siteId
+        pct,
+        bracket: row.bracket || bracketFromPct(pct),
+        n_record: row.n_record ?? 0,
+        n_missing: row.n_missing ?? 0,
+        n_span: row.n_span ?? 0,
+        siteId
       };
     }
+
     function maxCompleteness(network, ids) {
       let best = { pct: -1, bracket: '0-25', n_record: 0, n_missing: 0, n_span: 0, siteId: null };
       (ids || []).forEach(id => {
@@ -528,6 +559,7 @@
       if (best.pct < 0) best.pct = 0;
       return best;
     }
+
     function weekInterval(year, weekIndex) {
       const y = parseInt(year, 10);
       const start = new Date(Date.UTC(y, 0, 1 + weekIndex * 7));
@@ -540,6 +572,7 @@
       };
       return { start: fmt(start), end: fmt(end) };
     }
+
     function recordYears(network, siteId) {
       if (!siteId) return 0;
       const range = ((dateSummary[network] || {})[siteId]) || {};
@@ -557,6 +590,7 @@
       document.getElementById('ov-net-ntn').classList.toggle('active-net', mode === 'NTN');
       buildOverviewMap();
     }
+
     function setOverviewBracket(mode) {
       overviewBracket = mode;
       ['ALL', '0-25', '25-50', '50-75', '75-100'].forEach(b => {
@@ -574,9 +608,9 @@
         const site = siteRegistry[key];
         const castIds = siteIds(site, 'CASTNET');
         const ntnIds = siteIds(site, 'NTN');
-        if (overviewNetwork === 'CASTNET' && !castIds.length) return;
-        if (overviewNetwork === 'NTN' && !ntnIds.length) return;
-        if (overviewNetwork === 'ALL' && !castIds.length && !ntnIds.length) return;
+        if (overviewNetwork === 'CASTNET' && castIds.length === 0) return;
+        if (overviewNetwork === 'NTN' && ntnIds.length === 0) return;
+        if (overviewNetwork === 'ALL' && castIds.length === 0 && ntnIds.length === 0) return;
 
         let network, ids, comp;
         if (overviewNetwork === 'CASTNET') {
@@ -617,7 +651,7 @@
       setTimeout(() => overviewMap.invalidateSize(), 100);
     }
 
-    // ========== EXPORT (maps: long settle after pan/zoom; plots: panel only) ==========
+    // ========== EXPORT (maps sync after pan/zoom; plots use panel only) ==========
     function stampName(base) {
       return `${base}_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}`;
     }
@@ -635,7 +669,7 @@
         setTimeout(finish, settleMs);
       });
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-      await new Promise(r => setTimeout(r, 250));
+      await new Promise(r => setTimeout(r, 200));
     }
 
     async function exportMapToPdf(leafletMap, mapDivId, filenameBase) {
@@ -646,17 +680,15 @@
       }
       const btn = document.activeElement;
       const prev = btn && btn.tagName === 'BUTTON' ? btn.textContent : null;
-      if (btn && btn.tagName === 'BUTTON') { btn.disabled = true; btn.textContent = '[ EXPORTING… ]'; }
+      if (btn && btn.tagName === 'BUTTON') {
+        btn.disabled = true; btn.textContent = '[ EXPORTING… ]';
+      }
       try {
         await waitForMapReady(leafletMap, 1200);
         const canvas = await html2canvas(el, {
-          scale: 2,
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: '#111111',
-          logging: false,
-          width: el.offsetWidth,
-          height: el.offsetHeight,
+          scale: 2, useCORS: true, allowTaint: true,
+          backgroundColor: '#111111', logging: false,
+          width: el.offsetWidth, height: el.offsetHeight,
           windowWidth: document.documentElement.clientWidth,
           windowHeight: document.documentElement.clientHeight
         });
@@ -674,8 +706,7 @@
         alert('Map export failed: ' + (err.message || err));
       } finally {
         if (btn && btn.tagName === 'BUTTON') {
-          btn.disabled = false;
-          btn.textContent = prev || '[ EXPORT MAP ]';
+          btn.disabled = false; btn.textContent = prev || '[ EXPORT MAP ]';
         }
       }
     }
@@ -690,39 +721,29 @@
         el.classList.add('visible');
         el.style.display = 'block';
       }
-
-      // Maps: wait after any pan/zoom
       if (elementId === 'overview-map-panel') await waitForMapReady(overviewMap, 1200);
       if (elementId === 'panel-main-map') await waitForMapReady(map, 1200);
-
-      // Plots: re-apply current zoom/scroll window before capture
       if (elementId === 'trend-panel-castnet' && charts.CASTNET.chart) {
-        applyTrendWindow('CASTNET');
-        charts.CASTNET.chart.update('none');
+        applyTrendWindow('CASTNET'); charts.CASTNET.chart.update('none');
       }
       if (elementId === 'trend-panel-ntn' && charts.NTN.chart) {
-        applyTrendWindow('NTN');
-        charts.NTN.chart.update('none');
+        applyTrendWindow('NTN'); charts.NTN.chart.update('none');
       }
       if (elementId === 'trend-panel-combine' && combineChart) {
-        applyCombineWindow();
-        combineChart.update('none');
+        applyCombineWindow(); combineChart.update('none');
       }
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
       const btn = document.activeElement;
       const prevLabel = btn && btn.tagName === 'BUTTON' ? btn.textContent : null;
-      if (btn && btn.tagName === 'BUTTON') { btn.disabled = true; btn.textContent = '[ EXPORTING… ]'; }
-
+      if (btn && btn.tagName === 'BUTTON') {
+        btn.disabled = true; btn.textContent = '[ EXPORTING… ]';
+      }
       try {
         const canvas = await html2canvas(el, {
-          scale: 2,
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: '#000000',
-          logging: false,
-          windowWidth: el.scrollWidth,
-          windowHeight: el.scrollHeight
+          scale: 2, useCORS: true, allowTaint: true,
+          backgroundColor: '#000000', logging: false,
+          windowWidth: el.scrollWidth, windowHeight: el.scrollHeight
         });
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF({
@@ -751,8 +772,7 @@
           ctx.drawImage(canvas, 0, Math.floor(srcY), canvas.width, Math.floor(srcH),
             0, 0, sliceCanvas.width, sliceCanvas.height);
           pdf.addImage(sliceCanvas.toDataURL('image/png', 1.0), 'PNG', margin, margin, imgW, sliceH);
-          yOffset += usableH;
-          page++;
+          yOffset += usableH; page++;
         }
         pdf.save(stampName(filenameBase) + '.pdf');
       } catch (err) {
@@ -760,8 +780,7 @@
         alert('Export failed: ' + (err.message || err));
       } finally {
         if (btn && btn.tagName === 'BUTTON') {
-          btn.disabled = false;
-          btn.textContent = prevLabel || '[ EXPORT PANEL ]';
+          btn.disabled = false; btn.textContent = prevLabel || '[ EXPORT PANEL ]';
         }
       }
     }
@@ -778,16 +797,18 @@
           const siteId = (row.SITE_ID || row.SITEID || row.SITE || row.ID || '').trim();
           if (isNaN(lat) || isNaN(lon) || !siteId) return;
           const key = makeKey(lat, lon);
-          if (!siteRegistry[key]) siteRegistry[key] = { lat, lon, CASTNET: [], NTN: [], marker: null };
+          if (!siteRegistry[key]) {
+            siteRegistry[key] = { lat, lon, CASTNET: [], NTN: [], marker: null };
+          }
           if (!Array.isArray(siteRegistry[key][network])) siteRegistry[key][network] = [];
           if (!siteRegistry[key][network].includes(siteId)) {
-            siteRegistry[key][network].push(siteId);
-            count++;
+            siteRegistry[key][network].push(siteId); count++;
           }
         });
         return count;
       } catch (e) { console.error(e); return 0; }
     }
+
     async function loadDateSummary() {
       try {
         const res = await fetch('./data/input/site_date_summary.csv');
@@ -795,23 +816,29 @@
         const rows = parseCSV(await res.text());
         dateSummary = { CASTNET: {}, NTN: {} };
         rows.forEach(r => {
-          if (!dateSummary[r.NETWORK]) dateSummary[r.NETWORK] = {};
-          dateSummary[r.NETWORK][r.SITE_ID] = { first: r.FIRST_DATE, last: r.LAST_DATE };
+          const net = r.NETWORK;
+          if (!dateSummary[net]) dateSummary[net] = {};
+          dateSummary[net][r.SITE_ID] = { first: r.FIRST_DATE, last: r.LAST_DATE };
         });
-      } catch (e) { console.error(e); }
+      } catch (e) { console.error('Date summary error', e); }
     }
+
     async function loadCoverage() {
       try {
         const res = await fetch('./data/input/site_variable_coverage.json');
-        if (res.ok) coverageData = await res.json();
-      } catch (e) { console.error(e); }
+        if (!res.ok) return;
+        coverageData = await res.json();
+      } catch (e) { console.error('Coverage error', e); }
     }
+
     async function loadTimeseries() {
       try {
         const res = await fetch('./data/input/site_timeseries.json');
-        if (res.ok) timeseriesData = await res.json();
-      } catch (e) { console.error(e); }
+        if (!res.ok) return;
+        timeseriesData = await res.json();
+      } catch (e) { console.error('Timeseries error', e); }
     }
+
     async function loadCompleteness() {
       try {
         const res = await fetch('./data/input/site_completeness.json');
@@ -819,6 +846,7 @@
         completenessData = await res.json();
       } catch (e) { completenessData = {}; }
     }
+
     async function loadAcfFftCombined() {
       acfFftCombined = { CASTNET: [], NTN: [] };
       const paths = {
@@ -828,20 +856,23 @@
       for (const [net, path] of Object.entries(paths)) {
         try {
           const res = await fetch(path);
-          if (res.ok) acfFftCombined[net] = parseCSV(await res.text());
+          if (!res.ok) continue;
+          acfFftCombined[net] = parseCSV(await res.text());
         } catch (e) { console.error(e); }
       }
     }
 
     function sortNetworkList(mode) {
       currentSort = mode;
-      ['sort-default', 'sort-castnet', 'sort-ntn'].forEach(id =>
-        document.getElementById(id).classList.remove('active-sort'));
+      document.getElementById('sort-default').classList.remove('active-sort');
+      document.getElementById('sort-castnet').classList.remove('active-sort');
+      document.getElementById('sort-ntn').classList.remove('active-sort');
       if (mode === 'default') document.getElementById('sort-default').classList.add('active-sort');
       if (mode === 'CASTNET') document.getElementById('sort-castnet').classList.add('active-sort');
       if (mode === 'NTN') document.getElementById('sort-ntn').classList.add('active-sort');
       buildMarkersAndTable();
     }
+
     function firstId(ids) { return (ids && ids.length) ? ids[0] : 'zzz'; }
 
     function buildMarkersAndTable() {
@@ -863,7 +894,7 @@
         const site = siteRegistry[key];
         const castIds = siteIds(site, 'CASTNET');
         const ntnIds = siteIds(site, 'NTN');
-        const color = castIds.length ? '#fff' : '#aaa';
+        const color = (castIds.length && ntnIds.length) ? '#fff' : castIds.length ? '#fff' : '#aaa';
         const marker = L.circleMarker([site.lat, site.lon], {
           radius: 7, fillColor: color, color: '#000', weight: 1, opacity: 1, fillOpacity: 0.9
         }).addTo(map);
@@ -907,10 +938,7 @@
         map.panTo([site.lat, site.lon]);
       }
       const row = document.querySelector(`#network-tbody tr[data-key="${key}"]`);
-      if (row) {
-        row.classList.add('selected');
-        row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }
+      if (row) { row.classList.add('selected'); row.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
       document.getElementById('trend-panel-castnet').classList.remove('visible');
       document.getElementById('trend-panel-ntn').classList.remove('visible');
       document.getElementById('trend-panel-combine').classList.remove('visible');
@@ -921,8 +949,8 @@
     function buildCoverageHTML(network, siteId, variable) {
       const yearData = (((coverageData[network] || {})[siteId] || {})[variable]) || {};
       const years = Object.keys(yearData).sort();
-      if (!years.length) return `<div class="coverage-empty">No coverage data for ${variable}</div>`;
-      const hasClass = network === 'CASTNET' ? 'castnet' : 'ntn';
+      if (years.length === 0) return `<div class="coverage-empty">No coverage data for ${variable}</div>`;
+      const hasClass = (network === 'CASTNET') ? 'castnet' : 'ntn';
       const flat = [];
       years.forEach(year => {
         for (const ch of (yearData[year] || '')) flat.push(ch === '1' ? '1' : '0');
@@ -943,22 +971,20 @@
       let html = `
         <div class="plot-title">${variable} · ${siteId}</div>
         <div style="font-size:11px;color:#aaa;margin-bottom:6px;">
-          Record: <b style="color:#fff">${nRecord}</b>
-          · No record: <b style="color:#fff">${nMissing}</b>
+          Record: <b style="color:#fff">${nRecord}</b> · No record: <b style="color:#fff">${nMissing}</b>
           · Span: ${nSpan} · Coverage: ${pct}%
         </div>
         <div style="font-size:11px;color:#888;margin-bottom:6px;">
-          Site completeness: <b style="color:#fff">${siteComp.pct}%</b>
-          · bracket <b style="color:#fff">${siteComp.bracket}</b>
+          Site completeness: <b style="color:#fff">${siteComp.pct}%</b> · bracket <b style="color:#fff">${siteComp.bracket}</b>
         </div>`;
       years.forEach(year => {
         const binary = yearData[year] || '';
         html += `<div class="year-row"><div class="year-label">${year}</div><div class="week-boxes">`;
         for (let i = 0; i < binary.length; i++) {
           const ch = binary[i];
-          const cls = ch === '1' ? hasClass : 'missing';
+          const cls = (ch === '1') ? hasClass : 'missing';
           const { start, end } = weekInterval(year, i);
-          const tip = ch === '1' ? `Has data: ${start} – ${end}` : `Missing: ${start} – ${end}`;
+          const tip = (ch === '1') ? `Has data: ${start} – ${end}` : `Missing: ${start} – ${end}`;
           html += `<div class="week-box ${cls}" title="${tip}"></div>`;
         }
         html += `</div></div>`;
@@ -1087,11 +1113,13 @@
       const median = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
       return { min, max, median, avg: sum / nums.length, n: nums.length };
     }
+
     function formatNum(x) {
       if (x === null || x === undefined) return '—';
       if (Math.abs(x) >= 100 || Math.abs(x) < 0.01) return x.toExponential(3);
       return x.toFixed(4).replace(/\.?0+$/, '') || '0';
     }
+
     function updateTrendStats(network, start, end) {
       const state = charts[network];
       if (!state || !state.values.length) return;
@@ -1105,9 +1133,10 @@
         <span><span class="lab">avg</span> ${formatNum(s.avg)}</span>
         <span><span class="lab">n</span> ${s.n}</span>`;
     }
+
     function applyTrendWindow(network) {
       const state = charts[network];
-      if (!state.chart || !state.labels.length) return;
+      if (!state.chart || state.labels.length === 0) return;
       const key = network.toLowerCase();
       const zoomSlider = document.getElementById('trend-zoom-' + key);
       const scrollSlider = document.getElementById('trend-scroll-' + key);
@@ -1118,10 +1147,11 @@
       scrollSlider.max = maxStart;
       if (parseInt(scrollSlider.value, 10) > maxStart) scrollSlider.value = maxStart;
       const start = parseInt(scrollSlider.value, 10);
+      const end = start + windowSize - 1;
       state.chart.options.scales.x.min = start;
-      state.chart.options.scales.x.max = start + windowSize - 1;
+      state.chart.options.scales.x.max = end;
       state.chart.update('none');
-      updateTrendStats(network, start, start + windowSize - 1);
+      updateTrendStats(network, start, end);
     }
 
     function showTrendPlot(network, siteIdArg) {
@@ -1199,6 +1229,7 @@
       document.querySelectorAll(`input[name="${name}"]`).forEach(cb => { if (cb !== el) cb.checked = false; });
       combineVar[network] = el.checked ? el.value : null;
     }
+
     function resetCombineTrend() {
       combineVar = { CASTNET: null, NTN: null };
       document.querySelectorAll('input[name="combine-castnet"], input[name="combine-ntn"]')
@@ -1207,18 +1238,20 @@
       document.getElementById('trend-panel-combine').classList.remove('visible');
       document.getElementById('match-panel').classList.remove('visible');
     }
+
     function getSeriesMap(network, siteId, variable) {
       const series = (((timeseriesData[network] || {})[siteId]) || {});
       const dates = series.DATEON || [];
       let values = series[variable] || series['variable_' + variable] || [];
-      const map = {};
+      const mapObj = {};
       for (let i = 0; i < dates.length; i++) {
         if (!dates[i]) continue;
         const v = values[i];
-        map[dates[i]] = (v === null || v === undefined || v === '') ? null : Number(v);
+        mapObj[dates[i]] = (v === null || v === undefined || v === '') ? null : Number(v);
       }
-      return map;
+      return mapObj;
     }
+
     function applyCombineWindow() {
       if (!combineChart || !combineLabels.length) return;
       const zoomSlider = document.getElementById('trend-zoom-combine');
@@ -1246,7 +1279,7 @@
       if (castVar && castId) castMap = getSeriesMap('CASTNET', castId, castVar);
       if (ntnVar && ntnId) ntnMap = getSeriesMap('NTN', ntnId, ntnVar);
       const allDates = Array.from(new Set([...Object.keys(castMap), ...Object.keys(ntnMap)])).sort();
-      if (!allDates.length) { alert('No time-series data found.'); return; }
+      if (!allDates.length) { alert('No time-series data.'); return; }
       const datasets = [];
       if (castVar && castId && Object.keys(castMap).length) {
         datasets.push({
@@ -1264,15 +1297,12 @@
           borderWidth: 1.2, pointRadius: 0, pointHoverRadius: 3, tension: 0, spanGaps: false
         });
       }
-      if (!datasets.length) { alert('No time-series data.'); return; }
+      if (!datasets.length) { alert('No data for selected variable(s).'); return; }
       combineLabels = allDates;
       const panel = document.getElementById('trend-panel-combine');
       panel.classList.add('visible');
-      const speciesHint = castVar || ntnVar || '';
-      const siteIdsLabel = [castId, ntnId].filter(Boolean).join(' / ');
-      const combineTitle = `A Comparison of Atmospheric Dry vs. Wet ${speciesHint} Deposition at ${siteIdsLabel}`;
-      document.getElementById('trend-header-combine').textContent =
-        `${combineTitle} | Y-bar = zoom · X-bar = time`;
+      const combineTitle = `A Comparison of Atmospheric Dry vs. Wet ${castVar || ntnVar} Deposition at ${[castId, ntnId].filter(Boolean).join(' / ')}`;
+      document.getElementById('trend-header-combine').textContent = `${combineTitle} | Y-bar = zoom · X-bar = time`;
       const ctx = document.getElementById('trend-chart-combine').getContext('2d');
       if (combineChart) combineChart.destroy();
       combineChart = new Chart(ctx, {
@@ -1311,21 +1341,23 @@
     function isNumericMatchField(field) {
       return field === 'num_years' || field === 'acf_lag' || field === 'fft_period';
     }
+
     function sortMatchRows(rows, field, dir) {
       const desc = dir === 'desc';
       return rows.slice().sort((a, b) => {
-        let va = a[field], vb = b[field];
         if (isNumericMatchField(field)) {
-          const na = parseFloat(va), nb = parseFloat(vb);
-          if (isNaN(na) && isNaN(nb)) return 0;
-          if (isNaN(na)) return 1;
-          if (isNaN(nb)) return -1;
+          const na = parseFloat(a[field]), nb = parseFloat(b[field]);
+          const aOk = !isNaN(na), bOk = !isNaN(nb);
+          if (!aOk && !bOk) return 0;
+          if (!aOk) return 1;
+          if (!bOk) return -1;
           return desc ? nb - na : na - nb;
         }
-        const cmp = String(va ?? '').localeCompare(String(vb ?? ''), undefined, { numeric: true, sensitivity: 'base' });
+        const cmp = String(a[field] ?? '').localeCompare(String(b[field] ?? ''), undefined, { numeric: true, sensitivity: 'base' });
         return desc ? -cmp : cmp;
       });
     }
+
     function renderMatchTable(rows) {
       const thead = document.getElementById('match-thead');
       const tbody = document.getElementById('match-tbody');
@@ -1337,7 +1369,8 @@
       thead.innerHTML = `<tr>
         <th>Network</th><th>Species</th><th>Analysis</th><th>SITE_ID</th>
         <th>Start_Date</th><th>End_Date</th><th>Num_Years</th>
-        <th>ACF Lag</th><th>FFT Period</th></tr>`;
+        <th>ACF Lag</th><th>FFT Period</th>
+      </tr>`;
       tbody.innerHTML = rows.map(r => `<tr>
         <td>${r.network}</td><td>${r.variable}</td><td>${r.analysis_type || '—'}</td>
         <td>${r.site_id}</td><td>${r.start || '—'}</td><td>${r.end || '—'}</td>
@@ -1346,6 +1379,7 @@
         <td>${r.fft_period === '' || r.fft_period == null ? '—' : r.fft_period}</td>
       </tr>`).join('');
     }
+
     function applyMatchSort() {
       if (!matchRows.length) { renderMatchTable([]); return; }
       const field = document.getElementById('match-sort-col').value;
@@ -1354,8 +1388,9 @@
       const colLabel = document.getElementById('match-sort-col').selectedOptions[0].text;
       const dirLabel = dir === 'desc' ? 'High → Low' : 'Low → High';
       const header = document.getElementById('match-header-text');
-      header.textContent = header.textContent.split(' · Sort:')[0] + ` · Sort: ${colLabel} ${dirLabel}`;
+      header.textContent = `${header.textContent.split(' · Sort:')[0]} · Sort: ${colLabel} ${dirLabel}`;
     }
+
     function showMatchSegment() {
       const site = siteRegistry[selectedKey];
       if (!site) { alert('Select a location first.'); return; }
@@ -1408,8 +1443,10 @@
       combineVar = { CASTNET: null, NTN: null };
       matchRows = [];
       document.getElementById('site-info').innerHTML = '<div class="placeholder">Loading...</div>';
-      ['trend-panel-castnet', 'trend-panel-ntn', 'trend-panel-combine', 'match-panel']
-        .forEach(id => document.getElementById(id).classList.remove('visible'));
+      document.getElementById('trend-panel-castnet').classList.remove('visible');
+      document.getElementById('trend-panel-ntn').classList.remove('visible');
+      document.getElementById('trend-panel-combine').classList.remove('visible');
+      document.getElementById('match-panel').classList.remove('visible');
       await loadCoordinator('CASTNET', './data/input/CASTNET/CASTNET_coordinator.csv');
       await loadCoordinator('NTN', './data/input/NTN/NTN_coordinator.csv');
       await loadDateSummary();
