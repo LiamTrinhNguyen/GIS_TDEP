@@ -30,6 +30,7 @@
       font-size: 12px; cursor: pointer;
     }
     button:hover { background: #333; }
+    button:disabled { opacity: 0.5; cursor: wait; }
     button.active-var { background: #444; box-shadow: 0 0 6px #fff; }
     button.active-sort { background: #333; box-shadow: 0 0 4px #fff; }
     button.active-net {
@@ -44,7 +45,8 @@
       flex-wrap: wrap;
       margin-bottom: 10px;
     }
-    .title-row .title-text { flex: 1; min-width: 180px; }
+    .title-row .title-text { flex: 1; min-width: 160px; }
+    .title-row .export-btns { display: flex; flex-wrap: wrap; gap: 4px; }
 
     .overview-map-panel {
       width: 100%;
@@ -318,7 +320,10 @@
     <div class="overview-map-panel" id="overview-map-panel">
       <div class="title-row">
         <div class="panel-title title-text">NETWORK OVERVIEW MAP · completeness bracket → color</div>
-        <button type="button" onclick="exportPanelToPdf('overview-map-panel', 'overview_map')">[ EXPORT PDF ]</button>
+        <div class="export-btns">
+          <button type="button" onclick="exportMapToPdf(overviewMap, 'overview-map', 'overview_map_view')">[ EXPORT MAP ]</button>
+          <button type="button" onclick="exportPanelToPdf('overview-map-panel', 'overview_panel')">[ EXPORT PANEL ]</button>
+        </div>
       </div>
       <div class="overview-controls">
         Show network:
@@ -355,7 +360,10 @@
       <div class="panel" id="panel-main-map">
         <div class="title-row">
           <div class="panel-title title-text">MAP VIEW · ZOOM & EXPLORE</div>
-          <button type="button" onclick="exportPanelToPdf('panel-main-map', 'map_network_list')">[ EXPORT PDF ]</button>
+          <div class="export-btns">
+            <button type="button" onclick="exportMapToPdf(map, 'map', 'main_map_view')">[ EXPORT MAP ]</button>
+            <button type="button" onclick="exportPanelToPdf('panel-main-map', 'map_network_list')">[ EXPORT PANEL ]</button>
+          </div>
         </div>
         <div id="map"></div>
         <div class="sort-bar">
@@ -381,7 +389,9 @@
       <div class="panel-wide" id="panel-site-info">
         <div class="title-row">
           <div class="panel-title title-text">SELECTED SITE(S) · WEEKLY COVERAGE · COMBINE</div>
-          <button type="button" onclick="exportPanelToPdf('panel-site-info', 'site_coverage')">[ EXPORT PDF ]</button>
+          <div class="export-btns">
+            <button type="button" onclick="exportPanelToPdf('panel-site-info', 'site_coverage')">[ EXPORT PANEL ]</button>
+          </div>
         </div>
         <div class="panel-content" id="site-info">
           <div class="placeholder">Click a marker or a row<br>to see details</div>
@@ -392,7 +402,9 @@
     <div class="match-panel" id="match-panel">
       <div class="title-row">
         <div class="match-header title-text" id="match-header-text">MATCH SEGMENT · ACF Lag vs FFT Period</div>
-        <button type="button" onclick="exportPanelToPdf('match-panel', 'match_segment')">[ EXPORT PDF ]</button>
+        <div class="export-btns">
+          <button type="button" onclick="exportPanelToPdf('match-panel', 'match_segment')">[ EXPORT PANEL ]</button>
+        </div>
       </div>
       <div class="match-sort-bar">
         <label for="match-sort-col">Sort by</label>
@@ -425,7 +437,10 @@
       <div class="trend-panel castnet-panel" id="trend-panel-castnet">
         <div class="title-row">
           <div class="trend-header title-text" id="trend-header-castnet">CASTNET Time Series</div>
-          <button type="button" onclick="exportPanelToPdf('trend-panel-castnet', 'trend_castnet')">[ EXPORT PDF ]</button>
+          <div class="export-btns">
+            <button type="button" onclick="exportChartToPdf('CASTNET')">[ EXPORT CHART ]</button>
+            <button type="button" onclick="exportPanelToPdf('trend-panel-castnet', 'trend_castnet_panel')">[ EXPORT PANEL ]</button>
+          </div>
         </div>
         <div class="trend-stats" id="trend-stats-castnet">
           <span><span class="lab">min</span> —</span>
@@ -450,7 +465,10 @@
       <div class="trend-panel ntn-panel" id="trend-panel-ntn">
         <div class="title-row">
           <div class="trend-header title-text" id="trend-header-ntn">NTN Time Series</div>
-          <button type="button" onclick="exportPanelToPdf('trend-panel-ntn', 'trend_ntn')">[ EXPORT PDF ]</button>
+          <div class="export-btns">
+            <button type="button" onclick="exportChartToPdf('NTN')">[ EXPORT CHART ]</button>
+            <button type="button" onclick="exportPanelToPdf('trend-panel-ntn', 'trend_ntn_panel')">[ EXPORT PANEL ]</button>
+          </div>
         </div>
         <div class="trend-stats" id="trend-stats-ntn">
           <span><span class="lab">min</span> —</span>
@@ -475,7 +493,10 @@
       <div class="trend-panel combine-panel" id="trend-panel-combine">
         <div class="title-row">
           <div class="trend-header title-text" id="trend-header-combine">COMBINE Time Series</div>
-          <button type="button" onclick="exportPanelToPdf('trend-panel-combine', 'trend_combine')">[ EXPORT PDF ]</button>
+          <div class="export-btns">
+            <button type="button" onclick="exportChartToPdf('COMBINE')">[ EXPORT CHART ]</button>
+            <button type="button" onclick="exportPanelToPdf('trend-panel-combine', 'trend_combine_panel')">[ EXPORT PANEL ]</button>
+          </div>
         </div>
         <div class="trend-body">
           <div class="trend-canvas-wrap"><canvas id="trend-chart-combine"></canvas></div>
@@ -747,6 +768,269 @@
       setTimeout(() => overviewMap.invalidateSize(), 100);
     }
 
+    // ========== EXPORT: sync current view then capture ==========
+    function stampName(base) {
+      return `${base}_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}`;
+    }
+
+    /** Wait until map has finished pan/zoom and tiles can settle */
+    async function waitForMapReady(leafletMap, settleMs = 700) {
+      if (!leafletMap) return;
+      leafletMap.invalidateSize(true);
+      leafletMap.eachLayer(layer => {
+        if (typeof layer.redraw === 'function') {
+          try { layer.redraw(); } catch (e) { /* ignore */ }
+        }
+      });
+      await new Promise(resolve => {
+        let finished = false;
+        const done = () => {
+          if (finished) return;
+          finished = true;
+          resolve();
+        };
+        // If user just moved the map, wait for moveend + settle
+        const onMoveEnd = () => setTimeout(done, settleMs);
+        leafletMap.once('moveend', onMoveEnd);
+        // Always also timeout so idle maps still export
+        setTimeout(done, settleMs);
+      });
+      // Second paint cycle for markers/tiles
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    }
+
+    /** Force every open chart to redraw with current zoom/scroll window */
+    function syncAllCharts() {
+      if (charts.CASTNET.chart) {
+        applyTrendWindow('CASTNET');
+        charts.CASTNET.chart.update('none');
+      }
+      if (charts.NTN.chart) {
+        applyTrendWindow('NTN');
+        charts.NTN.chart.update('none');
+      }
+      if (combineChart) {
+        applyCombineWindow();
+        combineChart.update('none');
+      }
+    }
+
+    /**
+     * High-accuracy map-only PDF (current pan/zoom).
+     * Prefer this over panel export when the map was moved.
+     */
+    async function exportMapToPdf(leafletMap, mapDivId, filenameBase) {
+      const el = document.getElementById(mapDivId);
+      if (!el || !leafletMap) {
+        alert('Map not found.');
+        return;
+      }
+      if (typeof html2canvas === 'undefined' || !window.jspdf) {
+        alert('PDF libraries not loaded.');
+        return;
+      }
+      const btn = document.activeElement;
+      const prev = btn && btn.tagName === 'BUTTON' ? btn.textContent : null;
+      if (btn && btn.tagName === 'BUTTON') {
+        btn.disabled = true;
+        btn.textContent = '[ EXPORTING… ]';
+      }
+      try {
+        await waitForMapReady(leafletMap, 800);
+        const canvas = await html2canvas(el, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#111111',
+          logging: false
+        });
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter' });
+        const pageW = pdf.internal.pageSize.getWidth();
+        const pageH = pdf.internal.pageSize.getHeight();
+        const margin = 24;
+        const w = pageW - margin * 2;
+        const h = Math.min((canvas.height * w) / canvas.width, pageH - margin * 2);
+        pdf.addImage(canvas.toDataURL('image/png', 1.0), 'PNG', margin, margin, w, h);
+        pdf.save(stampName(filenameBase) + '.pdf');
+      } catch (err) {
+        console.error(err);
+        alert('Map export failed: ' + (err.message || err));
+      } finally {
+        if (btn && btn.tagName === 'BUTTON') {
+          btn.disabled = false;
+          btn.textContent = prev || '[ EXPORT MAP ]';
+        }
+      }
+    }
+
+    /**
+     * High-accuracy chart-only PDF (current zoom/scroll window).
+     * Uses Chart.js canvas pixels — exact match to on-screen series.
+     */
+    async function exportChartToPdf(networkOrCombine) {
+      if (!window.jspdf) {
+        alert('jsPDF not loaded.');
+        return;
+      }
+      let chartObj = null;
+      let statsText = '';
+      let title = 'trend';
+
+      if (networkOrCombine === 'COMBINE') {
+        if (combineChart) {
+          applyCombineWindow();
+          combineChart.update('none');
+        }
+        chartObj = combineChart;
+        title = 'trend_combine';
+      } else {
+        const net = networkOrCombine;
+        if (charts[net]?.chart) {
+          applyTrendWindow(net);
+          charts[net].chart.update('none');
+        }
+        chartObj = charts[net]?.chart;
+        title = 'trend_' + net.toLowerCase();
+        const statsEl = document.getElementById('trend-stats-' + net.toLowerCase());
+        if (statsEl) statsText = statsEl.innerText.replace(/\s+/g, ' ').trim();
+      }
+
+      if (!chartObj) {
+        alert('No chart open. Run STATISTICAL-TRENDING first.');
+        return;
+      }
+
+      // One more paint so canvas matches current scales
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+      const url = chartObj.toBase64Image('image/png', 1.0);
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter' });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const margin = 28;
+      const imgH = pageH - margin * 2 - (statsText ? 20 : 0);
+      pdf.addImage(url, 'PNG', margin, margin, pageW - margin * 2, imgH);
+      if (statsText) {
+        pdf.setFont('courier', 'normal');
+        pdf.setFontSize(9);
+        pdf.setTextColor(60);
+        pdf.text(statsText, margin, pageH - 12);
+      }
+      pdf.save(stampName(title) + '.pdf');
+    }
+
+    /**
+     * Full panel PDF. Syncs maps + charts first so post-adjustment view is used.
+     */
+    async function exportPanelToPdf(elementId, filenameBase) {
+      const el = document.getElementById(elementId);
+      if (!el) {
+        alert('Panel not found: ' + elementId);
+        return;
+      }
+      if (typeof html2canvas === 'undefined' || !window.jspdf) {
+        alert('PDF libraries not loaded.');
+        return;
+      }
+
+      if (el.classList.contains('trend-panel') || el.classList.contains('match-panel')) {
+        el.classList.add('visible');
+        el.style.display = 'block';
+      }
+
+      // Sync BOTH map and chart state before any panel capture
+      syncAllCharts();
+      if (elementId === 'overview-map-panel') {
+        await waitForMapReady(overviewMap, 800);
+      }
+      if (elementId === 'panel-main-map') {
+        await waitForMapReady(map, 800);
+      }
+      // Trend panels: re-apply window so canvas inside panel is current
+      if (elementId === 'trend-panel-castnet' && charts.CASTNET.chart) {
+        applyTrendWindow('CASTNET');
+        charts.CASTNET.chart.update('none');
+      }
+      if (elementId === 'trend-panel-ntn' && charts.NTN.chart) {
+        applyTrendWindow('NTN');
+        charts.NTN.chart.update('none');
+      }
+      if (elementId === 'trend-panel-combine' && combineChart) {
+        applyCombineWindow();
+        combineChart.update('none');
+      }
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+      const btn = document.activeElement;
+      const prevLabel = btn && btn.tagName === 'BUTTON' ? btn.textContent : null;
+      if (btn && btn.tagName === 'BUTTON') {
+        btn.disabled = true;
+        btn.textContent = '[ EXPORTING… ]';
+      }
+
+      try {
+        const canvas = await html2canvas(el, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#000000',
+          logging: false,
+          windowWidth: el.scrollWidth,
+          windowHeight: el.scrollHeight
+        });
+
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({
+          orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+          unit: 'pt',
+          format: 'letter'
+        });
+
+        const pageW = pdf.internal.pageSize.getWidth();
+        const pageH = pdf.internal.pageSize.getHeight();
+        const margin = 24;
+        const usableW = pageW - margin * 2;
+        const usableH = pageH - margin * 2;
+        const imgW = usableW;
+        const imgH = (canvas.height * imgW) / canvas.width;
+
+        let yOffset = 0;
+        let page = 0;
+        while (yOffset < imgH) {
+          if (page > 0) pdf.addPage();
+          const srcY = (yOffset / imgH) * canvas.height;
+          const srcH = Math.min((usableH / imgH) * canvas.height, canvas.height - srcY);
+          const sliceH = (srcH / canvas.height) * imgH;
+
+          const sliceCanvas = document.createElement('canvas');
+          sliceCanvas.width = canvas.width;
+          sliceCanvas.height = Math.max(1, Math.floor(srcH));
+          const ctx = sliceCanvas.getContext('2d');
+          ctx.fillStyle = '#000';
+          ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+          ctx.drawImage(
+            canvas,
+            0, Math.floor(srcY), canvas.width, Math.floor(srcH),
+            0, 0, sliceCanvas.width, sliceCanvas.height
+          );
+          pdf.addImage(sliceCanvas.toDataURL('image/png', 1.0), 'PNG', margin, margin, imgW, sliceH);
+          yOffset += usableH;
+          page++;
+        }
+        pdf.save(stampName(filenameBase) + '.pdf');
+      } catch (err) {
+        console.error(err);
+        alert('Export failed: ' + (err.message || err));
+      } finally {
+        if (btn && btn.tagName === 'BUTTON') {
+          btn.disabled = false;
+          btn.textContent = prevLabel || '[ EXPORT PANEL ]';
+        }
+      }
+    }
+
     async function loadCoordinator(network, path) {
       try {
         const res = await fetch(path);
@@ -808,12 +1092,11 @@
       try {
         const res = await fetch('./data/input/site_completeness.json');
         if (!res.ok) {
-          console.warn('site_completeness.json missing — overview colors fall back to 0-25');
+          console.warn('site_completeness.json missing');
           completenessData = {};
           return;
         }
         completenessData = await res.json();
-        console.log('Completeness loaded', Object.keys(completenessData));
       } catch (e) {
         console.error('Completeness error', e);
         completenessData = {};
@@ -829,12 +1112,8 @@
       for (const [net, path] of Object.entries(paths)) {
         try {
           const res = await fetch(path);
-          if (!res.ok) {
-            console.warn('Missing ACF/FFT combined:', path);
-            continue;
-          }
+          if (!res.ok) continue;
           acfFftCombined[net] = parseCSV(await res.text());
-          console.log(net, 'ACF/FFT rows:', acfFftCombined[net].length);
         } catch (e) {
           console.error('loadAcfFftCombined', net, e);
         }
@@ -907,107 +1186,6 @@
       buildOverviewMap();
     }
 
-    async function exportPanelToPdf(elementId, filenameBase) {
-      const el = document.getElementById(elementId);
-      if (!el) {
-        alert('Panel not found: ' + elementId);
-        return;
-      }
-      if (typeof html2canvas === 'undefined' || !window.jspdf) {
-        alert('PDF libraries not loaded. Check html2canvas / jsPDF script tags.');
-        return;
-      }
-
-      if (el.classList.contains('trend-panel') || el.classList.contains('match-panel')) {
-        el.classList.add('visible');
-        el.style.display = 'block';
-      }
-
-      if (elementId === 'overview-map-panel' && typeof overviewMap !== 'undefined') {
-        overviewMap.invalidateSize();
-        await new Promise(r => setTimeout(r, 400));
-      }
-      if (elementId === 'panel-main-map' && typeof map !== 'undefined') {
-        map.invalidateSize();
-        await new Promise(r => setTimeout(r, 400));
-      }
-
-      const btn = document.activeElement;
-      const prevLabel = btn && btn.tagName === 'BUTTON' ? btn.textContent : null;
-      if (btn && btn.tagName === 'BUTTON') {
-        btn.disabled = true;
-        btn.textContent = '[ EXPORTING… ]';
-      }
-
-      try {
-        const canvas = await html2canvas(el, {
-          scale: 2,
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: '#000000',
-          logging: false,
-          windowWidth: el.scrollWidth,
-          windowHeight: el.scrollHeight
-        });
-
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF({
-          orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
-          unit: 'pt',
-          format: 'letter'
-        });
-
-        const pageW = pdf.internal.pageSize.getWidth();
-        const pageH = pdf.internal.pageSize.getHeight();
-        const margin = 24;
-        const usableW = pageW - margin * 2;
-        const usableH = pageH - margin * 2;
-
-        const imgW = usableW;
-        const imgH = (canvas.height * imgW) / canvas.width;
-
-        let yOffset = 0;
-        let page = 0;
-        while (yOffset < imgH) {
-          if (page > 0) pdf.addPage();
-          const srcY = (yOffset / imgH) * canvas.height;
-          const srcH = Math.min(
-            (usableH / imgH) * canvas.height,
-            canvas.height - srcY
-          );
-          const sliceH = (srcH / canvas.height) * imgH;
-
-          const sliceCanvas = document.createElement('canvas');
-          sliceCanvas.width = canvas.width;
-          sliceCanvas.height = Math.max(1, Math.floor(srcH));
-          const ctx = sliceCanvas.getContext('2d');
-          ctx.fillStyle = '#000';
-          ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-          ctx.drawImage(
-            canvas,
-            0, Math.floor(srcY), canvas.width, Math.floor(srcH),
-            0, 0, sliceCanvas.width, sliceCanvas.height
-          );
-
-          const imgData = sliceCanvas.toDataURL('image/png', 1.0);
-          pdf.addImage(imgData, 'PNG', margin, margin, imgW, sliceH);
-          yOffset += usableH;
-          page++;
-        }
-
-        const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-        pdf.save(`${filenameBase}_${stamp}.pdf`);
-      } catch (err) {
-        console.error(err);
-        alert('Export failed: ' + (err.message || err));
-      } finally {
-        if (btn && btn.tagName === 'BUTTON') {
-          btn.disabled = false;
-          btn.textContent = prevLabel || '[ EXPORT PDF ]';
-        }
-      }
-    }
-
     function selectSite(key) {
       if (selectedKey && siteRegistry[selectedKey]?.marker) {
         siteRegistry[selectedKey].marker.setStyle({ weight: 1, color: '#000', radius: 7 });
@@ -1050,13 +1228,11 @@
         return `<div class="coverage-empty">No coverage data for ${variable}</div>`;
       }
       const hasClass = (network === 'CASTNET') ? 'castnet' : 'ntn';
-
       const flat = [];
       years.forEach(year => {
         const binary = yearData[year] || '';
         for (const ch of binary) flat.push(ch === '1' ? '1' : '0');
       });
-
       let first = -1, last = -1;
       for (let i = 0; i < flat.length; i++) {
         if (flat[i] === '1') {
@@ -1064,9 +1240,7 @@
           last = i;
         }
       }
-
-      let nRecord = 0;
-      let nMissing = 0;
+      let nRecord = 0, nMissing = 0;
       if (first >= 0) {
         for (let i = first; i <= last; i++) {
           if (flat[i] === '1') nRecord++;
@@ -1076,7 +1250,6 @@
       const nSpan = nRecord + nMissing;
       const pct = nSpan > 0 ? ((nRecord / nSpan) * 100).toFixed(1) : '0.0';
       const siteComp = getCompleteness(network, siteId);
-
       let html = `
         <div class="plot-title">${variable} · ${siteId}</div>
         <div style="font-size:11px;color:#aaa;margin-bottom:6px;">
@@ -1084,13 +1257,11 @@
           · No record: <b style="color:#fff">${nMissing}</b>
           · Span weeks: ${nSpan}
           · Coverage: ${pct}%
-          <span style="color:#666">(first→last · this variable)</span>
         </div>
         <div style="font-size:11px;color:#888;margin-bottom:6px;">
-          Site completeness (all vars): <b style="color:#fff">${siteComp.pct}%</b>
+          Site completeness: <b style="color:#fff">${siteComp.pct}%</b>
           · bracket <b style="color:#fff">${siteComp.bracket}</b>
         </div>`;
-
       years.forEach(year => {
         const binary = yearData[year] || '';
         html += `<div class="year-row"><div class="year-label">${year}</div><div class="week-boxes">`;
@@ -1098,9 +1269,7 @@
           const ch = binary[i];
           const cls = (ch === '1') ? hasClass : 'missing';
           const { start, end } = weekInterval(year, i);
-          const tip = (ch === '1')
-            ? `Has data: ${start} – ${end}`
-            : `Missing: ${start} – ${end}`;
+          const tip = (ch === '1') ? `Has data: ${start} – ${end}` : `Missing: ${start} – ${end}`;
           html += `<div class="week-box ${cls}" title="${tip}"></div>`;
         }
         html += `</div></div>`;
@@ -1111,18 +1280,15 @@
     function renderSiteInfo(site) {
       const castIds = siteIds(site, 'CASTNET');
       const ntnIds = siteIds(site, 'NTN');
-
       let html = `
         <div class="info-box">
           <div class="title">LOCATION</div>
           <div>Latitude: ${site.lat.toFixed(5)}</div>
           <div>Longitude: ${site.lon.toFixed(5)}</div>
           <div style="margin-top:6px;color:#888;font-size:12px;">
-            CASTNET site IDs: ${formatSiteIdsText(castIds)} ·
-            NTN site IDs: ${formatSiteIdsText(ntnIds)}
+            CASTNET: ${formatSiteIdsText(castIds)} · NTN: ${formatSiteIdsText(ntnIds)}
           </div>
         </div>`;
-
       castIds.forEach((sid, idx) => {
         const range = (dateSummary.CASTNET || {})[sid] || {};
         const comp = getCompleteness('CASTNET', sid);
@@ -1146,7 +1312,6 @@
             </div>
           </div>`;
       });
-
       ntnIds.forEach((sid, idx) => {
         const range = (dateSummary.NTN || {})[sid] || {};
         const comp = getCompleteness('NTN', sid);
@@ -1170,30 +1335,27 @@
             </div>
           </div>`;
       });
-
       if (castIds.length || ntnIds.length) {
-        html += `<div class="combine-box"><div class="title">COMBINE PARAMETERS (one variable per network · uses last selected site ID per network)</div>`;
+        html += `<div class="combine-box"><div class="title">COMBINE PARAMETERS (one variable per network)</div>`;
         if (castIds.length) {
-          html += `<div class="combine-row"><span class="net-label">CASTNET (dry) — available: ${formatSiteIdsText(castIds)}</span>
+          html += `<div class="combine-row"><span class="net-label">CASTNET — ${formatSiteIdsText(castIds)}</span>
             <div class="combine-checks">${VARIABLES.map(v =>
               `<label><input type="checkbox" name="combine-castnet" value="${v}" onchange="onCombineCheck('CASTNET', this)"> ${v}</label>`
             ).join('')}</div></div>`;
         }
         if (ntnIds.length) {
-          html += `<div class="combine-row"><span class="net-label">NTN (wet) — available: ${formatSiteIdsText(ntnIds)}</span>
+          html += `<div class="combine-row"><span class="net-label">NTN — ${formatSiteIdsText(ntnIds)}</span>
             <div class="combine-checks">${VARIABLES.map(v =>
               `<label><input type="checkbox" name="combine-ntn" value="${v}" onchange="onCombineCheck('NTN', this)"> ${v}</label>`
             ).join('')}</div></div>`;
         }
         html += `<div class="combine-btns">
           <button onclick="showCombineTrendPlot()">[ COMBINE STATISTICAL-TRENDING ]</button>
-          <button onclick="resetCombineTrend()">[ RESET COMBINE STATISTICAL-TRENDING ]</button>
+          <button onclick="resetCombineTrend()">[ RESET COMBINE ]</button>
           <button onclick="showMatchSegment()">[ MATCH SEGMENT ]</button>
         </div></div>`;
       }
-
       document.getElementById('site-info').innerHTML = html;
-
       castIds.forEach(sid => {
         const safeId = sid.replace(/[^A-Za-z0-9_-]/g, '_');
         createVarButtons('CASTNET', sid, `vars-castnet-${safeId}`, `coverage-castnet-${safeId}`);
@@ -1230,9 +1392,7 @@
         const v = values[i];
         if (v !== null && v !== undefined && !Number.isNaN(v)) nums.push(v);
       }
-      if (nums.length === 0) {
-        return { min: null, max: null, median: null, avg: null, n: 0 };
-      }
+      if (nums.length === 0) return { min: null, max: null, median: null, avg: null, n: 0 };
       let min = nums[0], max = nums[0], sum = 0;
       for (const v of nums) {
         if (v < min) min = v;
@@ -1273,6 +1433,7 @@
       const key = network.toLowerCase();
       const zoomSlider = document.getElementById('trend-zoom-' + key);
       const scrollSlider = document.getElementById('trend-scroll-' + key);
+      if (!zoomSlider || !scrollSlider) return;
       const zoomPct = parseInt(zoomSlider.value, 10) / 100;
       const windowSize = Math.max(10, Math.round(state.labels.length * zoomPct));
       const maxStart = Math.max(0, state.labels.length - windowSize);
@@ -1301,7 +1462,7 @@
       const dates = series.DATEON || [];
       let values = series[sel.variable] || series['variable_' + sel.variable] || [];
       if (dates.length === 0) {
-        alert('No time-series data found for ' + network + ' / ' + sel.siteId + ' / ' + sel.variable);
+        alert('No time-series data for ' + network + ' / ' + sel.siteId + ' / ' + sel.variable);
         return;
       }
       const labels = [];
@@ -1328,7 +1489,6 @@
         ? `CASTNET ${sel.variable} (${yUnit})`
         : `NTN ${sel.variable} (${yUnit})`;
 
-      // Update title span only — keep EXPORT button
       document.getElementById('trend-header-' + key).textContent =
         `${chartTitle} | Y-bar = zoom · X-bar = time`;
 
@@ -1429,6 +1589,7 @@
       if (!combineChart || combineLabels.length === 0) return;
       const zoomSlider = document.getElementById('trend-zoom-combine');
       const scrollSlider = document.getElementById('trend-scroll-combine');
+      if (!zoomSlider || !scrollSlider) return;
       const zoomPct = parseInt(zoomSlider.value, 10) / 100;
       const windowSize = Math.max(10, Math.round(combineLabels.length * zoomPct));
       const maxStart = Math.max(0, combineLabels.length - windowSize);
@@ -1449,10 +1610,8 @@
         alert('Check one variable under CASTNET and/or NTN.');
         return;
       }
-
       const castId = selected.CASTNET.siteId || siteIds(site, 'CASTNET')[0] || null;
       const ntnId  = selected.NTN.siteId     || siteIds(site, 'NTN')[0] || null;
-
       let castMap = {}, ntnMap = {};
       if (castVar && castId) castMap = getSeriesMap('CASTNET', castId, castVar);
       if (ntnVar && ntnId) ntnMap = getSeriesMap('NTN', ntnId, ntnVar);
@@ -1460,7 +1619,7 @@
         ...Object.keys(castMap), ...Object.keys(ntnMap)
       ])).sort();
       if (allDates.length === 0) {
-        alert('No time-series data found. Click a variable under the desired site ID first.');
+        alert('No time-series data found.');
         return;
       }
       const castVals = allDates.map(d => (castMap[d] !== undefined ? castMap[d] : null));
@@ -1483,18 +1642,16 @@
         });
       }
       if (datasets.length === 0) {
-        alert('No time-series data found for the selected variable(s).');
+        alert('No time-series data for selected variable(s).');
         return;
       }
       combineLabels = allDates;
       const panel = document.getElementById('trend-panel-combine');
       panel.classList.add('visible');
-
       const speciesHint = castVar || ntnVar || '';
       const siteIdsLabel = [castId, ntnId].filter(Boolean).join(' / ');
       const combineTitle =
         `A Comparison of Atmospheric Dry vs. Wet ${speciesHint} Deposition at ${siteIdsLabel}`;
-
       document.getElementById('trend-header-combine').textContent =
         `${combineTitle} | Y-bar = zoom · X-bar = time`;
 
@@ -1550,21 +1707,16 @@
       const desc = (dir === 'desc');
       const sorted = rows.slice();
       sorted.sort((a, b) => {
-        let va = a[field];
-        let vb = b[field];
+        let va = a[field], vb = b[field];
         if (isNumericMatchField(field)) {
-          const na = parseFloat(va);
-          const nb = parseFloat(vb);
-          const aOk = !isNaN(na);
-          const bOk = !isNaN(nb);
+          const na = parseFloat(va), nb = parseFloat(vb);
+          const aOk = !isNaN(na), bOk = !isNaN(nb);
           if (!aOk && !bOk) return 0;
           if (!aOk) return 1;
           if (!bOk) return -1;
           return desc ? (nb - na) : (na - nb);
         }
-        const sa = String(va ?? '');
-        const sb = String(vb ?? '');
-        const cmp = sa.localeCompare(sb, undefined, { numeric: true, sensitivity: 'base' });
+        const cmp = String(va ?? '').localeCompare(String(vb ?? ''), undefined, { numeric: true, sensitivity: 'base' });
         return desc ? -cmp : cmp;
       });
       return sorted;
@@ -1575,20 +1727,14 @@
       const tbody = document.getElementById('match-tbody');
       if (!rows || rows.length === 0) {
         thead.innerHTML = '';
-        tbody.innerHTML = `<tr><td class="match-empty" colspan="9">No matching segments for this site / species in combined ACF–FFT files.<br>Run src/combine_acf_fft.py and confirm files under data/output/ACF_FFT_combined/</td></tr>`;
+        tbody.innerHTML = `<tr><td class="match-empty" colspan="9">No matching segments.</td></tr>`;
         return;
       }
       thead.innerHTML = `
         <tr>
-          <th>Network</th>
-          <th>Species</th>
-          <th>Analysis</th>
-          <th>SITE_ID</th>
-          <th>Start_Date</th>
-          <th>End_Date</th>
-          <th>Num_Years</th>
-          <th>ACF Lag (weeks)</th>
-          <th>FFT Period (weeks)</th>
+          <th>Network</th><th>Species</th><th>Analysis</th><th>SITE_ID</th>
+          <th>Start_Date</th><th>End_Date</th><th>Num_Years</th>
+          <th>ACF Lag</th><th>FFT Period</th>
         </tr>`;
       tbody.innerHTML = rows.map(r => `
         <tr>
@@ -1611,9 +1757,7 @@
       }
       const field = document.getElementById('match-sort-col').value;
       const dir = document.getElementById('match-sort-dir').value;
-      const sorted = sortMatchRows(matchRows, field, dir);
-      renderMatchTable(sorted);
-
+      renderMatchTable(sortMatchRows(matchRows, field, dir));
       const colLabel = document.getElementById('match-sort-col').selectedOptions[0].text;
       const dirLabel = dir === 'desc' ? 'High → Low' : 'Low → High';
       const header = document.getElementById('match-header-text');
@@ -1633,12 +1777,10 @@
         alert('Check one species under CASTNET and/or NTN.');
         return;
       }
-
       const castIds = siteIds(site, 'CASTNET');
       const ntnIds = siteIds(site, 'NTN');
       const castTarget = selected.CASTNET.siteId ? [selected.CASTNET.siteId] : castIds;
       const ntnTarget = selected.NTN.siteId ? [selected.NTN.siteId] : ntnIds;
-
       const rows = [];
       function addNetworkRows(network, idList, variable) {
         if (!variable || !idList.length) return;
@@ -1663,20 +1805,16 @@
       }
       if (castVar) addNetworkRows('CASTNET', castTarget, castVar);
       if (ntnVar) addNetworkRows('NTN', ntnTarget, ntnVar);
-
       matchRows = rows;
-
       const panel = document.getElementById('match-panel');
       const parts = [];
       if (castVar) parts.push(`CASTNET ${formatSiteIdsText(castTarget)} · ${castVar}`);
       if (ntnVar) parts.push(`NTN ${formatSiteIdsText(ntnTarget)} · ${ntnVar}`);
       document.getElementById('match-header-text').textContent =
         `MATCH SEGMENT · ${parts.join(' | ')} · ACF Lag vs FFT Period`;
-
       document.getElementById('match-sort-col').value = 'num_years';
       document.getElementById('match-sort-dir').value = 'desc';
       applyMatchSort();
-
       panel.classList.add('visible');
       panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
