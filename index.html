@@ -445,6 +445,10 @@
       maxZoom: 19, minZoom: 3, crossOrigin: true
     }).addTo(overviewMap);
 
+    // Expose for export hooks
+    window.map = map;
+    window.overviewMap = overviewMap;
+
     let allMarkers = [];
     let overviewMarkers = [];
     let overviewNetwork = 'ALL';
@@ -648,50 +652,133 @@
       if (overviewMarkers.length) {
         overviewMap.fitBounds(L.featureGroup(overviewMarkers).getBounds().pad(0.12));
       }
-      setTimeout(() => overviewMap.invalidateSize(), 100);
+      setTimeout(() => overviewMap.invalidateSize(true), 100);
     }
 
-    // ========== EXPORT (maps sync after pan/zoom; plots use panel only) ==========
+    // ========== DYNAMIC MAP SYNC + EXPORT ==========
     function stampName(base) {
       return `${base}_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}`;
     }
 
-    async function waitForMapReady(leafletMap, settleMs = 1200) {
-      if (!leafletMap) return;
-      leafletMap.invalidateSize(true);
-      leafletMap.eachLayer(layer => {
-        try { if (typeof layer.redraw === 'function') layer.redraw(); } catch (e) {}
+    /**
+     * Force Leaflet internal state (center/zoom/tiles/markers) into the live DOM
+     * so html2canvas sees the view after pan/zoom/filter changes.
+     */
+    function forceMapStructuralRefresh(activeMap) {
+      if (!activeMap) return;
+      // Recalculate container size and tile matrix for current center/zoom
+      activeMap.invalidateSize(true);
+
+      // Re-project every marker / path to current map transform
+      activeMap.eachLayer(layer => {
+        try {
+          if (typeof layer.redraw === 'function') layer.redraw();
+          if (typeof layer.update === 'function') layer.update();
+          // CircleMarker / Path often need setLatLng to refresh DOM position
+          if (layer.getLatLng && layer.setLatLng) {
+            layer.setLatLng(layer.getLatLng());
+          }
+        } catch (e) { /* ignore per-layer errors */ }
       });
-      await new Promise(resolve => {
-        let done = false;
-        const finish = () => { if (done) return; done = true; resolve(); };
-        leafletMap.once('moveend', () => setTimeout(finish, settleMs));
-        setTimeout(finish, settleMs);
+
+      // Nudge a zero-pan so tile layers re-request / re-position for current bounds
+      try {
+        const c = activeMap.getCenter();
+        const z = activeMap.getZoom();
+        activeMap.setView(c, z, { animate: false });
+      } catch (e) {}
+    }
+
+    /**
+     * Wait until map is ready and tiles have had time to settle after last interaction.
+     */
+    function waitForMapReady(activeMap, timeout = 1400) {
+      return new Promise((resolve) => {
+        if (!activeMap) {
+          resolve();
+          return;
+        }
+
+        forceMapStructuralRefresh(activeMap);
+
+        let resolved = false;
+        const finish = () => {
+          if (resolved) return;
+          resolved = true;
+          clearTimeout(timer);
+          resolve();
+        };
+
+        const timer = setTimeout(finish, timeout);
+
+        // Prefer tile/load completion when the map supports it
+        try {
+          activeMap.whenReady(() => {
+            // load fires when tiles for current view finish; may already have passed
+            activeMap.once('load', finish);
+            // Also listen for a quiet period after tileload
+            let tileQuiet = null;
+            const onTile = () => {
+              clearTimeout(tileQuiet);
+              tileQuiet = setTimeout(finish, 350);
+            };
+            activeMap.on('tileload', onTile);
+            activeMap.on('tileerror', onTile);
+            // Cleanup listeners when we finish
+            const origFinish = finish;
+            // wrap once
+            setTimeout(() => {
+              try {
+                activeMap.off('tileload', onTile);
+                activeMap.off('tileerror', onTile);
+              } catch (e) {}
+            }, timeout + 50);
+            // Fallback if load already happened
+            setTimeout(finish, 500);
+          });
+        } catch (e) {
+          setTimeout(finish, 500);
+        }
       });
-      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-      await new Promise(r => setTimeout(r, 200));
     }
 
     async function exportMapToPdf(leafletMap, mapDivId, filenameBase) {
       const el = document.getElementById(mapDivId);
-      if (!el || !leafletMap) { alert('Map not found.'); return; }
+      if (!el || !leafletMap) {
+        alert('Map not found.');
+        return;
+      }
       if (typeof html2canvas === 'undefined' || !window.jspdf) {
-        alert('PDF libraries not loaded.'); return;
+        alert('PDF libraries not loaded.');
+        return;
       }
       const btn = document.activeElement;
       const prev = btn && btn.tagName === 'BUTTON' ? btn.textContent : null;
       if (btn && btn.tagName === 'BUTTON') {
-        btn.disabled = true; btn.textContent = '[ EXPORTING… ]';
+        btn.disabled = true;
+        btn.textContent = '[ EXPORTING… ]';
       }
       try {
-        await waitForMapReady(leafletMap, 1200);
+        // 1) Push current interactive state into DOM
+        await waitForMapReady(leafletMap, 1400);
+        // 2) Extra paint frames after tiles
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+        await new Promise(r => setTimeout(r, 150));
+
         const canvas = await html2canvas(el, {
-          scale: 2, useCORS: true, allowTaint: true,
-          backgroundColor: '#111111', logging: false,
-          width: el.offsetWidth, height: el.offsetHeight,
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#111111',
+          logging: false,
+          width: el.offsetWidth,
+          height: el.offsetHeight,
           windowWidth: document.documentElement.clientWidth,
-          windowHeight: document.documentElement.clientHeight
+          windowHeight: document.documentElement.clientHeight,
+          // Avoid capturing off-screen transform artifacts when possible
+          foreignObjectRendering: false
         });
+
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter' });
         const pageW = pdf.internal.pageSize.getWidth();
@@ -706,50 +793,78 @@
         alert('Map export failed: ' + (err.message || err));
       } finally {
         if (btn && btn.tagName === 'BUTTON') {
-          btn.disabled = false; btn.textContent = prev || '[ EXPORT MAP ]';
+          btn.disabled = false;
+          btn.textContent = prev || '[ EXPORT MAP ]';
         }
       }
     }
 
     async function exportPanelToPdf(elementId, filenameBase) {
       const el = document.getElementById(elementId);
-      if (!el) { alert('Panel not found: ' + elementId); return; }
-      if (typeof html2canvas === 'undefined' || !window.jspdf) {
-        alert('PDF libraries not loaded.'); return;
+      if (!el) {
+        alert('Panel not found: ' + elementId);
+        return;
       }
+      if (typeof html2canvas === 'undefined' || !window.jspdf) {
+        alert('PDF libraries not loaded.');
+        return;
+      }
+
       if (el.classList.contains('trend-panel') || el.classList.contains('match-panel')) {
         el.classList.add('visible');
         el.style.display = 'block';
       }
-      if (elementId === 'overview-map-panel') await waitForMapReady(overviewMap, 1200);
-      if (elementId === 'panel-main-map') await waitForMapReady(map, 1200);
+
+      // Maps: always force live center/zoom/markers into DOM before capture
+      if (elementId === 'overview-map-panel' || elementId === 'panel-main-map') {
+        const active =
+          elementId === 'overview-map-panel' ? overviewMap : map;
+        await waitForMapReady(active, 1400);
+      }
+
+      // Plots: re-apply current zoom/scroll window into Chart.js canvas
       if (elementId === 'trend-panel-castnet' && charts.CASTNET.chart) {
-        applyTrendWindow('CASTNET'); charts.CASTNET.chart.update('none');
+        applyTrendWindow('CASTNET');
+        charts.CASTNET.chart.update('none');
       }
       if (elementId === 'trend-panel-ntn' && charts.NTN.chart) {
-        applyTrendWindow('NTN'); charts.NTN.chart.update('none');
+        applyTrendWindow('NTN');
+        charts.NTN.chart.update('none');
       }
       if (elementId === 'trend-panel-combine' && combineChart) {
-        applyCombineWindow(); combineChart.update('none');
+        applyCombineWindow();
+        combineChart.update('none');
       }
+
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      await new Promise(r => setTimeout(r, 100));
 
       const btn = document.activeElement;
       const prevLabel = btn && btn.tagName === 'BUTTON' ? btn.textContent : null;
       if (btn && btn.tagName === 'BUTTON') {
-        btn.disabled = true; btn.textContent = '[ EXPORTING… ]';
+        btn.disabled = true;
+        btn.textContent = '[ EXPORTING… ]';
       }
+
       try {
         const canvas = await html2canvas(el, {
-          scale: 2, useCORS: true, allowTaint: true,
-          backgroundColor: '#000000', logging: false,
-          windowWidth: el.scrollWidth, windowHeight: el.scrollHeight
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#000000',
+          logging: false,
+          windowWidth: el.scrollWidth,
+          windowHeight: el.scrollHeight,
+          foreignObjectRendering: false
         });
+
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF({
           orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
-          unit: 'pt', format: 'letter'
+          unit: 'pt',
+          format: 'letter'
         });
+
         const pageW = pdf.internal.pageSize.getWidth();
         const pageH = pdf.internal.pageSize.getHeight();
         const margin = 24;
@@ -757,7 +872,9 @@
         const usableH = pageH - margin * 2;
         const imgW = usableW;
         const imgH = (canvas.height * imgW) / canvas.width;
-        let yOffset = 0, page = 0;
+
+        let yOffset = 0;
+        let page = 0;
         while (yOffset < imgH) {
           if (page > 0) pdf.addPage();
           const srcY = (yOffset / imgH) * canvas.height;
@@ -769,10 +886,14 @@
           const ctx = sliceCanvas.getContext('2d');
           ctx.fillStyle = '#000';
           ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-          ctx.drawImage(canvas, 0, Math.floor(srcY), canvas.width, Math.floor(srcH),
-            0, 0, sliceCanvas.width, sliceCanvas.height);
+          ctx.drawImage(
+            canvas,
+            0, Math.floor(srcY), canvas.width, Math.floor(srcH),
+            0, 0, sliceCanvas.width, sliceCanvas.height
+          );
           pdf.addImage(sliceCanvas.toDataURL('image/png', 1.0), 'PNG', margin, margin, imgW, sliceH);
-          yOffset += usableH; page++;
+          yOffset += usableH;
+          page++;
         }
         pdf.save(stampName(filenameBase) + '.pdf');
       } catch (err) {
@@ -780,7 +901,8 @@
         alert('Export failed: ' + (err.message || err));
       } finally {
         if (btn && btn.tagName === 'BUTTON') {
-          btn.disabled = false; btn.textContent = prevLabel || '[ EXPORT PANEL ]';
+          btn.disabled = false;
+          btn.textContent = prevLabel || '[ EXPORT PANEL ]';
         }
       }
     }
@@ -802,7 +924,8 @@
           }
           if (!Array.isArray(siteRegistry[key][network])) siteRegistry[key][network] = [];
           if (!siteRegistry[key][network].includes(siteId)) {
-            siteRegistry[key][network].push(siteId); count++;
+            siteRegistry[key][network].push(siteId);
+            count++;
           }
         });
         return count;
@@ -938,7 +1061,10 @@
         map.panTo([site.lat, site.lon]);
       }
       const row = document.querySelector(`#network-tbody tr[data-key="${key}"]`);
-      if (row) { row.classList.add('selected'); row.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+      if (row) {
+        row.classList.add('selected');
+        row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
       document.getElementById('trend-panel-castnet').classList.remove('visible');
       document.getElementById('trend-panel-ntn').classList.remove('visible');
       document.getElementById('trend-panel-combine').classList.remove('visible');
