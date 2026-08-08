@@ -36,6 +36,15 @@
       background: #333;
       box-shadow: 0 0 6px #fff;
     }
+    .title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .title-row .title-text { flex: 1; min-width: 180px; }
 
     .overview-map-panel {
       width: 100%;
@@ -48,7 +57,7 @@
     .overview-map-panel .panel-title {
       font-size: 14px;
       letter-spacing: 1px;
-      margin-bottom: 10px;
+      margin-bottom: 0;
     }
     .overview-controls {
       display: flex;
@@ -108,7 +117,7 @@
     }
     .panel-title {
       font-size: 14px; letter-spacing: 1px;
-      margin-bottom: 10px; flex-shrink: 0;
+      margin-bottom: 0; flex-shrink: 0;
     }
     .panel-content { flex: 1; overflow-y: auto; overflow-x: hidden; }
     #map {
@@ -217,7 +226,7 @@
     .trend-panel.ntn-panel { border-color: #3498db; }
     .trend-panel.combine-panel { border-color: #fafafa; }
     .trend-header {
-      font-size: 14px; letter-spacing: 1px; margin-bottom: 8px; color: #aaa;
+      font-size: 14px; letter-spacing: 1px; margin-bottom: 0; color: #aaa;
     }
     .trend-stats {
       font-size: 12px; color: #ccc; margin-bottom: 10px;
@@ -256,7 +265,7 @@
     }
     .match-panel.visible { display: block; }
     .match-header {
-      font-size: 14px; letter-spacing: 1px; margin-bottom: 10px; color: #aaa;
+      font-size: 14px; letter-spacing: 1px; margin-bottom: 0; color: #aaa;
     }
     .match-sort-bar {
       display: flex;
@@ -307,22 +316,25 @@
     </div>
 
     <div class="overview-map-panel" id="overview-map-panel">
-      <div class="panel-title">NETWORK OVERVIEW MAP · completeness bracket -> color</div>
-            <div class="overview-controls">
-              Show network:
-              <button id="ov-net-all" class="active-net" onclick="setOverviewNetwork('ALL')">[ ALL ]</button>
-              <button id="ov-net-castnet" onclick="setOverviewNetwork('CASTNET')">[ CASTNET ]</button>
-              <button id="ov-net-ntn" onclick="setOverviewNetwork('NTN')">[ NTN ]</button>
-              <span id="overview-count" style="margin-left:8px;color:#888;"></span>
-            </div>
-            <div class="overview-controls">
-              Completeness:
-              <button id="ov-br-all" class="active-net" onclick="setOverviewBracket('ALL')">[ ALL ]</button>
-              <button id="ov-br-0-25" onclick="setOverviewBracket('0-25')">[ 0–25% ]</button>
-              <button id="ov-br-25-50" onclick="setOverviewBracket('25-50')">[ 25–50% ]</button>
-              <button id="ov-br-50-75" onclick="setOverviewBracket('50-75')">[ 50–75% ]</button>
-              <button id="ov-br-75-100" onclick="setOverviewBracket('75-100')">[ 75–100% ]</button>
-            </div>
+      <div class="title-row">
+        <div class="panel-title title-text">NETWORK OVERVIEW MAP · completeness bracket → color</div>
+        <button type="button" onclick="exportPanelToPdf('overview-map-panel', 'overview_map')">[ EXPORT PDF ]</button>
+      </div>
+      <div class="overview-controls">
+        Show network:
+        <button id="ov-net-all" class="active-net" onclick="setOverviewNetwork('ALL')">[ ALL ]</button>
+        <button id="ov-net-castnet" onclick="setOverviewNetwork('CASTNET')">[ CASTNET ]</button>
+        <button id="ov-net-ntn" onclick="setOverviewNetwork('NTN')">[ NTN ]</button>
+        <span id="overview-count" style="margin-left:8px;color:#888;"></span>
+      </div>
+      <div class="overview-controls">
+        Completeness:
+        <button id="ov-br-all" class="active-net" onclick="setOverviewBracket('ALL')">[ ALL ]</button>
+        <button id="ov-br-0-25" onclick="setOverviewBracket('0-25')">[ 0–25% ]</button>
+        <button id="ov-br-25-50" onclick="setOverviewBracket('25-50')">[ 25–50% ]</button>
+        <button id="ov-br-50-75" onclick="setOverviewBracket('50-75')">[ 50–75% ]</button>
+        <button id="ov-br-75-100" onclick="setOverviewBracket('75-100')">[ 75–100% ]</button>
+      </div>
       <div id="overview-map"></div>
       <div class="overview-legend">
         <span class="scale">
@@ -340,8 +352,11 @@
     </div>
 
     <div class="main">
-      <div class="panel">
-        <div class="panel-title">MAP VIEW · ZOOM & EXPLORE</div>
+      <div class="panel" id="panel-main-map">
+        <div class="title-row">
+          <div class="panel-title title-text">MAP VIEW · ZOOM & EXPLORE</div>
+          <button type="button" onclick="exportPanelToPdf('panel-main-map', 'map_network_list')">[ EXPORT PDF ]</button>
+        </div>
         <div id="map"></div>
         <div class="sort-bar">
           Sort by:
@@ -363,8 +378,11 @@
           </div>
         </div>
       </div>
-      <div class="panel-wide">
-        <div class="panel-title">SELECTED SITE(S) · WEEKLY COVERAGE · COMBINE</div>
+      <div class="panel-wide" id="panel-site-info">
+        <div class="title-row">
+          <div class="panel-title title-text">SELECTED SITE(S) · WEEKLY COVERAGE · COMBINE</div>
+          <button type="button" onclick="exportPanelToPdf('panel-site-info', 'site_coverage')">[ EXPORT PDF ]</button>
+        </div>
         <div class="panel-content" id="site-info">
           <div class="placeholder">Click a marker or a row<br>to see details</div>
         </div>
@@ -372,7 +390,10 @@
     </div>
 
     <div class="match-panel" id="match-panel">
-      <div class="match-header" id="match-header">MATCH SEGMENT · ACF Lag vs FFT Period</div>
+      <div class="title-row">
+        <div class="match-header title-text" id="match-header-text">MATCH SEGMENT · ACF Lag vs FFT Period</div>
+        <button type="button" onclick="exportPanelToPdf('match-panel', 'match_segment')">[ EXPORT PDF ]</button>
+      </div>
       <div class="match-sort-bar">
         <label for="match-sort-col">Sort by</label>
         <select id="match-sort-col" onchange="applyMatchSort()">
@@ -388,8 +409,8 @@
         </select>
         <label for="match-sort-dir">Order</label>
         <select id="match-sort-dir" onchange="applyMatchSort()">
-          <option value="desc" selected>High -> Low</option>
-          <option value="asc">Low -> High</option>
+          <option value="desc" selected>High → Low</option>
+          <option value="asc">Low → High</option>
         </select>
       </div>
       <div class="match-table-wrap">
@@ -402,7 +423,10 @@
 
     <div class="trend-panels">
       <div class="trend-panel castnet-panel" id="trend-panel-castnet">
-        <div class="trend-header" id="trend-header-castnet">CASTNET Time Series</div>
+        <div class="title-row">
+          <div class="trend-header title-text" id="trend-header-castnet">CASTNET Time Series</div>
+          <button type="button" onclick="exportPanelToPdf('trend-panel-castnet', 'trend_castnet')">[ EXPORT PDF ]</button>
+        </div>
         <div class="trend-stats" id="trend-stats-castnet">
           <span><span class="lab">min</span> —</span>
           <span><span class="lab">max</span> —</span>
@@ -424,7 +448,10 @@
       </div>
 
       <div class="trend-panel ntn-panel" id="trend-panel-ntn">
-        <div class="trend-header" id="trend-header-ntn">NTN Time Series</div>
+        <div class="title-row">
+          <div class="trend-header title-text" id="trend-header-ntn">NTN Time Series</div>
+          <button type="button" onclick="exportPanelToPdf('trend-panel-ntn', 'trend_ntn')">[ EXPORT PDF ]</button>
+        </div>
         <div class="trend-stats" id="trend-stats-ntn">
           <span><span class="lab">min</span> —</span>
           <span><span class="lab">max</span> —</span>
@@ -446,7 +473,10 @@
       </div>
 
       <div class="trend-panel combine-panel" id="trend-panel-combine">
-        <div class="trend-header" id="trend-header-combine">COMBINE Time Series</div>
+        <div class="title-row">
+          <div class="trend-header title-text" id="trend-header-combine">COMBINE Time Series</div>
+          <button type="button" onclick="exportPanelToPdf('trend-panel-combine', 'trend_combine')">[ EXPORT PDF ]</button>
+        </div>
         <div class="trend-body">
           <div class="trend-canvas-wrap"><canvas id="trend-chart-combine"></canvas></div>
           <div class="trend-zoom-wrap">
@@ -483,7 +513,7 @@
     let allMarkers = [];
     let overviewMarkers = [];
     let overviewNetwork = 'ALL';
-    let overviewBracket = 'ALL'; // ALL | 0-25 | 25-50 | 50-75 | 75-100
+    let overviewBracket = 'ALL';
     let siteRegistry = {};
     let dateSummary = {};
     let coverageData = {};
@@ -508,7 +538,6 @@
 
     const VARIABLES = ["SO2","SO4","HNO3","NO3","TNO3","NH4","CA","K","MG","Sodium"];
 
-    // Fixed completeness bracket colors (same radius for all dots)
     const COMPLETENESS_COLORS = {
       CASTNET: {
         '0-25':   '#f5b7b1',
@@ -592,7 +621,6 @@
       };
     }
 
-    /** Among multiple site IDs at one location, pick highest completeness */
     function maxCompleteness(network, ids) {
       let best = { pct: -1, bracket: '0-25', n_record: 0, n_missing: 0, n_span: 0, siteId: null };
       (ids || []).forEach(id => {
@@ -635,6 +663,7 @@
       document.getElementById('ov-net-ntn').classList.toggle('active-net', mode === 'NTN');
       buildOverviewMap();
     }
+
     function setOverviewBracket(mode) {
       overviewBracket = mode;
       ['ALL', '0-25', '25-50', '50-75', '75-100'].forEach(b => {
@@ -877,10 +906,7 @@
       }
       buildOverviewMap();
     }
-    /**
-     * Export a panel DOM node to a high-resolution multi-page PDF.
-     * scale: 2 = ~150–200 dpi feel; 3 = heavier but sharper for reports.
-     */
+
     async function exportPanelToPdf(elementId, filenameBase) {
       const el = document.getElementById(elementId);
       if (!el) {
@@ -892,14 +918,11 @@
         return;
       }
 
-      // Make sure the panel is visible (trend/match may be hidden)
-      const wasHidden = el.style.display === 'none' || !el.classList.contains('visible') && el.classList.contains('trend-panel');
       if (el.classList.contains('trend-panel') || el.classList.contains('match-panel')) {
         el.classList.add('visible');
         el.style.display = 'block';
       }
 
-      // Leaflet needs size invalidation before capture
       if (elementId === 'overview-map-panel' && typeof overviewMap !== 'undefined') {
         overviewMap.invalidateSize();
         await new Promise(r => setTimeout(r, 400));
@@ -910,6 +933,7 @@
       }
 
       const btn = document.activeElement;
+      const prevLabel = btn && btn.tagName === 'BUTTON' ? btn.textContent : null;
       if (btn && btn.tagName === 'BUTTON') {
         btn.disabled = true;
         btn.textContent = '[ EXPORTING… ]';
@@ -917,7 +941,7 @@
 
       try {
         const canvas = await html2canvas(el, {
-          scale: 2,                    // high resolution
+          scale: 2,
           useCORS: true,
           allowTaint: true,
           backgroundColor: '#000000',
@@ -942,7 +966,6 @@
         const imgW = usableW;
         const imgH = (canvas.height * imgW) / canvas.width;
 
-        // Slice tall panels across pages
         let yOffset = 0;
         let page = 0;
         while (yOffset < imgH) {
@@ -980,10 +1003,11 @@
       } finally {
         if (btn && btn.tagName === 'BUTTON') {
           btn.disabled = false;
-          btn.textContent = '[ EXPORT PDF ]';
+          btn.textContent = prevLabel || '[ EXPORT PDF ]';
         }
       }
     }
+
     function selectSite(key) {
       if (selectedKey && siteRegistry[selectedKey]?.marker) {
         siteRegistry[selectedKey].marker.setStyle({ weight: 1, color: '#000', radius: 7 });
@@ -1051,8 +1075,6 @@
       }
       const nSpan = nRecord + nMissing;
       const pct = nSpan > 0 ? ((nRecord / nSpan) * 100).toFixed(1) : '0.0';
-
-      // Optional: site-level completeness from precomputed file
       const siteComp = getCompleteness(network, siteId);
 
       let html = `
@@ -1062,7 +1084,7 @@
           · No record: <b style="color:#fff">${nMissing}</b>
           · Span weeks: ${nSpan}
           · Coverage: ${pct}%
-          <span style="color:#666">(first->last · this variable)</span>
+          <span style="color:#666">(first→last · this variable)</span>
         </div>
         <div style="font-size:11px;color:#888;margin-bottom:6px;">
           Site completeness (all vars): <b style="color:#fff">${siteComp.pct}%</b>
@@ -1306,6 +1328,7 @@
         ? `CASTNET ${sel.variable} (${yUnit})`
         : `NTN ${sel.variable} (${yUnit})`;
 
+      // Update title span only — keep EXPORT button
       document.getElementById('trend-header-' + key).textContent =
         `${chartTitle} | Y-bar = zoom · X-bar = time`;
 
@@ -1592,8 +1615,8 @@
       renderMatchTable(sorted);
 
       const colLabel = document.getElementById('match-sort-col').selectedOptions[0].text;
-      const dirLabel = dir === 'desc' ? 'High -> Low' : 'Low -> High';
-      const header = document.getElementById('match-header');
+      const dirLabel = dir === 'desc' ? 'High → Low' : 'Low → High';
+      const header = document.getElementById('match-header-text');
       const base = header.textContent.split(' · Sort:')[0];
       header.textContent = `${base} · Sort: ${colLabel} ${dirLabel}`;
     }
@@ -1647,7 +1670,7 @@
       const parts = [];
       if (castVar) parts.push(`CASTNET ${formatSiteIdsText(castTarget)} · ${castVar}`);
       if (ntnVar) parts.push(`NTN ${formatSiteIdsText(ntnTarget)} · ${ntnVar}`);
-      document.getElementById('match-header').textContent =
+      document.getElementById('match-header-text').textContent =
         `MATCH SEGMENT · ${parts.join(' | ')} · ACF Lag vs FFT Period`;
 
       document.getElementById('match-sort-col').value = 'num_years';
