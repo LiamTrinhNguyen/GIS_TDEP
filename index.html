@@ -344,7 +344,10 @@
 
     <div class="main">
       <div class="panel">
-        <div class="panel-title">MAP VIEW · ZOOM & EXPLORE</div>
+        <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center;">
+          <span>MAP VIEW · ZOOM & EXPLORE</span>
+          <button type="button" onclick="exportPanelToPdf('panel-main-map', 'map_network_list')">[ EXPORT PDF ]</button>
+        </div>
         <div id="map"></div>
         <div class="sort-bar">
           Sort by:
@@ -367,7 +370,10 @@
         </div>
       </div>
       <div class="panel-wide">
-        <div class="panel-title">SELECTED SITE(S) · WEEKLY COVERAGE · COMBINE</div>
+        <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center;">
+          <span>SELECTED SITE(S) · WEEKLY COVERAGE · COMBINE</span>
+          <button type="button" onclick="exportPanelToPdf('panel-site-info', 'site_coverage')">[ EXPORT PDF ]</button>
+        </div>
         <div class="panel-content" id="site-info">
           <div class="placeholder">Click a marker or a row<br>to see details</div>
         </div>
@@ -405,7 +411,10 @@
 
     <div class="trend-panels">
       <div class="trend-panel castnet-panel" id="trend-panel-castnet">
-        <div class="trend-header" id="trend-header-castnet">CASTNET Time Series</div>
+        <div class="trend-header" style="display:flex;justify-content:space-between;align-items:center;">
+          <span id="trend-header-castnet">CASTNET Time Series</span>
+          <button type="button" onclick="exportPanelToPdf('trend-panel-castnet', 'trend_castnet')">[ EXPORT PDF ]</button>
+        </div>
         <div class="trend-stats" id="trend-stats-castnet">
           <span><span class="lab">min</span> —</span>
           <span><span class="lab">max</span> —</span>
@@ -427,7 +436,10 @@
       </div>
 
       <div class="trend-panel ntn-panel" id="trend-panel-ntn">
-        <div class="trend-header" id="trend-header-ntn">NTN Time Series</div>
+        <div class="trend-header" style="display:flex;justify-content:space-between;align-items:center;">
+          <span id="trend-header-castnet">NTN Time Series</span>
+          <button type="button" onclick="exportPanelToPdf('trend-panel-castnet', 'trend_castnet')">[ EXPORT PDF ]</button>
+        </div>
         <div class="trend-stats" id="trend-stats-ntn">
           <span><span class="lab">min</span> —</span>
           <span><span class="lab">max</span> —</span>
@@ -449,7 +461,10 @@
       </div>
 
       <div class="trend-panel combine-panel" id="trend-panel-combine">
-        <div class="trend-header" id="trend-header-combine">COMBINE Time Series</div>
+        <div class="trend-header" style="display:flex;justify-content:space-between;align-items:center;">
+          <span id="trend-header-castnet">COMBINE Time Series</span>
+          <button type="button" onclick="exportPanelToPdf('trend-panel-castnet', 'trend_castnet')">[ EXPORT PDF ]</button>
+        </div>
         <div class="trend-body">
           <div class="trend-canvas-wrap"><canvas id="trend-chart-combine"></canvas></div>
           <div class="trend-zoom-wrap">
