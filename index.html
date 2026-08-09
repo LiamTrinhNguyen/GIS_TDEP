@@ -69,7 +69,7 @@
       background: linear-gradient(to right, #aed6f1, #5dade2, #2980b9, #1a5276);
     }
 
-    /* Row: both columns stretch to the taller panel */
+    /* stretch: MAP VIEW height follows SELECTED SITE panel when coverage expands */
     .main {
       display: flex;
       gap: 18px;
@@ -81,23 +81,23 @@
       width: 420px;
       min-height: 620px;
       height: auto;
+      align-self: stretch;
       background: #0a0a0a;
       border: 1px solid #ffffff;
       padding: 12px;
       display: flex;
       flex-direction: column;
-      align-self: stretch;
     }
     .panel-wide {
       width: 860px;
       min-height: 620px;
       height: auto;
+      align-self: stretch;
       background: #0a0a0a;
       border: 1px solid #ffffff;
       padding: 12px;
       display: flex;
       flex-direction: column;
-      align-self: stretch;
     }
     .panel-title { font-size: 14px; letter-spacing: 1px; margin-bottom: 0; flex-shrink: 0; }
     .panel-content {
@@ -113,15 +113,14 @@
     }
     .sort-bar { margin-bottom: 6px; font-size: 11px; color: #aaa; flex-shrink: 0; }
     .sort-bar button { font-size: 11px; padding: 3px 8px; }
-
-    /* Network list fills leftover height when MAP VIEW stretches to match coverage panel */
+    /* Network list fills remaining height of stretched MAP VIEW column */
     .network-list-box {
       border: 1px solid #555;
       flex: 1 1 auto;
       min-height: 280px;
+      max-height: none;
       display: flex;
       flex-direction: column;
-      min-height: 0;
     }
     .network-list-title {
       padding: 6px 10px; font-size: 13px;
@@ -309,7 +308,7 @@
       </div>
     </div>
 
-    <div class="main" id="main-row">
+    <div class="main">
       <div class="panel" id="panel-main-map">
         <div class="title-row">
           <div class="panel-title title-text">MAP VIEW · ZOOM & EXPLORE</div>
@@ -535,21 +534,16 @@
       const left = document.getElementById('panel-main-map');
       const right = document.getElementById('panel-site-info');
       if (!left || !right) return;
-      // Reset so natural content height is measured
+      // Clear forced height so natural layout can measure
       left.style.minHeight = '';
       right.style.minHeight = '';
-      left.style.height = 'auto';
-      right.style.height = 'auto';
-      // Double rAF: wait for coverage DOM paint
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          const h = Math.max(left.offsetHeight, right.offsetHeight, 620);
-          left.style.minHeight = h + 'px';
-          right.style.minHeight = h + 'px';
-          // Leaflet needs invalidate after container size change
-          try { map.invalidateSize(true); } catch (e) {}
-        });
-      });
+      // Force reflow
+      void right.offsetHeight;
+      const h = Math.max(right.offsetHeight, left.offsetHeight, 620);
+      left.style.minHeight = h + 'px';
+      right.style.minHeight = h + 'px';
+      // Leaflet may need a size pass if container grew
+      try { map.invalidateSize(false); } catch (e) {}
     }
 
     function parseCSV(text) {
@@ -1006,7 +1000,7 @@
       });
       if (allMarkers.length) map.fitBounds(L.featureGroup(allMarkers).getBounds().pad(0.12));
       buildOverviewMap();
-      syncMainPanelHeights();
+      requestAnimationFrame(syncMainPanelHeights);
     }
     function selectSite(key) {
       if (selectedKey && siteRegistry[selectedKey]?.marker) {
@@ -1036,6 +1030,7 @@
       document.getElementById('trend-panel-combine').classList.remove('visible');
       document.getElementById('match-panel').classList.remove('visible');
       renderSiteInfo(site);
+      requestAnimationFrame(syncMainPanelHeights);
     }
 
     function buildCoverageHTML(network, siteId, variable) {
@@ -1170,7 +1165,7 @@
         const safeId = sid.replace(/[^A-Za-z0-9_-]/g, '_');
         createVarButtons('NTN', sid, `vars-ntn-${safeId}`, `coverage-ntn-${safeId}`);
       });
-      syncMainPanelHeights();
+      requestAnimationFrame(syncMainPanelHeights);
     }
     function createVarButtons(network, siteId, containerId, coverageId) {
       const container = document.getElementById(containerId);
@@ -1185,8 +1180,11 @@
           selected[network].variable = v;
           const target = document.getElementById(coverageId);
           if (target) target.innerHTML = buildCoverageHTML(network, siteId, v);
-          // Expand MAP VIEW to match new coverage height
-          syncMainPanelHeights();
+          // After week cover expands, stretch MAP VIEW to match
+          requestAnimationFrame(() => {
+            syncMainPanelHeights();
+            requestAnimationFrame(syncMainPanelHeights);
+          });
         };
         container.appendChild(btn);
       });
@@ -1530,6 +1528,10 @@
       document.getElementById('trend-panel-ntn').classList.remove('visible');
       document.getElementById('trend-panel-combine').classList.remove('visible');
       document.getElementById('match-panel').classList.remove('visible');
+      const left = document.getElementById('panel-main-map');
+      const right = document.getElementById('panel-site-info');
+      if (left) left.style.minHeight = '';
+      if (right) right.style.minHeight = '';
       const ovS = document.getElementById('ov-snap-status');
       const mainS = document.getElementById('main-snap-status');
       if (ovS) { ovS.textContent = 'Adjust view, then EXPORT'; ovS.style.color = '#888'; }
@@ -1544,14 +1546,10 @@
       buildMarkersAndTable();
       document.getElementById('site-info').innerHTML =
         '<div class="placeholder">Click a marker or a row<br>to see details</div>';
-      syncMainPanelHeights();
+      requestAnimationFrame(syncMainPanelHeights);
     }
-
     window.addEventListener('load', () => setTimeout(loadAllSites, 600));
-    window.addEventListener('resize', () => {
-      clearTimeout(window.__syncPanelT);
-      window.__syncPanelT = setTimeout(syncMainPanelHeights, 150);
-    });
+    window.addEventListener('resize', () => requestAnimationFrame(syncMainPanelHeights));
   </script>
 </body>
 </html>
