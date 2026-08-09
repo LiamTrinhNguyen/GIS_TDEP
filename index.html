@@ -136,7 +136,15 @@
     .site-id-list { line-height: 1.35; }
     .site-id-list span { display: block; }
     .info-box { border: 1px solid #444; padding: 12px; margin-bottom: 12px; background: #111; }
-    .info-box .title { font-size: 13px; color: #aaa; margin-bottom: 6px; }
+    .info-box .title { font-size: 13px; color: #aaa; margin-bottom: 0; }
+    .info-box-header {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 8px; flex-wrap: wrap; margin-bottom: 8px;
+    }
+    .info-box-header .title { flex: 1; min-width: 140px; }
+    .info-box-header button {
+      font-size: 11px; padding: 3px 8px; margin: 0; flex-shrink: 0;
+    }
     .var-buttons { margin-top: 10px; }
     .var-buttons button { font-size: 11px; padding: 4px 7px; }
     .placeholder {
@@ -1060,8 +1068,11 @@
       const castIds = siteIds(site, 'CASTNET');
       const ntnIds = siteIds(site, 'NTN');
       let html = `
-        <div class="info-box">
-          <div class="title">LOCATION</div>
+        <div class="info-box" id="info-location">
+          <div class="info-box-header">
+            <div class="title">LOCATION</div>
+            <button type="button" onclick="exportPanelToPdf('info-location', 'site_location')">[ EXPORT ]</button>
+          </div>
           <div>Latitude: ${site.lat.toFixed(5)}</div>
           <div>Longitude: ${site.lon.toFixed(5)}</div>
           <div style="margin-top:6px;color:#888;font-size:12px;">
@@ -1073,8 +1084,11 @@
         const comp = getCompleteness('CASTNET', sid);
         const safeId = sid.replace(/[^A-Za-z0-9_-]/g, '_');
         html += `
-          <div class="info-box">
-            <div class="title">CASTNET — ${sid} (dry)${castIds.length > 1 ? ` · ${idx + 1}/${castIds.length}` : ''}</div>
+          <div class="info-box" id="info-castnet-${safeId}">
+            <div class="info-box-header">
+              <div class="title">CASTNET — ${sid} (dry)${castIds.length > 1 ? ` · ${idx + 1}/${castIds.length}` : ''}</div>
+              <button type="button" onclick="exportPanelToPdf('info-castnet-${safeId}', 'castnet_${sid}_coverage')">[ EXPORT ]</button>
+            </div>
             <div>First day: ${range.first || '—'}</div>
             <div>Last day: ${range.last || '—'}</div>
             <div>Completeness: <b>${comp.pct}%</b> · bracket ${comp.bracket}</div>
@@ -1096,8 +1110,11 @@
         const comp = getCompleteness('NTN', sid);
         const safeId = sid.replace(/[^A-Za-z0-9_-]/g, '_');
         html += `
-          <div class="info-box">
-            <div class="title">NTN (NADP) — ${sid} (wet)${ntnIds.length > 1 ? ` · ${idx + 1}/${ntnIds.length}` : ''}</div>
+          <div class="info-box" id="info-ntn-${safeId}">
+            <div class="info-box-header">
+              <div class="title">NTN (NADP) — ${sid} (wet)${ntnIds.length > 1 ? ` · ${idx + 1}/${ntnIds.length}` : ''}</div>
+              <button type="button" onclick="exportPanelToPdf('info-ntn-${safeId}', 'ntn_${sid}_coverage')">[ EXPORT ]</button>
+            </div>
             <div>First day: ${range.first || '—'}</div>
             <div>Last day: ${range.last || '—'}</div>
             <div>Completeness: <b>${comp.pct}%</b> · bracket ${comp.bracket}</div>
@@ -1115,7 +1132,11 @@
           </div>`;
       });
       if (castIds.length || ntnIds.length) {
-        html += `<div class="combine-box"><div class="title">COMBINE PARAMETERS (one variable per network)</div>`;
+        html += `<div class="combine-box" id="info-combine">
+          <div class="info-box-header">
+            <div class="title">COMBINE PARAMETERS (one variable per network)</div>
+            <button type="button" onclick="exportPanelToPdf('info-combine', 'combine_parameters')">[ EXPORT ]</button>
+          </div>`;
         if (castIds.length) {
           html += `<div class="combine-row"><span class="net-label">CASTNET — ${formatSiteIdsText(castIds)}</span>
             <div class="combine-checks">${VARIABLES.map(v =>
