@@ -222,6 +222,15 @@
       width: 36px; height: 22px; border: 1px solid #666;
       background: #000; padding: 0; cursor: pointer;
     }
+    .combine-color-row input[type="checkbox"] {
+      accent-color: #fff; cursor: pointer; width: 14px; height: 14px;
+    }
+    .combine-color-row .vis-label {
+      color: #888; font-size: 11px; min-width: 28px;
+    }
+    .combine-color-row.off-series span.series-name {
+      color: #555; text-decoration: line-through;
+    }
     .combine-color-actions { margin-top: 8px; }
     .trend-panels {
       width: 100%; max-width: 1296px; margin: 18px auto 0 auto;
@@ -430,18 +439,20 @@
           </div>
         </div>
         <div class="combine-color-bar" id="combine-color-bar">
-          <div class="cctitle">Line color per SITE_ID · change color, then [ REFRESH COLOR ]</div>
+          <div class="cctitle">Line color &amp; visibility per SITE_ID · toggle ON/OFF · change color then [ REFRESH COLOR ]</div>
           <div class="combine-color-rows" id="combine-color-rows"></div>
           <div class="combine-color-actions">
             <button type="button" onclick="refreshCombineColors()">[ REFRESH COLOR ]</button>
             <button type="button" onclick="resetCombineColorsToDefault()">[ RESET COLORS ]</button>
+            <button type="button" onclick="showAllCombineSeries()">[ SHOW ALL ]</button>
+            <button type="button" onclick="hideAllCombineSeries()">[ HIDE ALL ]</button>
           </div>
         </div>
         <div class="trend-body">
           <div class="trend-canvas-wrap"><canvas id="trend-chart-combine"></canvas></div>
           <div class="trend-zoom-wrap">
             <label>ZOOM</label>
-            <input type="range" class="trend-zoom" id="trend-zoom-combine" min="10" max="100" value="100" step="1" />
+            <input type="range" class="trend-zoom" id="trend-zoom-combine" min="5" max="100" value="100" step="1" />
           </div>
         </div>
         <div class="trend-scroll-wrap">
@@ -500,6 +511,7 @@
     // [{ key, network, siteId, variable, label, data, defaultColor }]
     let combineSeriesMeta = [];
     let combineColors = {}; // key -> hex color user chose
+    let combineVisibility = {}; // key -> true (visible) / false (hidden)
     let matchRows = [];
     const mapSnapshots = { 'overview-map': null, 'map': null };
 
@@ -1427,14 +1439,23 @@
     function renderCombineColorPickers(metaList) {
       const host = document.getElementById('combine-color-rows');
       if (!host) return;
-      host.innerHTML = metaList.map((m, i) => {
+      host.innerHTML = metaList.map((m) => {
         const color = combineColors[m.key] || m.defaultColor;
+        const visible = combineVisibility[m.key] !== false; // default ON
         const safeKey = m.key.replace(/[^A-Za-z0-9_-]/g, '_');
-        return `<div class="combine-color-row">
+        const offClass = visible ? '' : ' off-series';
+        return `<div class="combine-color-row${offClass}" id="combine-row-${safeKey}">
+          <label class="vis-label" title="Show / hide this line">
+            <input type="checkbox" id="combine-vis-${safeKey}"
+              data-series-key="${m.key}"
+              ${visible ? 'checked' : ''}
+              onchange="toggleCombineSeriesVisibility('${m.key}', this.checked)" />
+            ON
+          </label>
           <label>
             <input type="color" id="combine-color-${safeKey}" value="${color}"
               data-series-key="${m.key}" />
-            <span>${m.network} · ${m.siteId} · ${m.variable}</span>
+            <span class="series-name">${m.network} · ${m.siteId} · ${m.variable}</span>
           </label>
         </div>`;
       }).join('');
@@ -1447,10 +1468,19 @@
       return combineColors[key] || null;
     }
 
+    function readCombineVisibilityFromUI(key) {
+      const safeKey = key.replace(/[^A-Za-z0-9_-]/g, '_');
+      const el = document.getElementById('combine-vis-' + safeKey);
+      if (el) return !!el.checked;
+      return combineVisibility[key] !== false;
+    }
+
     function buildCombineDatasetsFromMeta() {
       return combineSeriesMeta.map(m => {
         const color = readCombineColorFromUI(m.key) || combineColors[m.key] || m.defaultColor;
         combineColors[m.key] = color;
+        const visible = readCombineVisibilityFromUI(m.key);
+        combineVisibility[m.key] = visible;
         return {
           label: m.label,
           data: m.data,
@@ -1460,9 +1490,23 @@
           pointRadius: 0,
           pointHoverRadius: 3,
           tension: 0,
-          spanGaps: false
+          spanGaps: false,
+          hidden: !visible
         };
       });
+    }
+
+    function toggleCombineSeriesVisibility(key, isOn) {
+      combineVisibility[key] = !!isOn;
+      const safeKey = key.replace(/[^A-Za-z0-9_-]/g, '_');
+      const row = document.getElementById('combine-row-' + safeKey);
+      if (row) row.classList.toggle('off-series', !isOn);
+      if (!combineChart || !combineSeriesMeta.length) return;
+      // Update hidden flag on matching dataset by label/key order
+      const datasets = buildCombineDatasetsFromMeta();
+      combineChart.data.datasets = datasets;
+      combineChart.update('none');
+      applyCombineWindow();
     }
 
     function refreshCombineColors() {
@@ -1470,10 +1514,10 @@
         alert('Run [ COMBINE STATISTICAL-TRENDING ] first.');
         return;
       }
-      // Persist chosen colors from inputs
       combineSeriesMeta.forEach(m => {
         const c = readCombineColorFromUI(m.key);
         if (c) combineColors[m.key] = c;
+        combineVisibility[m.key] = readCombineVisibilityFromUI(m.key);
       });
       combineChart.data.datasets = buildCombineDatasetsFromMeta();
       combineChart.update('none');
@@ -1484,7 +1528,30 @@
       if (!combineSeriesMeta.length) return;
       combineSeriesMeta.forEach(m => {
         combineColors[m.key] = m.defaultColor;
+        combineVisibility[m.key] = true; // all ON
       });
+      renderCombineColorPickers(combineSeriesMeta);
+      if (combineChart) {
+        combineChart.data.datasets = buildCombineDatasetsFromMeta();
+        combineChart.update('none');
+        applyCombineWindow();
+      }
+    }
+
+    function showAllCombineSeries() {
+      if (!combineSeriesMeta.length) return;
+      combineSeriesMeta.forEach(m => { combineVisibility[m.key] = true; });
+      renderCombineColorPickers(combineSeriesMeta);
+      if (combineChart) {
+        combineChart.data.datasets = buildCombineDatasetsFromMeta();
+        combineChart.update('none');
+        applyCombineWindow();
+      }
+    }
+
+    function hideAllCombineSeries() {
+      if (!combineSeriesMeta.length) return;
+      combineSeriesMeta.forEach(m => { combineVisibility[m.key] = false; });
       renderCombineColorPickers(combineSeriesMeta);
       if (combineChart) {
         combineChart.data.datasets = buildCombineDatasetsFromMeta();
@@ -1520,6 +1587,7 @@
         // Keep user color if same key was used before
         if (!combineColors[s.key]) combineColors[s.key] = defaultColor;
         const unit = isCast ? 'µg/m³' : 'mg/L';
+        if (combineVisibility[s.key] === undefined) combineVisibility[s.key] = true;
         combineSeriesMeta.push({
           key: s.key,
           network: s.network,
@@ -1675,6 +1743,7 @@
       combineVar = {};
       combineSeriesMeta = [];
       combineColors = {};
+      combineVisibility = {};
       matchRows = [];
       destroyAllSiteCharts();
       const crows = document.getElementById('combine-color-rows');
