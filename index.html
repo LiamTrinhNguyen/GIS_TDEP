@@ -133,6 +133,10 @@
     }
     .network-table tr:hover td { background: #222; }
     .network-table tr.selected td { background: #333; box-shadow: inset 0 0 0 1px #fff; }
+    .network-table td.sel-cell { text-align: center; vertical-align: middle; width: 36px; }
+    .network-table td.sel-cell input[type="checkbox"] {
+      accent-color: #fff; width: 14px; height: 14px; cursor: pointer;
+    }
     .site-id-list { line-height: 1.35; }
     .site-id-list span { display: block; }
     .info-box { border: 1px solid #444; padding: 12px; margin-bottom: 12px; background: #111; }
@@ -368,13 +372,19 @@
           <button id="sort-default" class="active-sort" onclick="sortNetworkList('default')">Default</button>
           <button id="sort-castnet" onclick="sortNetworkList('CASTNET')">CASTNET A–Z</button>
           <button id="sort-ntn" onclick="sortNetworkList('NTN')">NTN A–Z</button>
+          <span style="margin-left:8px;color:#666;">|</span>
+          <button type="button" onclick="clearMultiSelection()">[ CLEAR SELECTION ]</button>
+          <span id="multi-select-count" style="margin-left:6px;color:#888;font-size:11px;">0 selected</span>
         </div>
         <div class="network-list-box">
           <div class="network-list-title">NETWORK LIST</div>
           <div class="network-list-container">
             <table class="network-table">
               <thead>
-                <tr><th>Latitude</th><th>Longitude</th><th>CASTNET</th><th>NTN</th></tr>
+                <tr>
+                  <th style="width:36px;" title="Multi-select locations">Sel</th>
+                  <th>Latitude</th><th>Longitude</th><th>CASTNET</th><th>NTN</th>
+                </tr>
               </thead>
               <tbody id="network-tbody"></tbody>
             </table>
@@ -498,7 +508,8 @@
     let timeseriesData = {};
     let completenessData = {};
     let acfFftCombined = { CASTNET: [], NTN: [] };
-    let selectedKey = null;
+    let selectedKey = null; // last focused key (marker / row click)
+    let selectedKeys = new Set(); // multi-select coordinate keys
     let currentSort = 'default';
 
     // selected[key] / charts[key] / combineVar[key]  key = network + '__' + siteId
@@ -725,7 +736,7 @@
           (comp.siteId ? `Primary ID: ${comp.siteId} · record ≈ ${years.toFixed(1)} yr<br>` : '') +
           `${site.lat.toFixed(4)}, ${site.lon.toFixed(4)}`
         );
-        marker.on('click', () => selectSite(key));
+        marker.on('click', () => selectSite(key, true));
         overviewMarkers.push(marker);
         shown++;
       });
@@ -1034,45 +1045,162 @@
         if (castIds.length) popup += `<b>CASTNET:</b> ${formatSiteIdsText(castIds)}<br>`;
         if (ntnIds.length) popup += `<b>NTN:</b> ${formatSiteIdsText(ntnIds)}`;
         marker.bindPopup(popup || 'No site ID');
-        marker.on('click', () => selectSite(key));
+        marker.on('click', () => selectSite(key, true)); // map click toggles into multi-select
+        const checked = selectedKeys.has(key) ? 'checked' : '';
         const tr = document.createElement('tr');
         tr.dataset.key = key;
+        if (selectedKeys.has(key)) tr.classList.add('selected');
         tr.innerHTML = `
+          <td class="sel-cell">
+            <input type="checkbox" class="loc-select" data-key="${key}" ${checked}
+              onclick="event.stopPropagation();"
+              onchange="onLocationCheck('${key}', this.checked)" />
+          </td>
           <td>${site.lat.toFixed(5)}</td>
           <td>${site.lon.toFixed(5)}</td>
           <td>${formatSiteIdsHTML(castIds)}</td>
           <td>${formatSiteIdsHTML(ntnIds)}</td>`;
-        tr.onclick = () => selectSite(key);
+        tr.onclick = (ev) => {
+          if (ev.target && ev.target.type === 'checkbox') return;
+          selectSite(key, true);
+        };
         tbody.appendChild(tr);
       });
+      // restore highlight styles for multi-selected markers
+      selectedKeys.forEach(k => {
+        const s = siteRegistry[k];
+        if (s && s.marker) {
+          s.marker.setStyle({
+            weight: 3, color: '#00ffff', fillColor: '#2ecc71', fillOpacity: 0.9, radius: 10
+          });
+        }
+      });
+      updateMultiSelectCount();
       if (allMarkers.length) map.fitBounds(L.featureGroup(allMarkers).getBounds().pad(0.12));
       buildOverviewMap();
     }
-    function selectSite(key) {
-      if (selectedKey && siteRegistry[selectedKey]?.marker) {
-        siteRegistry[selectedKey].marker.setStyle({ weight: 1, color: '#000', radius: 7 });
-      }
-      document.querySelectorAll('#network-tbody tr.selected').forEach(r => r.classList.remove('selected'));
-      selectedKey = key;
-      const site = siteRegistry[key];
-      if (!site) return;
+
+    function updateMultiSelectCount() {
+      const el = document.getElementById('multi-select-count');
+      if (el) el.textContent = selectedKeys.size + ' selected';
+    }
+
+    function clearMultiSelection() {
+      selectedKeys.forEach(k => {
+        const s = siteRegistry[k];
+        if (s && s.marker) s.marker.setStyle({ weight: 1, color: '#000', radius: 7, fillColor: '#fff', fillOpacity: 0.9 });
+      });
+      selectedKeys = new Set();
+      selectedKey = null;
       selected = {};
       combineVar = {};
-      if (site.marker) {
-        site.marker.setStyle({
-          weight: 3, color: '#00ffff', fillColor: '#2ecc71', fillOpacity: 0.9, radius: 10
-        });
-        site.marker.openPopup();
-        map.panTo([site.lat, site.lon]);
-      }
-      const row = document.querySelector(`#network-tbody tr[data-key="${key}"]`);
-      if (row) {
-        row.classList.add('selected');
-        row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }
+      document.querySelectorAll('#network-tbody tr.selected').forEach(r => r.classList.remove('selected'));
+      document.querySelectorAll('#network-tbody input.loc-select').forEach(cb => { cb.checked = false; });
+      updateMultiSelectCount();
       document.getElementById('trend-panel-combine').classList.remove('visible');
       document.getElementById('match-panel').classList.remove('visible');
-      renderSiteInfo(site);
+      document.getElementById('site-info').innerHTML =
+        '<div class="placeholder">Check locations in the list<br>or click map markers to select</div>';
+    }
+
+    function onLocationCheck(key, isChecked) {
+      if (isChecked) selectedKeys.add(key);
+      else selectedKeys.delete(key);
+      selectedKey = isChecked ? key : (selectedKeys.size ? [...selectedKeys].slice(-1)[0] : null);
+      applySelectionHighlight();
+      renderSelectedSites();
+    }
+
+    function applySelectionHighlight() {
+      // reset all markers/rows then highlight selected
+      Object.keys(siteRegistry).forEach(k => {
+        const s = siteRegistry[k];
+        if (s && s.marker) {
+          const castIds = siteIds(s, 'CASTNET');
+          const ntnIds = siteIds(s, 'NTN');
+          const color = (castIds.length && ntnIds.length) ? '#fff' : castIds.length ? '#fff' : '#aaa';
+          s.marker.setStyle({ weight: 1, color: '#000', fillColor: color, fillOpacity: 0.9, radius: 7 });
+        }
+      });
+      document.querySelectorAll('#network-tbody tr').forEach(r => {
+        r.classList.remove('selected');
+        const cb = r.querySelector('input.loc-select');
+        if (cb) cb.checked = selectedKeys.has(r.dataset.key);
+      });
+      selectedKeys.forEach(k => {
+        const s = siteRegistry[k];
+        if (s && s.marker) {
+          s.marker.setStyle({
+            weight: 3, color: '#00ffff', fillColor: '#2ecc71', fillOpacity: 0.9, radius: 10
+          });
+        }
+        const row = document.querySelector(`#network-tbody tr[data-key="${k}"]`);
+        if (row) {
+          row.classList.add('selected');
+          const cb = row.querySelector('input.loc-select');
+          if (cb) cb.checked = true;
+        }
+      });
+      updateMultiSelectCount();
+    }
+
+    /** Map / row click: toggle this location in multi-select */
+    function selectSite(key, toggle = true) {
+      if (!siteRegistry[key]) return;
+      if (toggle) {
+        if (selectedKeys.has(key)) selectedKeys.delete(key);
+        else selectedKeys.add(key);
+      } else {
+        selectedKeys.add(key);
+      }
+      selectedKey = selectedKeys.has(key) ? key : (selectedKeys.size ? [...selectedKeys].slice(-1)[0] : null);
+      // Drop combineVar entries for site IDs no longer in any selected location
+      pruneCombineVarToSelection();
+      applySelectionHighlight();
+      if (selectedKeys.has(key) && siteRegistry[key].marker) {
+        siteRegistry[key].marker.openPopup();
+        map.panTo([siteRegistry[key].lat, siteRegistry[key].lon]);
+      }
+      const row = document.querySelector(`#network-tbody tr[data-key="${key}"]`);
+      if (row) row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      document.getElementById('trend-panel-combine').classList.remove('visible');
+      document.getElementById('match-panel').classList.remove('visible');
+      renderSelectedSites();
+    }
+
+    function pruneCombineVarToSelection() {
+      const allowed = new Set();
+      selectedKeys.forEach(k => {
+        const site = siteRegistry[k];
+        if (!site) return;
+        siteIds(site, 'CASTNET').forEach(id => allowed.add(selKey('CASTNET', id)));
+        siteIds(site, 'NTN').forEach(id => allowed.add(selKey('NTN', id)));
+      });
+      Object.keys(combineVar).forEach(k => {
+        if (!allowed.has(k)) delete combineVar[k];
+      });
+      Object.keys(selected).forEach(k => {
+        if (!allowed.has(k)) delete selected[k];
+      });
+    }
+
+    function collectSelectedSiteIds() {
+      const castIds = [];
+      const ntnIds = [];
+      const seenC = new Set(), seenN = new Set();
+      const locations = [];
+      [...selectedKeys].forEach(key => {
+        const site = siteRegistry[key];
+        if (!site) return;
+        locations.push(site);
+        siteIds(site, 'CASTNET').forEach(id => {
+          if (!seenC.has(id)) { seenC.add(id); castIds.push(id); }
+        });
+        siteIds(site, 'NTN').forEach(id => {
+          if (!seenN.has(id)) { seenN.add(id); ntnIds.push(id); }
+        });
+      });
+      return { locations, castIds, ntnIds };
     }
 
     function buildCoverageHTML(network, siteId, variable) {
@@ -1120,21 +1248,33 @@
       });
       return html;
     }
-    function renderSiteInfo(site) {
-      const castIds = siteIds(site, 'CASTNET');
-      const ntnIds = siteIds(site, 'NTN');
+    function renderSelectedSites() {
+      if (!selectedKeys.size) {
+        document.getElementById('site-info').innerHTML =
+          '<div class="placeholder">Check one or more locations<br>in MAP VIEW to load details</div>';
+        return;
+      }
+      const { locations, castIds, ntnIds } = collectSelectedSiteIds();
       let html = `
         <div class="info-box" id="info-location">
           <div class="info-box-header">
-            <div class="title">LOCATION</div>
-            <button type="button" onclick="exportPanelToPdf('info-location', 'site_location')">[ EXPORT ]</button>
+            <div class="title">SELECTED LOCATIONS (${locations.length})</div>
+            <button type="button" onclick="exportPanelToPdf('info-location', 'site_locations')">[ EXPORT ]</button>
           </div>
-          <div>Latitude: ${site.lat.toFixed(5)}</div>
-          <div>Longitude: ${site.lon.toFixed(5)}</div>
-          <div style="margin-top:6px;color:#888;font-size:12px;">
-            CASTNET: ${formatSiteIdsText(castIds)} · NTN: ${formatSiteIdsText(ntnIds)}
-          </div>
+          <div style="font-size:12px;color:#aaa;margin-bottom:6px;">
+            Use checkboxes in MAP VIEW to add/remove coordinate pairs.
+          </div>`;
+      locations.forEach((site, i) => {
+        const c = siteIds(site, 'CASTNET');
+        const n = siteIds(site, 'NTN');
+        html += `<div style="margin-bottom:4px;font-size:12px;">
+          <b style="color:#fff;">#${i + 1}</b>
+          ${site.lat.toFixed(5)}, ${site.lon.toFixed(5)}
+          <span style="color:#888;">· CASTNET: ${formatSiteIdsText(c)} · NTN: ${formatSiteIdsText(n)}</span>
         </div>`;
+      });
+      html += `</div>`;
+
       castIds.forEach((sid, idx) => {
         const range = (dateSummary.CASTNET || {})[sid] || {};
         const comp = getCompleteness('CASTNET', sid);
@@ -1190,11 +1330,11 @@
       if (castIds.length || ntnIds.length) {
         html += `<div class="combine-box" id="info-combine">
           <div class="info-box-header">
-            <div class="title">COMBINE PARAMETERS (one variable per site ID)</div>
+            <div class="title">COMBINE PARAMETERS (one variable per site ID · multi-location)</div>
             <button type="button" onclick="exportPanelToPdf('info-combine', 'combine_parameters')">[ EXPORT ]</button>
           </div>
           <div style="font-size:11px;color:#888;margin-bottom:8px;">
-            Each SITE_ID has its own row. Check one species per row to include that series in the combine plot.
+            All SITE_IDs from checked coordinates appear below. Check one species per row for the combine plot.
           </div>`;
         castIds.forEach((sid, idx) => {
           const safeId = sid.replace(/[^A-Za-z0-9_-]/g, '_');
@@ -1229,6 +1369,16 @@
         </div></div>`;
       }
       document.getElementById('site-info').innerHTML = html;
+      // restore combine checkboxes from combineVar
+      Object.keys(combineVar).forEach(k => {
+        const [network, ...rest] = k.split('__');
+        const siteId = rest.join('__');
+        const safeId = siteId.replace(/[^A-Za-z0-9_-]/g, '_');
+        const name = `combine-${network}-${safeId}`;
+        document.querySelectorAll(`input[name="${name}"]`).forEach(cb => {
+          cb.checked = (cb.value === combineVar[k]);
+        });
+      });
       castIds.forEach(sid => {
         const safeId = sid.replace(/[^A-Za-z0-9_-]/g, '_');
         createVarButtons('CASTNET', sid, `vars-castnet-${safeId}`, `coverage-castnet-${safeId}`);
@@ -1238,12 +1388,23 @@
         createVarButtons('NTN', sid, `vars-ntn-${safeId}`, `coverage-ntn-${safeId}`);
       });
     }
+    // keep alias for any leftover callers
+    function renderSiteInfo(site) {
+      if (site) {
+        const key = makeKey(site.lat, site.lon);
+        if (!selectedKeys.has(key)) selectedKeys.add(key);
+      }
+      renderSelectedSites();
+    }
+
     function createVarButtons(network, siteId, containerId, coverageId) {
       const container = document.getElementById(containerId);
       if (!container) return;
+      const prev = selected[selKey(network, siteId)];
       VARIABLES.forEach(v => {
         const btn = document.createElement('button');
         btn.textContent = v;
+        if (prev && prev.variable === v) btn.classList.add('active-var');
         btn.onclick = () => {
           container.querySelectorAll('button').forEach(b => b.classList.remove('active-var'));
           btn.classList.add('active-var');
@@ -1253,6 +1414,10 @@
         };
         container.appendChild(btn);
       });
+      if (prev && prev.variable) {
+        const target = document.getElementById(coverageId);
+        if (target) target.innerHTML = buildCoverageHTML(network, siteId, prev.variable);
+      }
     }
 
     function computeWindowStats(values, start, end) {
@@ -1561,8 +1726,7 @@
     }
 
     function showCombineTrendPlot() {
-      const site = siteRegistry[selectedKey];
-      if (!site) { alert('Select a location first.'); return; }
+      if (!selectedKeys.size) { alert('Select at least one location (checkbox or map click).'); return; }
       const entries = Object.keys(combineVar).map(k => {
         const [network, ...rest] = k.split('__');
         return { key: k, network, siteId: rest.join('__'), variable: combineVar[k] };
@@ -1697,8 +1861,7 @@
       header.textContent = `${header.textContent.split(' · Sort:')[0]} · Sort: ${colLabel} ${dirLabel}`;
     }
     function showMatchSegment() {
-      const site = siteRegistry[selectedKey];
-      if (!site) { alert('Select a location first.'); return; }
+      if (!selectedKeys.size) { alert('Select at least one location (checkbox or map click).'); return; }
       const entries = Object.keys(combineVar).map(k => {
         const [network, ...rest] = k.split('__');
         return { network, siteId: rest.join('__'), variable: combineVar[k] };
@@ -1738,6 +1901,7 @@
     async function loadAllSites() {
       siteRegistry = {};
       selectedKey = null;
+      selectedKeys = new Set();
       currentSort = 'default';
       selected = {};
       combineVar = {};
@@ -1766,7 +1930,8 @@
       await loadAcfFftCombined();
       buildMarkersAndTable();
       document.getElementById('site-info').innerHTML =
-        '<div class="placeholder">Click a marker or a row<br>to see details</div>';
+        '<div class="placeholder">Check locations in MAP VIEW<br>or click markers to multi-select</div>';
+      updateMultiSelectCount();
     }
     window.addEventListener('load', () => setTimeout(loadAllSites, 600));
   </script>
