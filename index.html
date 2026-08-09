@@ -512,7 +512,8 @@
     let selectedKeys = new Set(); // multi-select coordinate keys
     let currentSort = 'default';
 
-    // selected[key] / charts[key] / combineVar[key]  key = network + '__' + siteId
+    // selected[key] / charts[key] key = network + '__' + siteId
+    // combineVar[key] = array of variable names (multi species per site ID)
     let selected = {};
     let charts = {};
     let combineChart = null;
@@ -1330,11 +1331,11 @@
       if (castIds.length || ntnIds.length) {
         html += `<div class="combine-box" id="info-combine">
           <div class="info-box-header">
-            <div class="title">COMBINE PARAMETERS (one variable per site ID · multi-location)</div>
+            <div class="title">COMBINE PARAMETERS (multi species per site ID · multi-location)</div>
             <button type="button" onclick="exportPanelToPdf('info-combine', 'combine_parameters')">[ EXPORT ]</button>
           </div>
           <div style="font-size:11px;color:#888;margin-bottom:8px;">
-            All SITE_IDs from checked coordinates appear below. Check one species per row for the combine plot.
+            All SITE_IDs from checked coordinates appear below. Check one or more species per SITE_ID for the combine plot.
           </div>`;
         castIds.forEach((sid, idx) => {
           const safeId = sid.replace(/[^A-Za-z0-9_-]/g, '_');
@@ -1369,14 +1370,15 @@
         </div></div>`;
       }
       document.getElementById('site-info').innerHTML = html;
-      // restore combine checkboxes from combineVar
+      // restore combine checkboxes from combineVar (multi species per site)
       Object.keys(combineVar).forEach(k => {
         const [network, ...rest] = k.split('__');
         const siteId = rest.join('__');
         const safeId = siteId.replace(/[^A-Za-z0-9_-]/g, '_');
         const name = `combine-${network}-${safeId}`;
+        const vars = Array.isArray(combineVar[k]) ? combineVar[k] : (combineVar[k] ? [combineVar[k]] : []);
         document.querySelectorAll(`input[name="${name}"]`).forEach(cb => {
-          cb.checked = (cb.value === combineVar[k]);
+          cb.checked = vars.includes(cb.value);
         });
       });
       castIds.forEach(sid => {
@@ -1554,10 +1556,16 @@
     }
 
     function onCombineCheck(network, siteId, el) {
-      const name = `combine-${network}-${safeSite(siteId)}`;
-      document.querySelectorAll(`input[name="${name}"]`).forEach(cb => { if (cb !== el) cb.checked = false; });
+      // Multi chemical species allowed per site ID
       const key = selKey(network, siteId);
-      if (el.checked) combineVar[key] = el.value;
+      let list = combineVar[key];
+      if (!Array.isArray(list)) list = list ? [list] : [];
+      if (el.checked) {
+        if (!list.includes(el.value)) list.push(el.value);
+      } else {
+        list = list.filter(v => v !== el.value);
+      }
+      if (list.length) combineVar[key] = list;
       else delete combineVar[key];
     }
     function resetCombineTrend() {
@@ -1727,12 +1735,21 @@
 
     function showCombineTrendPlot() {
       if (!selectedKeys.size) { alert('Select at least one location (checkbox or map click).'); return; }
-      const entries = Object.keys(combineVar).map(k => {
+      const entries = [];
+      Object.keys(combineVar).forEach(k => {
         const [network, ...rest] = k.split('__');
-        return { key: k, network, siteId: rest.join('__'), variable: combineVar[k] };
-      }).filter(e => e.variable);
+        const siteId = rest.join('__');
+        const vars = Array.isArray(combineVar[k]) ? combineVar[k] : (combineVar[k] ? [combineVar[k]] : []);
+        vars.forEach(variable => {
+          if (!variable) return;
+          entries.push({
+            key: k + '__' + variable, // unique per site+species for color/visibility
+            network, siteId, variable
+          });
+        });
+      });
       if (!entries.length) {
-        alert('Check one species on at least one SITE_ID row under COMBINE PARAMETERS.');
+        alert('Check one or more species on at least one SITE_ID row under COMBINE PARAMETERS.');
         return;
       }
       const seriesMaps = entries.map(e => ({
@@ -1862,12 +1879,18 @@
     }
     function showMatchSegment() {
       if (!selectedKeys.size) { alert('Select at least one location (checkbox or map click).'); return; }
-      const entries = Object.keys(combineVar).map(k => {
+      const entries = [];
+      Object.keys(combineVar).forEach(k => {
         const [network, ...rest] = k.split('__');
-        return { network, siteId: rest.join('__'), variable: combineVar[k] };
-      }).filter(e => e.variable);
+        const siteId = rest.join('__');
+        const vars = Array.isArray(combineVar[k]) ? combineVar[k] : (combineVar[k] ? [combineVar[k]] : []);
+        vars.forEach(variable => {
+          if (!variable) return;
+          entries.push({ network, siteId, variable });
+        });
+      });
       if (!entries.length) {
-        alert('Check one species on at least one SITE_ID row under COMBINE PARAMETERS.');
+        alert('Check one or more species on at least one SITE_ID row under COMBINE PARAMETERS.');
         return;
       }
       const rows = [];
