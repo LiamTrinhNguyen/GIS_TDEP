@@ -396,59 +396,7 @@
     </div>
 
     <div class="trend-panels">
-      <div class="trend-panel castnet-panel" id="trend-panel-castnet">
-        <div class="title-row">
-          <div class="trend-header title-text" id="trend-header-castnet">CASTNET Time Series</div>
-          <div class="export-btns">
-            <button type="button" onclick="exportPanelToPdf('trend-panel-castnet', 'trend_castnet_panel')">[ EXPORT PANEL ]</button>
-          </div>
-        </div>
-        <div class="trend-stats" id="trend-stats-castnet">
-          <span><span class="lab">min</span> —</span>
-          <span><span class="lab">max</span> —</span>
-          <span><span class="lab">median</span> —</span>
-          <span><span class="lab">avg</span> —</span>
-          <span><span class="lab">n</span> —</span>
-        </div>
-        <div class="trend-body">
-          <div class="trend-canvas-wrap"><canvas id="trend-chart-castnet"></canvas></div>
-          <div class="trend-zoom-wrap">
-            <label>ZOOM</label>
-            <input type="range" class="trend-zoom" id="trend-zoom-castnet" min="20" max="100" value="100" step="1" />
-          </div>
-        </div>
-        <div class="trend-scroll-wrap">
-          <label>TIME (scroll left / right)</label>
-          <input type="range" class="trend-scroll" id="trend-scroll-castnet" min="0" max="100" value="0" step="1" />
-        </div>
-      </div>
-
-      <div class="trend-panel ntn-panel" id="trend-panel-ntn">
-        <div class="title-row">
-          <div class="trend-header title-text" id="trend-header-ntn">NTN Time Series</div>
-          <div class="export-btns">
-            <button type="button" onclick="exportPanelToPdf('trend-panel-ntn', 'trend_ntn_panel')">[ EXPORT PANEL ]</button>
-          </div>
-        </div>
-        <div class="trend-stats" id="trend-stats-ntn">
-          <span><span class="lab">min</span> —</span>
-          <span><span class="lab">max</span> —</span>
-          <span><span class="lab">median</span> —</span>
-          <span><span class="lab">avg</span> —</span>
-          <span><span class="lab">n</span> —</span>
-        </div>
-        <div class="trend-body">
-          <div class="trend-canvas-wrap"><canvas id="trend-chart-ntn"></canvas></div>
-          <div class="trend-zoom-wrap">
-            <label>ZOOM</label>
-            <input type="range" class="trend-zoom" id="trend-zoom-ntn" min="20" max="100" value="100" step="1" />
-          </div>
-        </div>
-        <div class="trend-scroll-wrap">
-          <label>TIME (scroll left / right)</label>
-          <input type="range" class="trend-scroll" id="trend-scroll-ntn" min="0" max="100" value="0" step="1" />
-        </div>
-      </div>
+      <div id="trend-panels-dynamic"></div>
 
       <div class="trend-panel combine-panel" id="trend-panel-combine">
         <div class="title-row">
@@ -510,17 +458,12 @@
     let selectedKey = null;
     let currentSort = 'default';
 
-    let selected = {
-      CASTNET: { siteId: null, variable: null },
-      NTN:     { siteId: null, variable: null }
-    };
-    let charts = {
-      CASTNET: { chart: null, labels: [], values: [] },
-      NTN:     { chart: null, labels: [], values: [] }
-    };
+    // selected[key] / charts[key] / combineVar[key]  key = network + '__' + siteId
+    let selected = {};
+    let charts = {};
     let combineChart = null;
     let combineLabels = [];
-    let combineVar = { CASTNET: null, NTN: null };
+    let combineVar = {};
     let matchRows = [];
     const mapSnapshots = { 'overview-map': null, 'map': null };
 
@@ -533,6 +476,71 @@
         '0-25': '#aed6f1', '25-50': '#5dade2', '50-75': '#2980b9', '75-100': '#1a5276'
       }
     };
+
+    function selKey(network, siteId) { return network + '__' + siteId; }
+    function safeSite(siteId) { return String(siteId).replace(/[^A-Za-z0-9_-]/g, '_'); }
+    function panelIdFor(network, siteId) {
+      return 'trend-panel-' + network.toLowerCase() + '-' + safeSite(siteId);
+    }
+    function destroyAllSiteCharts() {
+      Object.keys(charts).forEach(k => {
+        try { if (charts[k].chart) charts[k].chart.destroy(); } catch (e) {}
+      });
+      charts = {};
+      const host = document.getElementById('trend-panels-dynamic');
+      if (host) host.innerHTML = '';
+    }
+    function ensureTrendPanelDOM(network, siteId) {
+      const pid = panelIdFor(network, siteId);
+      let panel = document.getElementById(pid);
+      if (panel) return panel;
+      const host = document.getElementById('trend-panels-dynamic');
+      const isCast = network === 'CASTNET';
+      const border = isCast ? '#e74c3c' : '#3498db';
+      const sidSafe = safeSite(siteId);
+      const suffix = sidSafe + '-' + network.toLowerCase();
+      panel = document.createElement('div');
+      panel.className = 'trend-panel visible ' + (isCast ? 'castnet-panel' : 'ntn-panel');
+      panel.id = pid;
+      panel.style.borderColor = border;
+      panel.innerHTML = `
+        <div class="title-row">
+          <div class="trend-header title-text" id="trend-header-${suffix}">${network} · ${siteId}</div>
+          <div class="export-btns">
+            <button type="button" onclick="exportPanelToPdf('${pid}', 'trend_${network}_${sidSafe}')">[ EXPORT PANEL ]</button>
+            <button type="button" onclick="closeTrendPanel('${network}', '${siteId}')">[ CLOSE ]</button>
+          </div>
+        </div>
+        <div class="trend-stats" id="trend-stats-${suffix}">
+          <span><span class="lab">min</span> —</span>
+          <span><span class="lab">max</span> —</span>
+          <span><span class="lab">median</span> —</span>
+          <span><span class="lab">avg</span> —</span>
+          <span><span class="lab">n</span> —</span>
+        </div>
+        <div class="trend-body">
+          <div class="trend-canvas-wrap"><canvas id="trend-chart-${suffix}"></canvas></div>
+          <div class="trend-zoom-wrap">
+            <label>ZOOM</label>
+            <input type="range" class="trend-zoom" id="trend-zoom-${suffix}" min="20" max="100" value="100" step="1" />
+          </div>
+        </div>
+        <div class="trend-scroll-wrap">
+          <label>TIME (scroll left / right)</label>
+          <input type="range" class="trend-scroll" id="trend-scroll-${suffix}" min="0" max="100" value="0" step="1" />
+        </div>`;
+      host.appendChild(panel);
+      return panel;
+    }
+    function closeTrendPanel(network, siteId) {
+      const key = selKey(network, siteId);
+      if (charts[key] && charts[key].chart) {
+        try { charts[key].chart.destroy(); } catch (e) {}
+        delete charts[key];
+      }
+      const panel = document.getElementById(panelIdFor(network, siteId));
+      if (panel) panel.remove();
+    }
 
     function parseCSV(text) {
       const lines = text.trim().split(/\r?\n/);
@@ -803,12 +811,15 @@
         await waitForMapReady(map, 1400);
         forceMapStructuralRefresh(map);
       }
-      if (elementId === 'trend-panel-castnet' && charts.CASTNET.chart) {
-        applyTrendWindow('CASTNET'); charts.CASTNET.chart.update('none');
-      }
-      if (elementId === 'trend-panel-ntn' && charts.NTN.chart) {
-        applyTrendWindow('NTN'); charts.NTN.chart.update('none');
-      }
+      Object.keys(charts).forEach(k => {
+        const st = charts[k];
+        if (!st || !st.chart) return;
+        const pid = panelIdFor(st.network, st.siteId);
+        if (elementId === pid) {
+          applyTrendWindow(st.network, st.siteId);
+          st.chart.update('none');
+        }
+      });
       if (elementId === 'trend-panel-combine' && combineChart) {
         applyCombineWindow(); combineChart.update('none');
       }
@@ -997,9 +1008,8 @@
       selectedKey = key;
       const site = siteRegistry[key];
       if (!site) return;
-      selected.CASTNET = { siteId: null, variable: null };
-      selected.NTN = { siteId: null, variable: null };
-      combineVar = { CASTNET: null, NTN: null };
+      selected = {};
+      combineVar = {};
       if (site.marker) {
         site.marker.setStyle({
           weight: 3, color: '#00ffff', fillColor: '#2ecc71', fillOpacity: 0.9, radius: 10
@@ -1012,8 +1022,6 @@
         row.classList.add('selected');
         row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
-      document.getElementById('trend-panel-castnet').classList.remove('visible');
-      document.getElementById('trend-panel-ntn').classList.remove('visible');
       document.getElementById('trend-panel-combine').classList.remove('visible');
       document.getElementById('match-panel').classList.remove('visible');
       renderSiteInfo(site);
@@ -1134,21 +1142,38 @@
       if (castIds.length || ntnIds.length) {
         html += `<div class="combine-box" id="info-combine">
           <div class="info-box-header">
-            <div class="title">COMBINE PARAMETERS (one variable per network)</div>
+            <div class="title">COMBINE PARAMETERS (one variable per site ID)</div>
             <button type="button" onclick="exportPanelToPdf('info-combine', 'combine_parameters')">[ EXPORT ]</button>
+          </div>
+          <div style="font-size:11px;color:#888;margin-bottom:8px;">
+            Each SITE_ID has its own row. Check one species per row to include that series in the combine plot.
           </div>`;
-        if (castIds.length) {
-          html += `<div class="combine-row"><span class="net-label">CASTNET — ${formatSiteIdsText(castIds)}</span>
+        castIds.forEach((sid, idx) => {
+          const safeId = sid.replace(/[^A-Za-z0-9_-]/g, '_');
+          const label = castIds.length > 1
+            ? `CASTNET — ${sid} (${idx + 1}/${castIds.length})`
+            : `CASTNET — ${sid}`;
+          html += `<div class="combine-row">
+            <span class="net-label">${label}</span>
             <div class="combine-checks">${VARIABLES.map(v =>
-              `<label><input type="checkbox" name="combine-castnet" value="${v}" onchange="onCombineCheck('CASTNET', this)"> ${v}</label>`
-            ).join('')}</div></div>`;
-        }
-        if (ntnIds.length) {
-          html += `<div class="combine-row"><span class="net-label">NTN — ${formatSiteIdsText(ntnIds)}</span>
+              `<label><input type="checkbox" name="combine-CASTNET-${safeId}" value="${v}"
+                onchange="onCombineCheck('CASTNET', '${sid}', this)"> ${v}</label>`
+            ).join('')}</div>
+          </div>`;
+        });
+        ntnIds.forEach((sid, idx) => {
+          const safeId = sid.replace(/[^A-Za-z0-9_-]/g, '_');
+          const label = ntnIds.length > 1
+            ? `NTN — ${sid} (${idx + 1}/${ntnIds.length})`
+            : `NTN — ${sid}`;
+          html += `<div class="combine-row">
+            <span class="net-label">${label}</span>
             <div class="combine-checks">${VARIABLES.map(v =>
-              `<label><input type="checkbox" name="combine-ntn" value="${v}" onchange="onCombineCheck('NTN', this)"> ${v}</label>`
-            ).join('')}</div></div>`;
-        }
+              `<label><input type="checkbox" name="combine-NTN-${safeId}" value="${v}"
+                onchange="onCombineCheck('NTN', '${sid}', this)"> ${v}</label>`
+            ).join('')}</div>
+          </div>`;
+        });
         html += `<div class="combine-btns">
           <button onclick="showCombineTrendPlot()">[ COMBINE STATISTICAL-TRENDING ]</button>
           <button onclick="resetCombineTrend()">[ RESET COMBINE ]</button>
@@ -1174,8 +1199,7 @@
         btn.onclick = () => {
           container.querySelectorAll('button').forEach(b => b.classList.remove('active-var'));
           btn.classList.add('active-var');
-          selected[network].siteId = siteId;
-          selected[network].variable = v;
+          selected[selKey(network, siteId)] = { network, siteId, variable: v };
           const target = document.getElementById(coverageId);
           if (target) target.innerHTML = buildCoverageHTML(network, siteId, v);
         };
@@ -1202,11 +1226,13 @@
       if (Math.abs(x) >= 100 || Math.abs(x) < 0.01) return x.toExponential(3);
       return x.toFixed(4).replace(/\.?0+$/, '') || '0';
     }
-    function updateTrendStats(network, start, end) {
-      const state = charts[network];
+    function updateTrendStats(network, siteId, start, end) {
+      const key = selKey(network, siteId);
+      const state = charts[key];
       if (!state || !state.values.length) return;
       const s = computeWindowStats(state.values, start, end);
-      const el = document.getElementById('trend-stats-' + network.toLowerCase());
+      const suffix = safeSite(siteId) + '-' + network.toLowerCase();
+      const el = document.getElementById('trend-stats-' + suffix);
       if (!el) return;
       el.innerHTML = `
         <span><span class="lab">min</span> ${formatNum(s.min)}</span>
@@ -1215,12 +1241,13 @@
         <span><span class="lab">avg</span> ${formatNum(s.avg)}</span>
         <span><span class="lab">n</span> ${s.n}</span>`;
     }
-    function applyTrendWindow(network) {
-      const state = charts[network];
-      if (!state.chart || state.labels.length === 0) return;
-      const key = network.toLowerCase();
-      const zoomSlider = document.getElementById('trend-zoom-' + key);
-      const scrollSlider = document.getElementById('trend-scroll-' + key);
+    function applyTrendWindow(network, siteId) {
+      const key = selKey(network, siteId);
+      const state = charts[key];
+      if (!state || !state.chart || state.labels.length === 0) return;
+      const suffix = safeSite(siteId) + '-' + network.toLowerCase();
+      const zoomSlider = document.getElementById('trend-zoom-' + suffix);
+      const scrollSlider = document.getElementById('trend-scroll-' + suffix);
       if (!zoomSlider || !scrollSlider) return;
       const zoomPct = parseInt(zoomSlider.value, 10) / 100;
       const windowSize = Math.max(10, Math.round(state.labels.length * zoomPct));
@@ -1232,44 +1259,50 @@
       state.chart.options.scales.x.min = start;
       state.chart.options.scales.x.max = end;
       state.chart.update('none');
-      updateTrendStats(network, start, end);
+      updateTrendStats(network, siteId, start, end);
     }
     function showTrendPlot(network, siteIdArg) {
-      if (siteIdArg) selected[network].siteId = siteIdArg;
-      const sel = selected[network];
-      if (!sel.siteId) { alert('Select a variable under a ' + network + ' site ID first.'); return; }
-      if (!sel.variable) { alert('Select a variable under ' + network + ' · ' + sel.siteId + ' first.'); return; }
-      const series = (((timeseriesData[network] || {})[sel.siteId]) || {});
+      const siteId = siteIdArg;
+      if (!siteId) { alert('Missing site ID.'); return; }
+      const key = selKey(network, siteId);
+      const sel = selected[key];
+      if (!sel || !sel.variable) {
+        alert('Select a variable under ' + network + ' · ' + siteId + ' first.');
+        return;
+      }
+      const series = (((timeseriesData[network] || {})[siteId]) || {});
       const dates = series.DATEON || [];
       let values = series[sel.variable] || series['variable_' + sel.variable] || [];
-      if (!dates.length) { alert('No time-series data.'); return; }
+      if (!dates.length) { alert('No time-series data for ' + siteId + '.'); return; }
       const labels = [], dataVals = [];
       for (let i = 0; i < dates.length; i++) {
         labels.push(dates[i]);
         const v = values[i];
         dataVals.push((v === null || v === undefined || v === '') ? null : Number(v));
       }
-      charts[network].labels = labels;
-      charts[network].values = dataVals;
-      const key = network.toLowerCase();
-      const panel = document.getElementById('trend-panel-' + key);
+      // Separate panel per site ID (same network allowed)
+      const panel = ensureTrendPanelDOM(network, siteId);
       panel.classList.add('visible');
       const isCastnet = network === 'CASTNET';
       const yUnit = isCastnet ? 'µg/m³' : 'mg/L';
       const chartTitle = isCastnet
-        ? `Ambient Air ${sel.variable} Concentrations at ${sel.siteId}`
-        : `Wet Deposition ${sel.variable} Concentrations at ${sel.siteId}`;
-      document.getElementById('trend-header-' + key).textContent =
-        `${chartTitle} | Y-bar = zoom · X-bar = time`;
-      const ctx = document.getElementById('trend-chart-' + key).getContext('2d');
-      if (charts[network].chart) charts[network].chart.destroy();
+        ? `Ambient Air ${sel.variable} Concentrations at ${siteId}`
+        : `Wet Deposition ${sel.variable} Concentrations at ${siteId}`;
+      const suffix = safeSite(siteId) + '-' + network.toLowerCase();
+      const headerEl = document.getElementById('trend-header-' + suffix);
+      if (headerEl) headerEl.textContent = `${chartTitle} | Y-bar = zoom · X-bar = time`;
+      const canvas = document.getElementById('trend-chart-' + suffix);
+      const ctx = canvas.getContext('2d');
+      if (charts[key] && charts[key].chart) {
+        try { charts[key].chart.destroy(); } catch (e) {}
+      }
       const lineColor = isCastnet ? '#e74c3c' : '#3498db';
-      charts[network].chart = new Chart(ctx, {
+      const chart = new Chart(ctx, {
         type: 'line',
         data: {
           labels,
           datasets: [{
-            label: `${network} ${sel.variable} (${yUnit})`,
+            label: `${network} ${siteId} ${sel.variable} (${yUnit})`,
             data: dataVals, borderColor: lineColor, backgroundColor: lineColor,
             borderWidth: 1.2, pointRadius: 0, pointHoverRadius: 3, tension: 0, spanGaps: false
           }]
@@ -1295,24 +1328,28 @@
           }
         }
       });
-      document.getElementById('trend-zoom-' + key).value = 100;
-      document.getElementById('trend-scroll-' + key).value = 0;
-      document.getElementById('trend-scroll-' + key).max = 0;
-      document.getElementById('trend-zoom-' + key).oninput = () => applyTrendWindow(network);
-      document.getElementById('trend-scroll-' + key).oninput = () => applyTrendWindow(network);
-      applyTrendWindow(network);
+      charts[key] = { chart, labels, values: dataVals, network, siteId, variable: sel.variable };
+      const zoomEl = document.getElementById('trend-zoom-' + suffix);
+      const scrollEl = document.getElementById('trend-scroll-' + suffix);
+      zoomEl.value = 100;
+      scrollEl.value = 0;
+      scrollEl.max = 0;
+      zoomEl.oninput = () => applyTrendWindow(network, siteId);
+      scrollEl.oninput = () => applyTrendWindow(network, siteId);
+      applyTrendWindow(network, siteId);
       panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
-    function onCombineCheck(network, el) {
-      const name = network === 'CASTNET' ? 'combine-castnet' : 'combine-ntn';
+    function onCombineCheck(network, siteId, el) {
+      const name = `combine-${network}-${safeSite(siteId)}`;
       document.querySelectorAll(`input[name="${name}"]`).forEach(cb => { if (cb !== el) cb.checked = false; });
-      combineVar[network] = el.checked ? el.value : null;
+      const key = selKey(network, siteId);
+      if (el.checked) combineVar[key] = el.value;
+      else delete combineVar[key];
     }
     function resetCombineTrend() {
-      combineVar = { CASTNET: null, NTN: null };
-      document.querySelectorAll('input[name="combine-castnet"], input[name="combine-ntn"]')
-        .forEach(cb => { cb.checked = false; });
+      combineVar = {};
+      document.querySelectorAll('#info-combine input[type="checkbox"]').forEach(cb => { cb.checked = false; });
       if (combineChart) { combineChart.destroy(); combineChart = null; }
       document.getElementById('trend-panel-combine').classList.remove('visible');
       document.getElementById('match-panel').classList.remove('visible');
@@ -1347,38 +1384,45 @@
     function showCombineTrendPlot() {
       const site = siteRegistry[selectedKey];
       if (!site) { alert('Select a location first.'); return; }
-      const castVar = combineVar.CASTNET, ntnVar = combineVar.NTN;
-      if (!castVar && !ntnVar) { alert('Check one variable under CASTNET and/or NTN.'); return; }
-      const castId = selected.CASTNET.siteId || siteIds(site, 'CASTNET')[0] || null;
-      const ntnId = selected.NTN.siteId || siteIds(site, 'NTN')[0] || null;
-      let castMap = {}, ntnMap = {};
-      if (castVar && castId) castMap = getSeriesMap('CASTNET', castId, castVar);
-      if (ntnVar && ntnId) ntnMap = getSeriesMap('NTN', ntnId, ntnVar);
-      const allDates = Array.from(new Set([...Object.keys(castMap), ...Object.keys(ntnMap)])).sort();
-      if (!allDates.length) { alert('No time-series data.'); return; }
+      const entries = Object.keys(combineVar).map(k => {
+        const [network, ...rest] = k.split('__');
+        return { key: k, network, siteId: rest.join('__'), variable: combineVar[k] };
+      }).filter(e => e.variable);
+      if (!entries.length) {
+        alert('Check one species on at least one SITE_ID row under COMBINE PARAMETERS.');
+        return;
+      }
+      const seriesMaps = entries.map(e => ({
+        ...e, map: getSeriesMap(e.network, e.siteId, e.variable)
+      }));
+      const allDates = Array.from(new Set(seriesMaps.flatMap(s => Object.keys(s.map)))).sort();
+      if (!allDates.length) { alert('No time-series data for selected rows.'); return; }
+      const castPalette = ['#e74c3c', '#c0392b', '#f1948a', '#922b21'];
+      const ntnPalette = ['#3498db', '#2980b9', '#85c1e9', '#1a5276'];
+      let castIdx = 0, ntnIdx = 0;
       const datasets = [];
-      if (castVar && castId && Object.keys(castMap).length) {
+      seriesMaps.forEach(s => {
+        if (!Object.keys(s.map).length) return;
+        const isCast = s.network === 'CASTNET';
+        const color = isCast ? castPalette[castIdx++ % castPalette.length]
+                             : ntnPalette[ntnIdx++ % ntnPalette.length];
+        const unit = isCast ? 'µg/m³' : 'mg/L';
         datasets.push({
-          label: `CASTNET ${castId} ${castVar} (µg/m³)`,
-          data: allDates.map(d => castMap[d] !== undefined ? castMap[d] : null),
-          borderColor: '#e74c3c', backgroundColor: '#e74c3c',
+          label: `${s.network} ${s.siteId} ${s.variable} (${unit})`,
+          data: allDates.map(d => s.map[d] !== undefined ? s.map[d] : null),
+          borderColor: color, backgroundColor: color,
           borderWidth: 1.2, pointRadius: 0, pointHoverRadius: 3, tension: 0, spanGaps: false
         });
-      }
-      if (ntnVar && ntnId && Object.keys(ntnMap).length) {
-        datasets.push({
-          label: `NTN ${ntnId} ${ntnVar} (mg/L)`,
-          data: allDates.map(d => ntnMap[d] !== undefined ? ntnMap[d] : null),
-          borderColor: '#3498db', backgroundColor: '#3498db',
-          borderWidth: 1.2, pointRadius: 0, pointHoverRadius: 3, tension: 0, spanGaps: false
-        });
-      }
+      });
       if (!datasets.length) { alert('No data for selected variable(s).'); return; }
       combineLabels = allDates;
       const panel = document.getElementById('trend-panel-combine');
       panel.classList.add('visible');
-      const combineTitle = `A Comparison of Atmospheric Dry vs. Wet ${castVar || ntnVar} Deposition at ${[castId, ntnId].filter(Boolean).join(' / ')}`;
-      document.getElementById('trend-header-combine').textContent = `${combineTitle} | Y-bar = zoom · X-bar = time`;
+      const idList = entries.map(e => e.siteId).join(' / ');
+      const varList = [...new Set(entries.map(e => e.variable))].join(', ');
+      const combineTitle = `Combined time series · ${varList} · ${idList}`;
+      document.getElementById('trend-header-combine').textContent =
+        `${combineTitle} | Y-bar = zoom · X-bar = time`;
       const ctx = document.getElementById('trend-chart-combine').getContext('2d');
       if (combineChart) combineChart.destroy();
       combineChart = new Chart(ctx, {
@@ -1466,37 +1510,33 @@
     function showMatchSegment() {
       const site = siteRegistry[selectedKey];
       if (!site) { alert('Select a location first.'); return; }
-      const castVar = combineVar.CASTNET, ntnVar = combineVar.NTN;
-      if (!castVar && !ntnVar) { alert('Check one species under CASTNET and/or NTN.'); return; }
-      const castIds = siteIds(site, 'CASTNET');
-      const ntnIds = siteIds(site, 'NTN');
-      const castTarget = selected.CASTNET.siteId ? [selected.CASTNET.siteId] : castIds;
-      const ntnTarget = selected.NTN.siteId ? [selected.NTN.siteId] : ntnIds;
+      const entries = Object.keys(combineVar).map(k => {
+        const [network, ...rest] = k.split('__');
+        return { network, siteId: rest.join('__'), variable: combineVar[k] };
+      }).filter(e => e.variable);
+      if (!entries.length) {
+        alert('Check one species on at least one SITE_ID row under COMBINE PARAMETERS.');
+        return;
+      }
       const rows = [];
-      function addNetworkRows(network, idList, variable) {
-        if (!variable || !idList.length) return;
-        (acfFftCombined[network] || []).forEach(r => {
-          idList.forEach(siteId => {
-            if (String(cell(r, 'SITE_ID')).trim() !== String(siteId).trim()) return;
-            rows.push({
-              network, variable,
-              analysis_type: cell(r, 'analysis_type', 'ANALYSIS_TYPE'),
-              site_id: cell(r, 'SITE_ID'),
-              start: cell(r, 'Start_Date', 'START_DATE'),
-              end: cell(r, 'End_Date', 'END_DATE'),
-              num_years: cell(r, 'Num_Years', 'NUM_YEARS'),
-              acf_lag: cell(r, `acf_${variable}_Lag`, `ACF_${variable}_LAG`),
-              fft_period: cell(r, `fft_${variable}_Period`, `FFT_${variable}_PERIOD`)
-            });
+      entries.forEach(e => {
+        (acfFftCombined[e.network] || []).forEach(r => {
+          if (String(cell(r, 'SITE_ID')).trim() !== String(e.siteId).trim()) return;
+          const variable = e.variable;
+          rows.push({
+            network: e.network, variable,
+            analysis_type: cell(r, 'analysis_type', 'ANALYSIS_TYPE'),
+            site_id: cell(r, 'SITE_ID'),
+            start: cell(r, 'Start_Date', 'START_DATE'),
+            end: cell(r, 'End_Date', 'END_DATE'),
+            num_years: cell(r, 'Num_Years', 'NUM_YEARS'),
+            acf_lag: cell(r, `acf_${variable}_Lag`, `ACF_${variable}_LAG`),
+            fft_period: cell(r, `fft_${variable}_Period`, `FFT_${variable}_PERIOD`)
           });
         });
-      }
-      if (castVar) addNetworkRows('CASTNET', castTarget, castVar);
-      if (ntnVar) addNetworkRows('NTN', ntnTarget, ntnVar);
+      });
       matchRows = rows;
-      const parts = [];
-      if (castVar) parts.push(`CASTNET ${formatSiteIdsText(castTarget)} · ${castVar}`);
-      if (ntnVar) parts.push(`NTN ${formatSiteIdsText(ntnTarget)} · ${ntnVar}`);
+      const parts = entries.map(e => `${e.network} ${e.siteId} · ${e.variable}`);
       document.getElementById('match-header-text').textContent =
         `MATCH SEGMENT · ${parts.join(' | ')} · ACF Lag vs FFT Period`;
       document.getElementById('match-sort-col').value = 'num_years';
@@ -1510,15 +1550,13 @@
       siteRegistry = {};
       selectedKey = null;
       currentSort = 'default';
-      selected.CASTNET = { siteId: null, variable: null };
-      selected.NTN = { siteId: null, variable: null };
-      combineVar = { CASTNET: null, NTN: null };
+      selected = {};
+      combineVar = {};
       matchRows = [];
+      destroyAllSiteCharts();
       mapSnapshots['overview-map'] = null;
       mapSnapshots['map'] = null;
       document.getElementById('site-info').innerHTML = '<div class="placeholder">Loading...</div>';
-      document.getElementById('trend-panel-castnet').classList.remove('visible');
-      document.getElementById('trend-panel-ntn').classList.remove('visible');
       document.getElementById('trend-panel-combine').classList.remove('visible');
       document.getElementById('match-panel').classList.remove('visible');
       const ovS = document.getElementById('ov-snap-status');
