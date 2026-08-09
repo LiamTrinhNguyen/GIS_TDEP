@@ -199,6 +199,30 @@
     }
     .combine-checks input[type="checkbox"] { accent-color: #fff; cursor: pointer; }
     .combine-btns { margin-top: 12px; text-align: center; }
+    .combine-color-bar {
+      margin: 10px 0 8px 0;
+      padding: 10px;
+      border: 1px solid #444;
+      background: #111;
+    }
+    .combine-color-bar .cctitle {
+      font-size: 12px; color: #aaa; margin-bottom: 8px;
+    }
+    .combine-color-rows {
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .combine-color-row {
+      display: flex; flex-wrap: wrap; align-items: center;
+      gap: 10px; font-size: 12px; color: #ccc;
+    }
+    .combine-color-row label {
+      display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+    }
+    .combine-color-row input[type="color"] {
+      width: 36px; height: 22px; border: 1px solid #666;
+      background: #000; padding: 0; cursor: pointer;
+    }
+    .combine-color-actions { margin-top: 8px; }
     .trend-panels {
       width: 100%; max-width: 1296px; margin: 18px auto 0 auto;
       display: flex; flex-direction: column; gap: 16px;
@@ -405,6 +429,14 @@
             <button type="button" onclick="exportPanelToPdf('trend-panel-combine', 'trend_combine_panel')">[ EXPORT PANEL ]</button>
           </div>
         </div>
+        <div class="combine-color-bar" id="combine-color-bar">
+          <div class="cctitle">Line color per SITE_ID · change color, then [ REFRESH COLOR ]</div>
+          <div class="combine-color-rows" id="combine-color-rows"></div>
+          <div class="combine-color-actions">
+            <button type="button" onclick="refreshCombineColors()">[ REFRESH COLOR ]</button>
+            <button type="button" onclick="resetCombineColorsToDefault()">[ RESET COLORS ]</button>
+          </div>
+        </div>
         <div class="trend-body">
           <div class="trend-canvas-wrap"><canvas id="trend-chart-combine"></canvas></div>
           <div class="trend-zoom-wrap">
@@ -464,6 +496,10 @@
     let combineChart = null;
     let combineLabels = [];
     let combineVar = {};
+    // Meta for combine series (for color refresh without full rebuild of source lists)
+    // [{ key, network, siteId, variable, label, data, defaultColor }]
+    let combineSeriesMeta = [];
+    let combineColors = {}; // key -> hex color user chose
     let matchRows = [];
     const mapSnapshots = { 'overview-map': null, 'map': null };
 
@@ -1381,6 +1417,82 @@
       combineChart.options.scales.x.max = start + windowSize - 1;
       combineChart.update('none');
     }
+    function defaultCombineColor(network, indexInNetwork) {
+      const castPalette = ['#e74c3c', '#c0392b', '#f1948a', '#922b21', '#e67e22'];
+      const ntnPalette = ['#3498db', '#2980b9', '#85c1e9', '#1a5276', '#1abc9c'];
+      if (network === 'CASTNET') return castPalette[indexInNetwork % castPalette.length];
+      return ntnPalette[indexInNetwork % ntnPalette.length];
+    }
+
+    function renderCombineColorPickers(metaList) {
+      const host = document.getElementById('combine-color-rows');
+      if (!host) return;
+      host.innerHTML = metaList.map((m, i) => {
+        const color = combineColors[m.key] || m.defaultColor;
+        const safeKey = m.key.replace(/[^A-Za-z0-9_-]/g, '_');
+        return `<div class="combine-color-row">
+          <label>
+            <input type="color" id="combine-color-${safeKey}" value="${color}"
+              data-series-key="${m.key}" />
+            <span>${m.network} · ${m.siteId} · ${m.variable}</span>
+          </label>
+        </div>`;
+      }).join('');
+    }
+
+    function readCombineColorFromUI(key) {
+      const safeKey = key.replace(/[^A-Za-z0-9_-]/g, '_');
+      const el = document.getElementById('combine-color-' + safeKey);
+      if (el && el.value) return el.value;
+      return combineColors[key] || null;
+    }
+
+    function buildCombineDatasetsFromMeta() {
+      return combineSeriesMeta.map(m => {
+        const color = readCombineColorFromUI(m.key) || combineColors[m.key] || m.defaultColor;
+        combineColors[m.key] = color;
+        return {
+          label: m.label,
+          data: m.data,
+          borderColor: color,
+          backgroundColor: color,
+          borderWidth: 1.2,
+          pointRadius: 0,
+          pointHoverRadius: 3,
+          tension: 0,
+          spanGaps: false
+        };
+      });
+    }
+
+    function refreshCombineColors() {
+      if (!combineChart || !combineSeriesMeta.length) {
+        alert('Run [ COMBINE STATISTICAL-TRENDING ] first.');
+        return;
+      }
+      // Persist chosen colors from inputs
+      combineSeriesMeta.forEach(m => {
+        const c = readCombineColorFromUI(m.key);
+        if (c) combineColors[m.key] = c;
+      });
+      combineChart.data.datasets = buildCombineDatasetsFromMeta();
+      combineChart.update('none');
+      applyCombineWindow();
+    }
+
+    function resetCombineColorsToDefault() {
+      if (!combineSeriesMeta.length) return;
+      combineSeriesMeta.forEach(m => {
+        combineColors[m.key] = m.defaultColor;
+      });
+      renderCombineColorPickers(combineSeriesMeta);
+      if (combineChart) {
+        combineChart.data.datasets = buildCombineDatasetsFromMeta();
+        combineChart.update('none');
+        applyCombineWindow();
+      }
+    }
+
     function showCombineTrendPlot() {
       const site = siteRegistry[selectedKey];
       if (!site) { alert('Select a location first.'); return; }
@@ -1397,32 +1509,41 @@
       }));
       const allDates = Array.from(new Set(seriesMaps.flatMap(s => Object.keys(s.map)))).sort();
       if (!allDates.length) { alert('No time-series data for selected rows.'); return; }
-      const castPalette = ['#e74c3c', '#c0392b', '#f1948a', '#922b21'];
-      const ntnPalette = ['#3498db', '#2980b9', '#85c1e9', '#1a5276'];
+
       let castIdx = 0, ntnIdx = 0;
-      const datasets = [];
+      combineSeriesMeta = [];
       seriesMaps.forEach(s => {
         if (!Object.keys(s.map).length) return;
         const isCast = s.network === 'CASTNET';
-        const color = isCast ? castPalette[castIdx++ % castPalette.length]
-                             : ntnPalette[ntnIdx++ % ntnPalette.length];
+        const idx = isCast ? castIdx++ : ntnIdx++;
+        const defaultColor = defaultCombineColor(s.network, idx);
+        // Keep user color if same key was used before
+        if (!combineColors[s.key]) combineColors[s.key] = defaultColor;
         const unit = isCast ? 'µg/m³' : 'mg/L';
-        datasets.push({
+        combineSeriesMeta.push({
+          key: s.key,
+          network: s.network,
+          siteId: s.siteId,
+          variable: s.variable,
           label: `${s.network} ${s.siteId} ${s.variable} (${unit})`,
           data: allDates.map(d => s.map[d] !== undefined ? s.map[d] : null),
-          borderColor: color, backgroundColor: color,
-          borderWidth: 1.2, pointRadius: 0, pointHoverRadius: 3, tension: 0, spanGaps: false
+          defaultColor
         });
       });
-      if (!datasets.length) { alert('No data for selected variable(s).'); return; }
+      if (!combineSeriesMeta.length) { alert('No data for selected variable(s).'); return; }
+
       combineLabels = allDates;
       const panel = document.getElementById('trend-panel-combine');
       panel.classList.add('visible');
+      renderCombineColorPickers(combineSeriesMeta);
+
       const idList = entries.map(e => e.siteId).join(' / ');
       const varList = [...new Set(entries.map(e => e.variable))].join(', ');
       const combineTitle = `Combined time series · ${varList} · ${idList}`;
       document.getElementById('trend-header-combine').textContent =
         `${combineTitle} | Y-bar = zoom · X-bar = time`;
+
+      const datasets = buildCombineDatasetsFromMeta();
       const ctx = document.getElementById('trend-chart-combine').getContext('2d');
       if (combineChart) combineChart.destroy();
       combineChart = new Chart(ctx, {
@@ -1552,8 +1673,12 @@
       currentSort = 'default';
       selected = {};
       combineVar = {};
+      combineSeriesMeta = [];
+      combineColors = {};
       matchRows = [];
       destroyAllSiteCharts();
+      const crows = document.getElementById('combine-color-rows');
+      if (crows) crows.innerHTML = '';
       mapSnapshots['overview-map'] = null;
       mapSnapshots['map'] = null;
       document.getElementById('site-info').innerHTML = '<div class="placeholder">Loading...</div>';
