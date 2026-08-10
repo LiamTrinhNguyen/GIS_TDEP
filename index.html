@@ -346,7 +346,7 @@
         <span id="overview-count" style="margin-left:8px;color:#888;"></span>
       </div>
       <div class="overview-controls">
-        Completeness:
+        Completeness (multi-select):
         <button id="ov-br-all" class="active-net" onclick="setOverviewBracket('ALL')">[ ALL ]</button>
         <button id="ov-br-0-25" onclick="setOverviewBracket('0-25')">[ 0–25% ]</button>
         <button id="ov-br-25-50" onclick="setOverviewBracket('25-50')">[ 25–50% ]</button>
@@ -519,7 +519,7 @@
     let allMarkers = [];
     let overviewMarkers = [];
     let overviewNetwork = 'ALL';
-    let overviewBracket = 'ALL';
+    let overviewBrackets = new Set(['ALL']); // multi-select completeness brackets
     let siteRegistry = {};
     let dateSummary = {};
     let coverageData = {};
@@ -711,12 +711,38 @@
       buildOverviewMap();
     }
     function setOverviewBracket(mode) {
-      overviewBracket = mode;
-      ['ALL', '0-25', '25-50', '50-75', '75-100'].forEach(b => {
+      const BRACKETS = ['0-25', '25-50', '50-75', '75-100'];
+      if (mode === 'ALL') {
+        // ALL = show every bracket (exclusive with partial selection)
+        overviewBrackets = new Set(['ALL']);
+      } else {
+        overviewBrackets.delete('ALL');
+        if (overviewBrackets.has(mode)) overviewBrackets.delete(mode);
+        else overviewBrackets.add(mode);
+        // If none left, fall back to ALL
+        if (overviewBrackets.size === 0) overviewBrackets = new Set(['ALL']);
+        // If all four partial brackets selected, treat as ALL
+        if (BRACKETS.every(b => overviewBrackets.has(b))) {
+          overviewBrackets = new Set(['ALL']);
+        }
+      }
+      // UI active states
+      const isAll = overviewBrackets.has('ALL');
+      const allBtn = document.getElementById('ov-br-all');
+      if (allBtn) allBtn.classList.toggle('active-net', isAll);
+      BRACKETS.forEach(b => {
         const el = document.getElementById('ov-br-' + b);
-        if (el) el.classList.toggle('active-net', mode === b);
+        if (el) el.classList.toggle('active-net', !isAll && overviewBrackets.has(b));
       });
       buildOverviewMap();
+    }
+    function bracketLabel() {
+      if (overviewBrackets.has('ALL') || overviewBrackets.size === 0) return 'ALL';
+      return [...overviewBrackets].sort().join(', ');
+    }
+    function matchesOverviewBracket(bracket) {
+      if (overviewBrackets.has('ALL') || overviewBrackets.size === 0) return true;
+      return overviewBrackets.has(bracket);
     }
     function buildOverviewMap() {
       overviewMarkers.forEach(m => overviewMap.removeLayer(m));
@@ -741,7 +767,7 @@
           else if (ntnIds.length) { network = 'NTN'; ids = ntnIds; comp = n; }
           else { network = 'CASTNET'; ids = castIds; comp = c; }
         }
-        if (overviewBracket !== 'ALL' && comp.bracket !== overviewBracket) return;
+        if (!matchesOverviewBracket(comp.bracket)) return;
         const fill = (COMPLETENESS_COLORS[network] || {})[comp.bracket] || '#888';
         const years = comp.siteId ? recordYears(network, comp.siteId) : 0;
         const marker = L.circleMarker([site.lat, site.lon], {
@@ -760,7 +786,7 @@
         shown++;
       });
       document.getElementById('overview-count').textContent =
-        `${shown} location(s) · network: ${overviewNetwork} · bracket: ${overviewBracket}`;
+        `${shown} location(s) · network: ${overviewNetwork} · bracket: ${bracketLabel()}`;
       if (overviewMarkers.length) {
         overviewMap.fitBounds(L.featureGroup(overviewMarkers).getBounds().pad(0.12));
       }
@@ -1483,7 +1509,7 @@
       const scrollSlider = document.getElementById('trend-scroll-' + suffix);
       if (!zoomSlider || !scrollSlider) return;
       const zoomPct = parseInt(zoomSlider.value, 10) / 100;
-      const windowSize = Math.max(5, Math.round(state.labels.length * zoomPct));
+      const windowSize = Math.max(2, Math.round(state.labels.length * zoomPct));
       const maxStart = Math.max(0, state.labels.length - windowSize);
       scrollSlider.max = maxStart;
       if (parseInt(scrollSlider.value, 10) > maxStart) scrollSlider.value = maxStart;
@@ -1633,7 +1659,7 @@
       const scrollSlider = document.getElementById('trend-scroll-combine');
       if (!zoomSlider || !scrollSlider) return;
       const zoomPct = parseInt(zoomSlider.value, 10) / 100;
-      const windowSize = Math.max(5, Math.round(combineLabels.length * zoomPct));
+      const windowSize = Math.max(2, Math.round(combineLabels.length * zoomPct));
       const maxStart = Math.max(0, combineLabels.length - windowSize);
       scrollSlider.max = maxStart;
       if (parseInt(scrollSlider.value, 10) > maxStart) scrollSlider.value = maxStart;
