@@ -1563,7 +1563,12 @@
           datasets: [{
             label: `${network} ${siteId} ${sel.variable} (${yUnit})`,
             data: dataVals, borderColor: lineColor, backgroundColor: lineColor,
-            borderWidth: 1.2, pointRadius: 0, pointHoverRadius: 3, tension: 0, spanGaps: false
+            borderWidth: 1.2,
+            pointRadius: 2,
+            pointHoverRadius: 4,
+            pointHitRadius: 6,
+            tension: 0,
+            spanGaps: false
           }]
         },
         options: {
@@ -1728,8 +1733,9 @@
           borderColor: color,
           backgroundColor: color,
           borderWidth: 1.2,
-          pointRadius: 0,
-          pointHoverRadius: 3,
+          pointRadius: 2,
+          pointHoverRadius: 4,
+          pointHitRadius: 6,
           tension: 0,
           spanGaps: false,
           hidden: !visible
