@@ -256,6 +256,17 @@
     }
     .trend-stats span { white-space: nowrap; }
     .trend-stats .lab { color: #888; }
+    .trend-stats.combine-stats {
+      flex-direction: column; gap: 6px; max-height: 140px; overflow-y: auto;
+    }
+    .trend-stats.combine-stats .series-stat {
+      display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline;
+      border-bottom: 1px solid #222; padding-bottom: 4px;
+    }
+    .trend-stats.combine-stats .series-stat:last-child { border-bottom: none; }
+    .trend-stats.combine-stats .series-name {
+      color: #fff; min-width: 160px; font-size: 11px;
+    }
     .trend-body { display: flex; gap: 10px; align-items: stretch; }
     .trend-canvas-wrap { position: relative; height: 300px; flex: 1; min-width: 0; }
     .trend-zoom-wrap {
@@ -458,6 +469,13 @@
             <button type="button" onclick="hideAllCombineSeries()">[ HIDE ALL ]</button>
           </div>
         </div>
+        <div class="trend-stats" id="trend-stats-combine">
+          <span><span class="lab">min</span> —</span>
+          <span><span class="lab">max</span> —</span>
+          <span><span class="lab">median</span> —</span>
+          <span><span class="lab">avg</span> —</span>
+          <span><span class="lab">n</span> —</span>
+        </div>
         <div class="trend-body">
           <div class="trend-canvas-wrap"><canvas id="trend-chart-combine"></canvas></div>
           <div class="trend-zoom-wrap">
@@ -582,7 +600,7 @@
           <div class="trend-canvas-wrap"><canvas id="trend-chart-${suffix}"></canvas></div>
           <div class="trend-zoom-wrap">
             <label>ZOOM</label>
-            <input type="range" class="trend-zoom" id="trend-zoom-${suffix}" min="20" max="100" value="100" step="1" />
+            <input type="range" class="trend-zoom" id="trend-zoom-${suffix}" min="5" max="100" value="100" step="1" />
           </div>
         </div>
         <div class="trend-scroll-wrap">
@@ -1465,7 +1483,7 @@
       const scrollSlider = document.getElementById('trend-scroll-' + suffix);
       if (!zoomSlider || !scrollSlider) return;
       const zoomPct = parseInt(zoomSlider.value, 10) / 100;
-      const windowSize = Math.max(10, Math.round(state.labels.length * zoomPct));
+      const windowSize = Math.max(5, Math.round(state.labels.length * zoomPct));
       const maxStart = Math.max(0, state.labels.length - windowSize);
       scrollSlider.max = maxStart;
       if (parseInt(scrollSlider.value, 10) > maxStart) scrollSlider.value = maxStart;
@@ -1587,20 +1605,44 @@
       }
       return mapObj;
     }
+    function updateCombineStats(start, end) {
+      const el = document.getElementById('trend-stats-combine');
+      if (!el || !combineChart) return;
+      el.classList.add('combine-stats');
+      const rows = [];
+      (combineChart.data.datasets || []).forEach((ds) => {
+        if (ds.hidden) return;
+        const s = computeWindowStats(ds.data || [], start, end);
+        const short = (ds.label || 'series').replace(/\s*\([^)]*\)\s*$/, '');
+        rows.push(`<div class="series-stat">
+          <span class="series-name" style="color:${ds.borderColor || '#ccc'}">${short}</span>
+          <span><span class="lab">min</span> ${formatNum(s.min)}</span>
+          <span><span class="lab">max</span> ${formatNum(s.max)}</span>
+          <span><span class="lab">median</span> ${formatNum(s.median)}</span>
+          <span><span class="lab">avg</span> ${formatNum(s.avg)}</span>
+          <span><span class="lab">n</span> ${s.n}</span>
+        </div>`);
+      });
+      el.innerHTML = rows.length
+        ? rows.join('')
+        : '<span style="color:#666;">No visible series in current window</span>';
+    }
     function applyCombineWindow() {
       if (!combineChart || !combineLabels.length) return;
       const zoomSlider = document.getElementById('trend-zoom-combine');
       const scrollSlider = document.getElementById('trend-scroll-combine');
       if (!zoomSlider || !scrollSlider) return;
       const zoomPct = parseInt(zoomSlider.value, 10) / 100;
-      const windowSize = Math.max(10, Math.round(combineLabels.length * zoomPct));
+      const windowSize = Math.max(5, Math.round(combineLabels.length * zoomPct));
       const maxStart = Math.max(0, combineLabels.length - windowSize);
       scrollSlider.max = maxStart;
       if (parseInt(scrollSlider.value, 10) > maxStart) scrollSlider.value = maxStart;
       const start = parseInt(scrollSlider.value, 10);
+      const end = start + windowSize - 1;
       combineChart.options.scales.x.min = start;
-      combineChart.options.scales.x.max = start + windowSize - 1;
+      combineChart.options.scales.x.max = end;
       combineChart.update('none');
+      updateCombineStats(start, end);
     }
     function defaultCombineColor(network, indexInNetwork) {
       const castPalette = ['#e74c3c', '#c0392b', '#f1948a', '#922b21', '#e67e22'];
