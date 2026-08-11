@@ -73,6 +73,33 @@
       display: flex; gap: 18px; justify-content: center;
       flex-wrap: wrap; align-items: flex-start;
     }
+    .main-left {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      width: 420px;
+    }
+    .main-left .panel {
+      width: 100%;
+    }
+    .sim-panel {
+      min-height: auto;
+      height: auto;
+    }
+    .sim-body {
+      font-size: 12px; color: #aaa; line-height: 1.5;
+    }
+    .sim-body .sim-status {
+      margin-top: 10px; padding: 8px; border: 1px solid #333;
+      background: #111; color: #ccc; min-height: 40px;
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .sim-body .sim-actions {
+      margin-top: 10px; text-align: center;
+    }
+    .sim-body .sim-actions button {
+      font-size: 13px; padding: 8px 14px;
+    }
     /* Auto-height panels: grow with weekly coverage (no fixed 1200px) */
     .panel {
       width: 420px;
@@ -362,6 +389,7 @@
     </div>
 
     <div class="main">
+      <div class="main-left">
       <div class="panel" id="panel-main-map">
         <div class="title-row">
           <div class="panel-title title-text">MAP VIEW · ZOOM & EXPLORE</div>
@@ -402,6 +430,35 @@
           </div>
         </div>
       </div>
+
+      <div class="panel sim-panel" id="panel-data-sim">
+        <div class="title-row">
+          <div class="panel-title title-text">DATA SIMULATION</div>
+          <div class="export-btns">
+            <button type="button" onclick="exportPanelToPdf('panel-data-sim', 'data_simulation')">[ EXPORT PANEL ]</button>
+          </div>
+        </div>
+        <div class="sim-body">
+          <div>
+            Build a CSV of all weekly records for SITE_IDs from the
+            <b style="color:#fff;">checked locations</b> in MAP VIEW.
+          </div>
+          <div style="margin-top:6px;color:#888;font-size:11px;">
+            Columns: SITE_ID, DATEON, DATEOFF, variable_SO2…Sodium,
+            days_on_to_off, valid_on_off, days_to_next, valid_interval, network
+          </div>
+          <div class="sim-actions">
+            <button type="button" id="btn-data-sim" onclick="runDataSimulation()">
+              [ DATA SIMULATION ]
+            </button>
+          </div>
+          <div class="sim-status" id="sim-status">
+            Select location(s) above, then click DATA SIMULATION.
+          </div>
+        </div>
+      </div>
+      </div><!-- /.main-left -->
+
       <div class="panel-wide" id="panel-site-info">
         <div class="title-row">
           <div class="panel-title title-text">SELECTED SITE(S) · WEEKLY COVERAGE · COMBINE</div>
@@ -1293,6 +1350,206 @@
       });
       return html;
     }
+
+    const SIM_COLUMNS = [
+      'SITE_ID', 'DATEON', 'DATEOFF',
+      'variable_SO2', 'variable_SO4', 'variable_HNO3', 'variable_NO3',
+      'variable_TNO3', 'variable_NH4', 'variable_CA', 'variable_K',
+      'variable_MG', 'variable_Sodium',
+      'days_on_to_off', 'valid_on_off', 'days_to_next', 'valid_interval',
+      'network'
+    ];
+    const SIM_WIDE_PATHS = {
+      CASTNET: './data/input/CASTNET/CASTNET_transformed_wide.csv',
+      NTN: './data/input/NTN/NADP_transformed_wide.csv'
+    };
+
+    function csvEscape(val) {
+      if (val === null || val === undefined) return '';
+      const s = String(val);
+      if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+      return s;
+    }
+
+    function rowsToCsv(rows, columns) {
+      const lines = [columns.join(',')];
+      rows.forEach(r => {
+        lines.push(columns.map(c => csvEscape(r[c])).join(','));
+      });
+      return lines.join('\n');
+    }
+
+    function downloadTextFile(filename, text, mime) {
+      const blob = new Blob([text], { type: mime || 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }
+
+    function normalizeWideRow(row, network) {
+      const out = {};
+      SIM_COLUMNS.forEach(c => { out[c] = ''; });
+      out.network = network;
+      // Flexible header match (same idea as cell())
+      const upperMap = {};
+      Object.keys(row).forEach(k => {
+        upperMap[k.toUpperCase().replace(/[^A-Z0-9]/g, '')] = row[k];
+      });
+      function pick(...names) {
+        for (const n of names) {
+          const key = String(n).toUpperCase().replace(/[^A-Z0-9]/g, '');
+          if (upperMap[key] !== undefined && upperMap[key] !== '') return upperMap[key];
+        }
+        return '';
+      }
+      out.SITE_ID = pick('SITE_ID', 'SITEID');
+      out.DATEON = pick('DATEON', 'DATE_ON', 'START_DATE');
+      out.DATEOFF = pick('DATEOFF', 'DATE_OFF', 'END_DATE');
+      out.variable_SO2 = pick('variable_SO2', 'SO2');
+      out.variable_SO4 = pick('variable_SO4', 'SO4');
+      out.variable_HNO3 = pick('variable_HNO3', 'HNO3');
+      out.variable_NO3 = pick('variable_NO3', 'NO3');
+      out.variable_TNO3 = pick('variable_TNO3', 'TNO3');
+      out.variable_NH4 = pick('variable_NH4', 'NH4');
+      out.variable_CA = pick('variable_CA', 'CA');
+      out.variable_K = pick('variable_K', 'K');
+      out.variable_MG = pick('variable_MG', 'MG');
+      out.variable_Sodium = pick('variable_Sodium', 'SODIUM', 'NA');
+      out.days_on_to_off = pick('days_on_to_off', 'DAYSONTOOFF');
+      out.valid_on_off = pick('valid_on_off', 'VALIDONOFF');
+      out.days_to_next = pick('days_to_next', 'DAYSTONEXT');
+      out.valid_interval = pick('valid_interval', 'VALIDINTERVAL');
+      return out;
+    }
+
+    /** Fallback: build rows from site_timeseries.json when wide CSV is unavailable */
+    function rowsFromTimeseries(network, siteIdList) {
+      const rows = [];
+      const shortVars = ['SO2','SO4','HNO3','NO3','TNO3','NH4','CA','K','MG','Sodium'];
+      siteIdList.forEach(siteId => {
+        const series = (((timeseriesData[network] || {})[siteId]) || {});
+        const dates = series.DATEON || [];
+        for (let i = 0; i < dates.length; i++) {
+          const out = {};
+          SIM_COLUMNS.forEach(c => { out[c] = ''; });
+          out.SITE_ID = siteId;
+          out.DATEON = dates[i] || '';
+          out.network = network;
+          shortVars.forEach(v => {
+            const arr = series[v] || series['variable_' + v] || [];
+            const val = arr[i];
+            out['variable_' + v] = (val === null || val === undefined) ? '' : val;
+          });
+          rows.push(out);
+        }
+      });
+      return rows;
+    }
+
+    async function fetchWideRowsForNetwork(network, siteIdSet) {
+      const path = SIM_WIDE_PATHS[network];
+      try {
+        const res = await fetch(path);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const text = await res.text();
+        const parsed = parseCSV(text);
+        const rows = [];
+        parsed.forEach(raw => {
+          const norm = normalizeWideRow(raw, network);
+          if (!norm.SITE_ID) return;
+          if (!siteIdSet.has(String(norm.SITE_ID).trim())) return;
+          rows.push(norm);
+        });
+        return { ok: true, rows, source: path };
+      } catch (e) {
+        console.warn('Wide CSV load failed for', network, e);
+        return { ok: false, rows: [], source: path, error: String(e) };
+      }
+    }
+
+    async function runDataSimulation() {
+      const status = document.getElementById('sim-status');
+      const btn = document.getElementById('btn-data-sim');
+      if (!selectedKeys.size) {
+        status.textContent = 'No locations selected.\nCheck one or more rows in MAP VIEW first.';
+        return;
+      }
+      const { castIds, ntnIds, locations } = collectSelectedSiteIds();
+      if (!castIds.length && !ntnIds.length) {
+        status.textContent = 'Selected locations have no SITE_IDs.';
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = '[ BUILDING… ]';
+      status.textContent = 'Building CSV for ' + locations.length + ' location(s)…';
+
+      const castSet = new Set(castIds.map(String));
+      const ntnSet = new Set(ntnIds.map(String));
+      let allRows = [];
+      const notes = [];
+
+      if (castSet.size) {
+        const r = await fetchWideRowsForNetwork('CASTNET', castSet);
+        if (r.ok && r.rows.length) {
+          allRows = allRows.concat(r.rows);
+          notes.push('CASTNET wide CSV: ' + r.rows.length + ' rows');
+        } else {
+          const fb = rowsFromTimeseries('CASTNET', castIds);
+          allRows = allRows.concat(fb);
+          notes.push('CASTNET fallback timeseries: ' + fb.length + ' rows'
+            + (r.error ? ' (wide CSV unavailable)' : ' (no matching wide rows)'));
+        }
+      }
+      if (ntnSet.size) {
+        const r = await fetchWideRowsForNetwork('NTN', ntnSet);
+        if (r.ok && r.rows.length) {
+          allRows = allRows.concat(r.rows);
+          notes.push('NTN wide CSV: ' + r.rows.length + ' rows');
+        } else {
+          const fb = rowsFromTimeseries('NTN', ntnIds);
+          allRows = allRows.concat(fb);
+          notes.push('NTN fallback timeseries: ' + fb.length + ' rows'
+            + (r.error ? ' (wide CSV unavailable)' : ' (no matching wide rows)'));
+        }
+      }
+
+      // Sort by network, SITE_ID, DATEON
+      allRows.sort((a, b) => {
+        const n = String(a.network).localeCompare(String(b.network));
+        if (n) return n;
+        const s = String(a.SITE_ID).localeCompare(String(b.SITE_ID), undefined, { numeric: true });
+        if (s) return s;
+        return String(a.DATEON).localeCompare(String(b.DATEON));
+      });
+
+      if (!allRows.length) {
+        status.textContent = 'No records found for selected SITE_IDs.\n' + notes.join('\n');
+        btn.disabled = false;
+        btn.textContent = '[ DATA SIMULATION ]';
+        return;
+      }
+
+      const csv = rowsToCsv(allRows, SIM_COLUMNS);
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+      const fname = 'data_simulation_' + stamp + '.csv';
+      downloadTextFile(fname, csv, 'text/csv;charset=utf-8;');
+
+      status.textContent =
+        'Downloaded: ' + fname + '\n' +
+        'Total rows: ' + allRows.length + '\n' +
+        'Locations: ' + locations.length +
+        ' · CASTNET IDs: ' + (castIds.join(', ') || '—') +
+        ' · NTN IDs: ' + (ntnIds.join(', ') || '—') + '\n' +
+        notes.join('\n');
+      btn.disabled = false;
+      btn.textContent = '[ DATA SIMULATION ]';
+    }
+
     function renderSelectedSites() {
       if (!selectedKeys.size) {
         document.getElementById('site-info').innerHTML =
