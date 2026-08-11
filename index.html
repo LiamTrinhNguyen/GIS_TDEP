@@ -745,13 +745,39 @@
     }
 
     function parseCSV(text) {
-      const lines = text.trim().split(/\r?\n/);
+      // Quote-aware CSV split (handles commas inside "...")
+      function splitCsvLine(line) {
+        const out = [];
+        let cur = '';
+        let inQ = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (inQ) {
+            if (ch === '"') {
+              if (line[i + 1] === '"') { cur += '"'; i++; }
+              else inQ = false;
+            } else cur += ch;
+          } else {
+            if (ch === '"') inQ = true;
+            else if (ch === ',') { out.push(cur); cur = ''; }
+            else cur += ch;
+          }
+        }
+        out.push(cur);
+        return out;
+      }
+      const raw = String(text || '').replace(/^\uFEFF/, ''); // strip BOM
+      const lines = raw.split(/\r?\n/).filter(l => l.trim() !== '');
       if (lines.length < 2) return [];
-      const headers = lines[0].split(',').map(h => h.trim().toUpperCase());
+      const headers = splitCsvLine(lines[0]).map(h => h.trim().toUpperCase());
       return lines.slice(1).map(line => {
-        const values = line.split(',');
+        const values = splitCsvLine(line);
         const obj = {};
-        headers.forEach((h, i) => obj[h] = values[i] ? values[i].trim() : '');
+        headers.forEach((h, i) => {
+          let v = values[i] != null ? String(values[i]).trim() : '';
+          if (v === 'NA' || v === 'NaN' || v === 'null') v = '';
+          obj[h] = v;
+        });
         return obj;
       });
     }
@@ -1558,21 +1584,26 @@
       const out = {};
       SIM_COLUMNS.forEach(c => { out[c] = ''; });
       out.network = network;
-      // Flexible header match (same idea as cell())
       const upperMap = {};
       Object.keys(row).forEach(k => {
-        upperMap[k.toUpperCase().replace(/[^A-Z0-9]/g, '')] = row[k];
+        upperMap[String(k).toUpperCase().replace(/[^A-Z0-9]/g, '')] = row[k];
       });
       function pick(...names) {
         for (const n of names) {
           const key = String(n).toUpperCase().replace(/[^A-Z0-9]/g, '');
-          if (upperMap[key] !== undefined && upperMap[key] !== '') return upperMap[key];
+          if (Object.prototype.hasOwnProperty.call(upperMap, key)) {
+            const v = upperMap[key];
+            if (v === null || v === undefined) continue;
+            const s = String(v).trim();
+            if (s === '' || s.toUpperCase() === 'NA' || s.toUpperCase() === 'NAN') continue;
+            return s;
+          }
         }
         return '';
       }
       out.SITE_ID = pick('SITE_ID', 'SITEID');
-      out.DATEON = pick('DATEON', 'DATE_ON', 'START_DATE');
-      out.DATEOFF = pick('DATEOFF', 'DATE_OFF', 'END_DATE');
+      out.DATEON = pick('DATEON', 'DATE_ON', 'START_DATE', 'DATE');
+      out.DATEOFF = pick('DATEOFF', 'DATE_OFF', 'END_DATE', 'DATEEND');
       out.variable_SO2 = pick('variable_SO2', 'SO2');
       out.variable_SO4 = pick('variable_SO4', 'SO4');
       out.variable_HNO3 = pick('variable_HNO3', 'HNO3');
@@ -1583,12 +1614,14 @@
       out.variable_K = pick('variable_K', 'K');
       out.variable_MG = pick('variable_MG', 'MG');
       out.variable_Sodium = pick('variable_Sodium', 'SODIUM', 'NA');
-      out.days_on_to_off = pick('days_on_to_off', 'DAYSONTOOFF');
-      out.valid_on_off = pick('valid_on_off', 'VALIDONOFF');
-      out.days_to_next = pick('days_to_next', 'DAYSTONEXT');
-      out.valid_interval = pick('valid_interval', 'VALIDINTERVAL');
+      out.days_on_to_off = pick('days_on_to_off', 'DAYSONTOOFF', 'DAYS_ON_TO_OFF', 'EXPOSURE_DAYS');
+      out.valid_on_off = pick('valid_on_off', 'VALIDONOFF', 'VALID_ON_OFF');
+      out.days_to_next = pick('days_to_next', 'DAYSTONEXT', 'DAYS_TO_NEXT');
+      out.valid_interval = pick('valid_interval', 'VALIDINTERVAL', 'VALID_INTERVAL');
       return out;
     }
+
+
 
     /** Fallback: build rows from site_timeseries.json when wide CSV is unavailable */
     function rowsFromTimeseries(network, siteIdList) {
@@ -1708,6 +1741,8 @@
         notes.push('Safety filter removed ' + (before - allRows.length) + ' non-selected rows');
       }
 
+
+
       allRows.sort((a, b) => {
         const n = String(a.network).localeCompare(String(b.network));
         if (n) return n;
@@ -1724,6 +1759,15 @@
       }
 
       const uniqueInFile = [...new Set(allRows.map(r => normalizeSiteId(r.SITE_ID)))].sort();
+      // Report how often source left meta columns blank (no invented values)
+      const metaCols = ['DATEOFF', 'days_on_to_off', 'valid_on_off', 'days_to_next', 'valid_interval'];
+      const metaBlank = metaCols.map(c => {
+        if (!exportCols.includes(c)) return null;
+        const blank = allRows.filter(r => r[c] === '' || r[c] == null).length;
+        return c + ': ' + blank + '/' + allRows.length + ' blank';
+      }).filter(Boolean);
+      if (metaBlank.length) notes.push('Source blanks (not filled): ' + metaBlank.join('; '));
+
       const csv = rowsToCsv(allRows, exportCols);
       const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
       const fname = 'data_simulation_' + stamp + '.csv';
