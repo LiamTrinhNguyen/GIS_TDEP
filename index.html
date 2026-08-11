@@ -100,6 +100,55 @@
     .sim-body .sim-actions button {
       font-size: 13px; padding: 8px 14px;
     }
+    .sim-section {
+      margin-top: 10px;
+      border: 1px solid #333;
+      background: #0d0d0d;
+      padding: 8px;
+    }
+    .sim-section-title {
+      color: #fff;
+      font-size: 12px;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .sim-section-title .mini-btns button {
+      font-size: 10px;
+      padding: 2px 6px;
+      margin: 0 1px;
+    }
+    .sim-check-list {
+      max-height: 140px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .sim-check-list.cols {
+      max-height: 180px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2px 8px;
+    }
+    .sim-check-list label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: #ccc;
+      cursor: pointer;
+      padding: 2px 0;
+    }
+    .sim-check-list label input { accent-color: #fff; }
+    .sim-check-list .net-tag { color: #888; font-size: 10px; }
+    .sim-check-list .net-tag.cast { color: #e74c3c; }
+    .sim-check-list .net-tag.ntn { color: #3498db; }
+    .sim-empty { color: #666; font-size: 11px; padding: 4px 0; }
     /* Auto-height panels: grow with weekly coverage (no fixed 1200px) */
     .panel {
       width: 420px;
@@ -440,20 +489,41 @@
         </div>
         <div class="sim-body">
           <div>
-            Build a CSV of all weekly records for SITE_IDs from the
-            <b style="color:#fff;">checked locations</b> in MAP VIEW.
+            Export weekly records for sites selected in MAP VIEW.
+            Uncheck any site or column below to exclude it from the CSV.
           </div>
-          <div style="margin-top:6px;color:#888;font-size:11px;">
-            Columns: SITE_ID, DATEON, DATEOFF, variable_SO2…Sodium,
-            days_on_to_off, valid_on_off, days_to_next, valid_interval, network
+
+          <div class="sim-section">
+            <div class="sim-section-title">
+              <span>SITES IN EXPORT</span>
+              <span class="mini-btns">
+                <button type="button" onclick="setAllSimSites(true)">[ ALL ]</button>
+                <button type="button" onclick="setAllSimSites(false)">[ NONE ]</button>
+              </span>
+            </div>
+            <div class="sim-check-list" id="sim-site-list">
+              <div class="sim-empty">No locations selected in MAP VIEW</div>
+            </div>
           </div>
+
+          <div class="sim-section">
+            <div class="sim-section-title">
+              <span>COLUMNS IN CSV</span>
+              <span class="mini-btns">
+                <button type="button" onclick="setAllSimCols(true)">[ ALL ]</button>
+                <button type="button" onclick="setAllSimCols(false)">[ NONE ]</button>
+              </span>
+            </div>
+            <div class="sim-check-list cols" id="sim-col-list"></div>
+          </div>
+
           <div class="sim-actions">
             <button type="button" id="btn-data-sim" onclick="runDataSimulation()">
               [ DATA SIMULATION ]
             </button>
           </div>
           <div class="sim-status" id="sim-status">
-            Select location(s) above, then click DATA SIMULATION.
+            Select location(s) in MAP VIEW, refine sites/columns here, then export.
           </div>
         </div>
       </div>
@@ -1203,6 +1273,7 @@
       document.getElementById('match-panel').classList.remove('visible');
       document.getElementById('site-info').innerHTML =
         '<div class="placeholder">Check locations in the list<br>or click map markers to select</div>';
+      refreshSimSiteList();
     }
 
     function onLocationCheck(key, isChecked) {
@@ -1364,6 +1435,101 @@
       NTN: './data/input/NTN/NADP_transformed_wide.csv'
     };
 
+    function normalizeSiteId(id) {
+      return String(id == null ? '' : id).trim().toUpperCase();
+    }
+
+    let simSiteUnchecked = new Set();
+    let simColsInitialized = false;
+
+    function simSiteKey(network, siteId) {
+      return network + '|' + normalizeSiteId(siteId);
+    }
+
+    function getCheckedSimColumns() {
+      const boxes = document.querySelectorAll('#sim-col-list input[type="checkbox"]');
+      if (!boxes.length) return SIM_COLUMNS.slice();
+      const cols = [];
+      boxes.forEach(cb => { if (cb.checked) cols.push(cb.value); });
+      return cols;
+    }
+
+    function getCheckedSimSites() {
+      const boxes = document.querySelectorAll('#sim-site-list input[type="checkbox"]');
+      const castIds = [], ntnIds = [];
+      boxes.forEach(cb => {
+        if (!cb.checked) return;
+        const net = cb.dataset.network;
+        const id = normalizeSiteId(cb.dataset.siteId);
+        if (!id) return;
+        if (net === 'CASTNET') castIds.push(id);
+        else if (net === 'NTN') ntnIds.push(id);
+      });
+      return { castIds, ntnIds };
+    }
+
+    function setAllSimSites(on) {
+      document.querySelectorAll('#sim-site-list input[type="checkbox"]').forEach(cb => {
+        cb.checked = !!on;
+        const k = simSiteKey(cb.dataset.network, cb.dataset.siteId);
+        if (on) simSiteUnchecked.delete(k);
+        else simSiteUnchecked.add(k);
+      });
+    }
+
+    function setAllSimCols(on) {
+      document.querySelectorAll('#sim-col-list input[type="checkbox"]').forEach(cb => {
+        cb.checked = !!on;
+      });
+    }
+
+    function onSimSiteToggle(cb) {
+      const k = simSiteKey(cb.dataset.network, cb.dataset.siteId);
+      if (cb.checked) simSiteUnchecked.delete(k);
+      else simSiteUnchecked.add(k);
+    }
+
+    function initSimColumnList() {
+      const host = document.getElementById('sim-col-list');
+      if (!host || simColsInitialized) return;
+      host.innerHTML = SIM_COLUMNS.map(c =>
+        '<label><input type="checkbox" value="' + c + '" checked /> ' + c + '</label>'
+      ).join('');
+      simColsInitialized = true;
+    }
+
+    function refreshSimSiteList() {
+      initSimColumnList();
+      const host = document.getElementById('sim-site-list');
+      if (!host) return;
+      const { castIds, ntnIds } = collectSelectedSiteIds();
+      const items = [];
+      castIds.forEach(id => {
+        const nid = normalizeSiteId(id);
+        const k = simSiteKey('CASTNET', nid);
+        items.push({ network: 'CASTNET', id: nid, checked: !simSiteUnchecked.has(k), tagClass: 'cast' });
+      });
+      ntnIds.forEach(id => {
+        const nid = normalizeSiteId(id);
+        const k = simSiteKey('NTN', nid);
+        items.push({ network: 'NTN', id: nid, checked: !simSiteUnchecked.has(k), tagClass: 'ntn' });
+      });
+      const live = new Set(items.map(it => simSiteKey(it.network, it.id)));
+      [...simSiteUnchecked].forEach(k => { if (!live.has(k)) simSiteUnchecked.delete(k); });
+      if (!items.length) {
+        host.innerHTML = '<div class="sim-empty">No locations selected in MAP VIEW</div>';
+        return;
+      }
+      host.innerHTML = items.map(it =>
+        '<label>' +
+          '<input type="checkbox" data-network="' + it.network + '" data-site-id="' + it.id + '" ' +
+            (it.checked ? 'checked' : '') + ' onchange="onSimSiteToggle(this)" />' +
+          '<span class="net-tag ' + it.tagClass + '">' + it.network + '</span>' +
+          '<span>' + it.id + '</span>' +
+        '</label>'
+      ).join('');
+    }
+
     function csvEscape(val) {
       if (val === null || val === undefined) return '';
       const s = String(val);
@@ -1451,10 +1617,6 @@
       return rows;
     }
 
-    function normalizeSiteId(id) {
-      return String(id == null ? '' : id).trim().toUpperCase();
-    }
-
     async function fetchWideRowsForNetwork(network, siteIdSet) {
       // siteIdSet must contain normalizeSiteId() values only
       const path = SIM_WIDE_PATHS[network];
@@ -1484,17 +1646,22 @@
     async function runDataSimulation() {
       const status = document.getElementById('sim-status');
       const btn = document.getElementById('btn-data-sim');
+      refreshSimSiteList();
       if (!selectedKeys.size) {
         status.textContent = 'No locations selected.\nCheck one or more rows in MAP VIEW first.';
         return;
       }
-      const { castIds, ntnIds, locations } = collectSelectedSiteIds();
+      const { castIds, ntnIds } = getCheckedSimSites();
       if (!castIds.length && !ntnIds.length) {
-        status.textContent = 'Selected locations have no SITE_IDs.';
+        status.textContent = 'No sites checked under SITES IN EXPORT.\nSelect map locations and leave at least one site checked.';
+        return;
+      }
+      const exportCols = getCheckedSimColumns();
+      if (!exportCols.length) {
+        status.textContent = 'No columns checked under COLUMNS IN CSV.';
         return;
       }
 
-      // Normalized allow-lists (uppercase) — only these IDs may appear in the CSV
       const castAllow = new Set(castIds.map(normalizeSiteId).filter(Boolean));
       const ntnAllow = new Set(ntnIds.map(normalizeSiteId).filter(Boolean));
       const allAllow = new Set([...castAllow, ...ntnAllow]);
@@ -1502,9 +1669,10 @@
       btn.disabled = true;
       btn.textContent = '[ BUILDING… ]';
       status.textContent =
-        'Building CSV for ' + locations.length + ' location(s)\n' +
-        'Allowed CASTNET: ' + ([...castAllow].join(', ') || '—') + '\n' +
-        'Allowed NTN: ' + ([...ntnAllow].join(', ') || '—');
+        'Building CSV…\n' +
+        'Sites CASTNET: ' + ([...castAllow].join(', ') || '—') + '\n' +
+        'Sites NTN: ' + ([...ntnAllow].join(', ') || '—') + '\n' +
+        'Columns: ' + exportCols.join(', ');
 
       let allRows = [];
       const notes = [];
@@ -1559,7 +1727,7 @@
       }
 
       const uniqueInFile = [...new Set(allRows.map(r => normalizeSiteId(r.SITE_ID)))].sort();
-      const csv = rowsToCsv(allRows, SIM_COLUMNS);
+      const csv = rowsToCsv(allRows, exportCols);
       const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
       const fname = 'data_simulation_' + stamp + '.csv';
       downloadTextFile(fname, csv, 'text/csv;charset=utf-8;');
@@ -1568,7 +1736,7 @@
         'Downloaded: ' + fname + '\n' +
         'Total rows: ' + allRows.length + '\n' +
         'SITE_IDs in file: ' + uniqueInFile.join(', ') + '\n' +
-        'Locations selected: ' + locations.length + '\n' +
+        'Columns: ' + exportCols.join(', ') + '\n' +
         notes.join('\n');
       btn.disabled = false;
       btn.textContent = '[ DATA SIMULATION ]';
@@ -1578,6 +1746,7 @@
       if (!selectedKeys.size) {
         document.getElementById('site-info').innerHTML =
           '<div class="placeholder">Check one or more locations<br>in MAP VIEW to load details</div>';
+        refreshSimSiteList();
         return;
       }
       const { locations, castIds, ntnIds } = collectSelectedSiteIds();
@@ -1714,6 +1883,7 @@
         const safeId = sid.replace(/[^A-Za-z0-9_-]/g, '_');
         createVarButtons('NTN', sid, `vars-ntn-${safeId}`, `coverage-ntn-${safeId}`);
       });
+      refreshSimSiteList();
     }
     // keep alias for any leftover callers
     function renderSiteInfo(site) {
@@ -2307,6 +2477,8 @@
       await loadCompleteness();
       await loadAcfFftCombined();
       buildMarkersAndTable();
+      initSimColumnList();
+      refreshSimSiteList();
       document.getElementById('site-info').innerHTML =
         '<div class="placeholder">Check locations in MAP VIEW<br>or click markers to multi-select</div>';
       updateMultiSelectCount();
