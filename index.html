@@ -1451,7 +1451,12 @@
       return rows;
     }
 
+    function normalizeSiteId(id) {
+      return String(id == null ? '' : id).trim().toUpperCase();
+    }
+
     async function fetchWideRowsForNetwork(network, siteIdSet) {
+      // siteIdSet must contain normalizeSiteId() values only
       const path = SIM_WIDE_PATHS[network];
       try {
         const res = await fetch(path);
@@ -1459,16 +1464,20 @@
         const text = await res.text();
         const parsed = parseCSV(text);
         const rows = [];
+        let matchedIds = new Set();
         parsed.forEach(raw => {
           const norm = normalizeWideRow(raw, network);
-          if (!norm.SITE_ID) return;
-          if (!siteIdSet.has(String(norm.SITE_ID).trim())) return;
+          const sid = normalizeSiteId(norm.SITE_ID);
+          if (!sid) return;
+          if (!siteIdSet.has(sid)) return; // strict: only selected SITE_IDs
+          norm.SITE_ID = sid; // canonical form in export
+          matchedIds.add(sid);
           rows.push(norm);
         });
-        return { ok: true, rows, source: path };
+        return { ok: true, rows, source: path, matchedIds: [...matchedIds] };
       } catch (e) {
         console.warn('Wide CSV load failed for', network, e);
-        return { ok: false, rows: [], source: path, error: String(e) };
+        return { ok: false, rows: [], source: path, error: String(e), matchedIds: [] };
       }
     }
 
@@ -1484,41 +1493,56 @@
         status.textContent = 'Selected locations have no SITE_IDs.';
         return;
       }
+
+      // Normalized allow-lists (uppercase) — only these IDs may appear in the CSV
+      const castAllow = new Set(castIds.map(normalizeSiteId).filter(Boolean));
+      const ntnAllow = new Set(ntnIds.map(normalizeSiteId).filter(Boolean));
+      const allAllow = new Set([...castAllow, ...ntnAllow]);
+
       btn.disabled = true;
       btn.textContent = '[ BUILDING… ]';
-      status.textContent = 'Building CSV for ' + locations.length + ' location(s)…';
+      status.textContent =
+        'Building CSV for ' + locations.length + ' location(s)\n' +
+        'Allowed CASTNET: ' + ([...castAllow].join(', ') || '—') + '\n' +
+        'Allowed NTN: ' + ([...ntnAllow].join(', ') || '—');
 
-      const castSet = new Set(castIds.map(String));
-      const ntnSet = new Set(ntnIds.map(String));
       let allRows = [];
       const notes = [];
 
-      if (castSet.size) {
-        const r = await fetchWideRowsForNetwork('CASTNET', castSet);
+      if (castAllow.size) {
+        const r = await fetchWideRowsForNetwork('CASTNET', castAllow);
         if (r.ok && r.rows.length) {
           allRows = allRows.concat(r.rows);
-          notes.push('CASTNET wide CSV: ' + r.rows.length + ' rows');
+          notes.push('CASTNET wide CSV: ' + r.rows.length + ' rows · matched IDs: ' +
+            (r.matchedIds.join(', ') || '—'));
         } else {
-          const fb = rowsFromTimeseries('CASTNET', castIds);
+          const fb = rowsFromTimeseries('CASTNET', [...castAllow]);
           allRows = allRows.concat(fb);
           notes.push('CASTNET fallback timeseries: ' + fb.length + ' rows'
             + (r.error ? ' (wide CSV unavailable)' : ' (no matching wide rows)'));
         }
       }
-      if (ntnSet.size) {
-        const r = await fetchWideRowsForNetwork('NTN', ntnSet);
+      if (ntnAllow.size) {
+        const r = await fetchWideRowsForNetwork('NTN', ntnAllow);
         if (r.ok && r.rows.length) {
           allRows = allRows.concat(r.rows);
-          notes.push('NTN wide CSV: ' + r.rows.length + ' rows');
+          notes.push('NTN wide CSV: ' + r.rows.length + ' rows · matched IDs: ' +
+            (r.matchedIds.join(', ') || '—'));
         } else {
-          const fb = rowsFromTimeseries('NTN', ntnIds);
+          const fb = rowsFromTimeseries('NTN', [...ntnAllow]);
           allRows = allRows.concat(fb);
           notes.push('NTN fallback timeseries: ' + fb.length + ' rows'
             + (r.error ? ' (wide CSV unavailable)' : ' (no matching wide rows)'));
         }
       }
 
-      // Sort by network, SITE_ID, DATEON
+      // Final safety filter: drop any row whose SITE_ID is not in the allow-list
+      const before = allRows.length;
+      allRows = allRows.filter(r => allAllow.has(normalizeSiteId(r.SITE_ID)));
+      if (allRows.length !== before) {
+        notes.push('Safety filter removed ' + (before - allRows.length) + ' non-selected rows');
+      }
+
       allRows.sort((a, b) => {
         const n = String(a.network).localeCompare(String(b.network));
         if (n) return n;
@@ -1534,6 +1558,7 @@
         return;
       }
 
+      const uniqueInFile = [...new Set(allRows.map(r => normalizeSiteId(r.SITE_ID)))].sort();
       const csv = rowsToCsv(allRows, SIM_COLUMNS);
       const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
       const fname = 'data_simulation_' + stamp + '.csv';
@@ -1542,9 +1567,8 @@
       status.textContent =
         'Downloaded: ' + fname + '\n' +
         'Total rows: ' + allRows.length + '\n' +
-        'Locations: ' + locations.length +
-        ' · CASTNET IDs: ' + (castIds.join(', ') || '—') +
-        ' · NTN IDs: ' + (ntnIds.join(', ') || '—') + '\n' +
+        'SITE_IDs in file: ' + uniqueInFile.join(', ') + '\n' +
+        'Locations selected: ' + locations.length + '\n' +
         notes.join('\n');
       btn.disabled = false;
       btn.textContent = '[ DATA SIMULATION ]';
