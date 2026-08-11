@@ -1446,7 +1446,7 @@
     }
 
     const SIM_COLUMNS = [
-      'SITE_ID', 'DATEON', 'DATEOFF',
+      'SITE_ID', 'LATITUDE', 'LONGITUDE', 'DATEON', 'DATEOFF',
       'variable_SO2', 'variable_SO4', 'variable_HNO3', 'variable_NO3',
       'variable_TNO3', 'variable_NH4', 'variable_CA', 'variable_K',
       'variable_MG', 'variable_Sodium',
@@ -1514,10 +1514,19 @@
 
     function initSimColumnList() {
       const host = document.getElementById('sim-col-list');
-      if (!host || simColsInitialized) return;
-      host.innerHTML = SIM_COLUMNS.map(c =>
-        '<label><input type="checkbox" value="' + c + '" checked /> ' + c + '</label>'
-      ).join('');
+      if (!host) return;
+      // Rebuild if not initialized or if new columns were added (e.g. LATITUDE)
+      if (simColsInitialized && host.querySelector('input[value="LATITUDE"]')) return;
+      // Preserve prior checked state when possible
+      const prev = {};
+      host.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        prev[cb.value] = cb.checked;
+      });
+      host.innerHTML = SIM_COLUMNS.map(c => {
+        const checked = (c in prev) ? prev[c] : true;
+        return '<label><input type="checkbox" value="' + c + '"' +
+          (checked ? ' checked' : '') + ' /> ' + c + '</label>';
+      }).join('');
       simColsInitialized = true;
     }
 
@@ -1602,6 +1611,8 @@
         return '';
       }
       out.SITE_ID = pick('SITE_ID', 'SITEID');
+      out.LATITUDE = pick('LATITUDE', 'LAT', 'Y');
+      out.LONGITUDE = pick('LONGITUDE', 'LON', 'LONG', 'X');
       out.DATEON = pick('DATEON', 'DATE_ON', 'START_DATE', 'DATE');
       out.DATEOFF = pick('DATEOFF', 'DATE_OFF', 'END_DATE', 'DATEEND');
       out.variable_SO2 = pick('variable_SO2', 'SO2');
@@ -1623,6 +1634,38 @@
 
 
 
+
+    /** Look up LAT/LON from coordinator-backed siteRegistry for a SITE_ID */
+    function coordsFromRegistry(network, siteId) {
+      const want = normalizeSiteId(siteId);
+      if (!want) return { lat: '', lon: '' };
+      for (const key of Object.keys(siteRegistry)) {
+        const site = siteRegistry[key];
+        if (!site) continue;
+        const ids = siteIds(site, network) || [];
+        if (ids.some(id => normalizeSiteId(id) === want)) {
+          return {
+            lat: (site.lat != null && !isNaN(site.lat)) ? String(site.lat) : '',
+            lon: (site.lon != null && !isNaN(site.lon)) ? String(site.lon) : ''
+          };
+        }
+      }
+      return { lat: '', lon: '' };
+    }
+
+    /** Fill LATITUDE/LONGITUDE from registry only when row left them blank */
+    function attachCoordsFromRegistry(rows) {
+      rows.forEach(r => {
+        const needLat = !r.LATITUDE;
+        const needLon = !r.LONGITUDE;
+        if (!needLat && !needLon) return;
+        const c = coordsFromRegistry(r.network, r.SITE_ID);
+        if (needLat && c.lat) r.LATITUDE = c.lat;
+        if (needLon && c.lon) r.LONGITUDE = c.lon;
+      });
+      return rows;
+    }
+
     /** Fallback: build rows from site_timeseries.json when wide CSV is unavailable */
     function rowsFromTimeseries(network, siteIdList) {
       const rows = [];
@@ -1636,6 +1679,9 @@
           out.SITE_ID = siteId;
           out.DATEON = dates[i] || '';
           out.network = network;
+          const coord = coordsFromRegistry(network, siteId);
+          out.LATITUDE = coord.lat;
+          out.LONGITUDE = coord.lon;
           shortVars.forEach(v => {
             const arr = series[v] || series['variable_' + v] || [];
             const val = arr[i];
@@ -1740,6 +1786,10 @@
       if (allRows.length !== before) {
         notes.push('Safety filter removed ' + (before - allRows.length) + ' non-selected rows');
       }
+
+      // LAT/LON from wide CSV when present; otherwise from coordinator (siteRegistry)
+      attachCoordsFromRegistry(allRows);
+
 
 
 
