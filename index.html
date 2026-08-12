@@ -692,7 +692,7 @@
     let coverageData = {};
     let timeseriesData = {};
     let imputedData = { CASTNET: {}, NTN: {} }; // network -> SITE_ID -> { DATEON, vars..., flags }
-    let seasonalData = { CASTNET: {}, NTN: {} }; // network -> SITE_ID -> { DATEON, SO2: [], ... }
+    let seasonalData = { CASTNET: {}, NTN: {} }; // network -> SITE_ID -> variable -> { weekNum: seasonal_mean }
 
     let completenessData = {};
     let acfFftCombined = { CASTNET: [], NTN: [] };
@@ -1335,12 +1335,12 @@
     }
 
     async function loadSeasonalTrend() {
+      // Schema: SITE_ID, variable, week, seasonal_mean
       seasonalData = { CASTNET: {}, NTN: {} };
       const paths = {
         CASTNET: './data/input/CASTNET/CASTNET_seasonal_trend.csv',
         NTN: './data/input/NTN/NTN_seasonal_trend.csv'
       };
-      const shortVars = ['SO2','SO4','HNO3','NO3','TNO3','NH4','CA','K','MG','Sodium'];
       for (const [network, path] of Object.entries(paths)) {
         try {
           const res = await fetch(path);
@@ -1350,6 +1350,7 @@
           }
           const rows = parseCSV(await res.text());
           const bySite = {};
+          let nRows = 0;
           rows.forEach(raw => {
             const upperMap = {};
             Object.keys(raw).forEach(k => {
@@ -1369,27 +1370,22 @@
               return '';
             }
             const siteId = String(pick('SITE_ID', 'SITEID') || '').trim();
-            const dateon = pick('DATEON', 'DATE_ON', 'DATE', 'START_DATE', 'TIME', 'TIMESTAMP');
-            if (!siteId || !dateon) return;
+            let variable = String(pick('variable', 'VARIABLE', 'SPECIES', 'PARAM', 'VAR') || '').trim();
+            const weekStr = pick('week', 'WEEK', 'WEEKNUM', 'WEEK_OF_YEAR', 'WOY');
+            const meanStr = pick('seasonal_mean', 'SEASONAL_MEAN', 'MEAN', 'VALUE', 'SEASONAL');
+            if (!siteId || !variable || weekStr === '' || meanStr === '') return;
+            variable = variable.replace(/^variable_/i, '').toUpperCase();
+            const week = parseInt(weekStr, 10);
+            const mean = Number(meanStr);
+            if (!week || week < 1 || week > 53 || Number.isNaN(mean)) return;
             const sid = siteId.toUpperCase();
-            if (!bySite[sid]) {
-              bySite[sid] = { DATEON: [] };
-              shortVars.forEach(v => { bySite[sid][v] = []; });
-            }
-            bySite[sid].DATEON.push(dateon);
-            shortVars.forEach(v => {
-              // seasonal columns may be variable_SO2, SO2, seasonal_SO2, SO2_seasonal, trend_SO2
-              const val = pick(
-                'variable_' + v, v,
-                'seasonal_' + v, v + '_seasonal',
-                'trend_' + v, v + '_trend',
-                'SEASONAL_' + v
-              );
-              bySite[sid][v].push(val === '' ? null : Number(val));
-            });
+            if (!bySite[sid]) bySite[sid] = {};
+            if (!bySite[sid][variable]) bySite[sid][variable] = {};
+            bySite[sid][variable][week] = mean;
+            nRows++;
           });
           seasonalData[network] = bySite;
-          console.log('Loaded seasonal', network, Object.keys(bySite).length, 'sites');
+          console.log('Loaded seasonal', network, Object.keys(bySite).length, 'sites,', nRows, 'rows');
         } catch (e) {
           console.error('loadSeasonalTrend', network, e);
         }
@@ -1397,6 +1393,7 @@
     }
 
     function getSeasonalBundle(network, siteId) {
+      // Returns { VARIABLE: { week: mean, ... }, ... } or null
       const net = seasonalData[network] || {};
       const sid = normalizeSiteId(siteId);
       if (net[sid]) return net[sid];
@@ -1404,6 +1401,51 @@
         if (normalizeSiteId(k) === sid) return net[k];
       }
       return null;
+    }
+
+    /** ISO-like week number 1–53 from a date string (DATEON) */
+    function weekOfYearFromDate(dateStr) {
+      if (!dateStr) return null;
+      const t = String(dateStr).trim();
+      let m = t.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+      let d;
+      if (m) d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+      else {
+        m = t.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+        if (m) d = new Date(Date.UTC(+m[3], +m[1] - 1, +m[2]));
+        else d = new Date(t);
+      }
+      if (!d || isNaN(d.getTime())) return null;
+      // ISO week: Thursday-based
+      const tmp = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+      tmp.setUTCDate(tmp.getUTCDate() + 4 - (tmp.getUTCDay() || 7));
+      const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
+      const week = Math.ceil((((tmp - yearStart) / 86400000) + 1) / 7);
+      return week;
+    }
+
+    function seasonalMeansAlignedToLabels(siteBundle, variable, labels) {
+      if (!siteBundle || !labels || !labels.length) return labels.map(() => null);
+      const varKey = String(variable || '').replace(/^variable_/i, '').toUpperCase();
+      let weekMap = siteBundle[varKey] || siteBundle[variable] || null;
+      if (!weekMap) {
+        // try any key match ignoring case
+        for (const k of Object.keys(siteBundle)) {
+          if (String(k).toUpperCase().replace(/^VARIABLE_/, '') === varKey) {
+            weekMap = siteBundle[k];
+            break;
+          }
+        }
+      }
+      if (!weekMap) return labels.map(() => null);
+      return labels.map(dateStr => {
+        const w = weekOfYearFromDate(dateStr);
+        if (!w) return null;
+        if (weekMap[w] != null) return weekMap[w];
+        // occasional ISO week 53 vs 52 tables
+        if (w === 53 && weekMap[52] != null) return weekMap[52];
+        return null;
+      });
     }
 
     async function loadCompleteness() {
@@ -2382,7 +2424,7 @@
         const bi = getImputedBundle(network, siteId);
         const bs = getSeasonalBundle(network, siteId);
         parts.push(bi ? ('imputed rows: ' + (bi.DATEON || []).length) : 'no imputed rows');
-        parts.push(bs ? ('seasonal rows: ' + (bs.DATEON || []).length) : 'no seasonal rows');
+        parts.push(bs ? ('seasonal vars: ' + Object.keys(bs).join(',')) : 'no seasonal rows');
         st.textContent = parts.join(' · ');
       }
       zoomEl.value = 100;
@@ -2466,22 +2508,25 @@
 
       if (showSeasonal) {
         const bundle = getSeasonalBundle(network, siteId);
-        if (bundle && bundle.DATEON && bundle.DATEON.length) {
-          const aligned = alignSeriesToLabels(bundle, variable, labels);
-          datasets.push({
-            label: `${network} ${siteId} ${variable} seasonal`,
-            data: aligned,
-            borderColor: darkGreen,
-            backgroundColor: darkGreen,
-            pointBackgroundColor: darkGreen,
-            pointBorderColor: darkGreen,
-            borderWidth: 1.6,
-            pointRadius: 0,
-            pointHoverRadius: 3,
-            pointHitRadius: 5,
-            tension: 0,
-            spanGaps: false
-          });
+        if (bundle) {
+          const aligned = seasonalMeansAlignedToLabels(bundle, variable, labels);
+          const nOk = aligned.filter(v => v != null && !Number.isNaN(v)).length;
+          if (nOk > 0) {
+            datasets.push({
+              label: `${network} ${siteId} ${variable} seasonal`,
+              data: aligned,
+              borderColor: darkGreen,
+              backgroundColor: darkGreen,
+              pointBackgroundColor: darkGreen,
+              pointBorderColor: darkGreen,
+              borderWidth: 1.6,
+              pointRadius: 0,
+              pointHoverRadius: 3,
+              pointHitRadius: 5,
+              tension: 0,
+              spanGaps: false
+            });
+          }
         }
       }
       return datasets;
@@ -2519,8 +2564,12 @@
         }
         if (state.showSeasonal) {
           const b = getSeasonalBundle(network, siteId);
-          if (!b) parts.push('seasonal: no data');
-          else parts.push('seasonal rows: ' + (b.DATEON || []).length);
+          if (!b) parts.push('seasonal: no data for site');
+          else {
+            const vk = String(state.variable || '').replace(/^variable_/i, '').toUpperCase();
+            const weeks = b[vk] ? Object.keys(b[vk]).length : 0;
+            parts.push(weeks ? ('seasonal weeks for ' + vk + ': ' + weeks) : ('seasonal: no weeks for ' + vk));
+          }
         }
         st.textContent = parts.join(' · ');
       }
