@@ -284,6 +284,13 @@
       box-shadow: 0 0 6px #2ecc71;
       border-color: #2ecc71;
     }
+    .impute-bar button.active-seasonal {
+      background: #0d2818;
+      box-shadow: 0 0 6px #145a32;
+      border-color: #145a32;
+    }
+    .impute-legend .dot.seasonal { background: #145a32; }
+
     .impute-toggle {
       display: inline-flex;
       align-items: center;
@@ -685,6 +692,7 @@
     let coverageData = {};
     let timeseriesData = {};
     let imputedData = { CASTNET: {}, NTN: {} }; // network -> SITE_ID -> { DATEON, vars..., flags }
+    let seasonalData = { CASTNET: {}, NTN: {} }; // network -> SITE_ID -> { DATEON, SO2: [], ... }
 
     let completenessData = {};
     let acfFftCombined = { CASTNET: [], NTN: [] };
@@ -777,11 +785,21 @@
           <label class="impute-toggle" title="Show / hide imputed series">
             <input type="checkbox" id="chk-impute-${suffix}"
               onchange="setImputationVisible('${network}', '${siteId}', this.checked)" />
-            show imputed line
+            show imputed
+          </label>
+          <button type="button" id="btn-seasonal-${suffix}"
+            onclick="toggleSeasonalPattern('${network}', '${siteId}')">
+            [ SEASONAL PATTERN ]
+          </button>
+          <label class="impute-toggle" title="Show / hide seasonal pattern line">
+            <input type="checkbox" id="chk-seasonal-${suffix}"
+              onchange="setSeasonalVisible('${network}', '${siteId}', this.checked)" />
+            show seasonal
           </label>
           <span class="impute-legend">
             <span class="dot orig"></span> original
-            <span class="dot imp"></span> imputed (imputation_data=true)
+            <span class="dot imp"></span> imputed
+            <span class="dot seasonal"></span> seasonal
           </span>
           <span class="impute-status" id="impute-status-${suffix}"></span>
         </div>`;
@@ -1310,6 +1328,78 @@
       const sid = normalizeSiteId(siteId);
       if (net[sid]) return net[sid];
       // try case-insensitive
+      for (const k of Object.keys(net)) {
+        if (normalizeSiteId(k) === sid) return net[k];
+      }
+      return null;
+    }
+
+    async function loadSeasonalTrend() {
+      seasonalData = { CASTNET: {}, NTN: {} };
+      const paths = {
+        CASTNET: './data/input/CASTNET/CASTNET_seasonal_trend.csv',
+        NTN: './data/input/NTN/NTN_seasonal_trend.csv'
+      };
+      const shortVars = ['SO2','SO4','HNO3','NO3','TNO3','NH4','CA','K','MG','Sodium'];
+      for (const [network, path] of Object.entries(paths)) {
+        try {
+          const res = await fetch(path);
+          if (!res.ok) {
+            console.warn('Seasonal file not found:', path);
+            continue;
+          }
+          const rows = parseCSV(await res.text());
+          const bySite = {};
+          rows.forEach(raw => {
+            const upperMap = {};
+            Object.keys(raw).forEach(k => {
+              upperMap[String(k).toUpperCase().replace(/[^A-Z0-9]/g, '')] = raw[k];
+            });
+            function pick(...names) {
+              for (const n of names) {
+                const key = String(n).toUpperCase().replace(/[^A-Z0-9]/g, '');
+                if (Object.prototype.hasOwnProperty.call(upperMap, key)) {
+                  const v = upperMap[key];
+                  if (v === null || v === undefined) continue;
+                  const s = String(v).trim();
+                  if (s === '' || s.toUpperCase() === 'NA' || s.toUpperCase() === 'NAN') continue;
+                  return s;
+                }
+              }
+              return '';
+            }
+            const siteId = String(pick('SITE_ID', 'SITEID') || '').trim();
+            const dateon = pick('DATEON', 'DATE_ON', 'DATE', 'START_DATE', 'TIME', 'TIMESTAMP');
+            if (!siteId || !dateon) return;
+            const sid = siteId.toUpperCase();
+            if (!bySite[sid]) {
+              bySite[sid] = { DATEON: [] };
+              shortVars.forEach(v => { bySite[sid][v] = []; });
+            }
+            bySite[sid].DATEON.push(dateon);
+            shortVars.forEach(v => {
+              // seasonal columns may be variable_SO2, SO2, seasonal_SO2, SO2_seasonal, trend_SO2
+              const val = pick(
+                'variable_' + v, v,
+                'seasonal_' + v, v + '_seasonal',
+                'trend_' + v, v + '_trend',
+                'SEASONAL_' + v
+              );
+              bySite[sid][v].push(val === '' ? null : Number(val));
+            });
+          });
+          seasonalData[network] = bySite;
+          console.log('Loaded seasonal', network, Object.keys(bySite).length, 'sites');
+        } catch (e) {
+          console.error('loadSeasonalTrend', network, e);
+        }
+      }
+    }
+
+    function getSeasonalBundle(network, siteId) {
+      const net = seasonalData[network] || {};
+      const sid = normalizeSiteId(siteId);
+      if (net[sid]) return net[sid];
       for (const k of Object.keys(net)) {
         if (normalizeSiteId(k) === sid) return net[k];
       }
@@ -2274,20 +2364,26 @@
       });
       charts[key] = {
         chart, labels, values: dataVals, network, siteId,
-        variable: sel.variable, showImputed: false
+        variable: sel.variable, showImputed: false, showSeasonal: false
       };
       const zoomEl = document.getElementById('trend-zoom-' + suffix);
       const scrollEl = document.getElementById('trend-scroll-' + suffix);
       const chk = document.getElementById('chk-impute-' + suffix);
       const btn = document.getElementById('btn-impute-' + suffix);
+      const chkS = document.getElementById('chk-seasonal-' + suffix);
+      const btnS = document.getElementById('btn-seasonal-' + suffix);
       const st = document.getElementById('impute-status-' + suffix);
       if (chk) chk.checked = false;
       if (btn) btn.classList.remove('active-impute');
+      if (chkS) chkS.checked = false;
+      if (btnS) btnS.classList.remove('active-seasonal');
       if (st) {
-        const bundle = getImputedBundle(network, siteId);
-        st.textContent = bundle
-          ? ('imputed file loaded · ' + (bundle.DATEON || []).length + ' rows — click SIMPLE IMPUTATION to overlay')
-          : 'no imputed CSV rows for this site';
+        const parts = [];
+        const bi = getImputedBundle(network, siteId);
+        const bs = getSeasonalBundle(network, siteId);
+        parts.push(bi ? ('imputed rows: ' + (bi.DATEON || []).length) : 'no imputed rows');
+        parts.push(bs ? ('seasonal rows: ' + (bs.DATEON || []).length) : 'no seasonal rows');
+        st.textContent = parts.join(' · ');
       }
       zoomEl.value = 100;
       scrollEl.value = 0;
@@ -2299,10 +2395,25 @@
     }
 
 
-    function buildTrendDatasets(network, siteId, variable, labels, origVals, showImputed) {
+    function alignSeriesToLabels(bundle, variable, labels) {
+      if (!bundle || !bundle.DATEON) return labels.map(() => null);
+      const varKey = String(variable || '').replace(/^variable_/, '');
+      const vals = bundle[varKey] || bundle['variable_' + varKey] || [];
+      const byDate = {};
+      for (let i = 0; i < bundle.DATEON.length; i++) {
+        const d = bundle.DATEON[i];
+        const v = vals[i];
+        byDate[d] = (v === null || v === undefined || v === '' || Number.isNaN(Number(v)))
+          ? null : Number(v);
+      }
+      return labels.map(d => (d in byDate ? byDate[d] : null));
+    }
+
+    function buildTrendDatasets(network, siteId, variable, labels, origVals, showImputed, showSeasonal) {
       const isCastnet = network === 'CASTNET';
       const lineColor = isCastnet ? '#e74c3c' : '#3498db';
       const yUnit = isCastnet ? 'µg/m³' : 'mg/L';
+      const darkGreen = '#145a32';
       const datasets = [{
         label: `${network} ${siteId} ${variable} original (${yUnit})`,
         data: origVals,
@@ -2317,43 +2428,102 @@
         tension: 0,
         spanGaps: false
       }];
-      if (!showImputed) return datasets;
 
-      const bundle = getImputedBundle(network, siteId);
-      if (!bundle || !bundle.DATEON || !bundle.DATEON.length) return datasets;
-
-      const varKey = variable.replace(/^variable_/, '');
-      const impVals = bundle[varKey] || bundle['variable_' + varKey] || [];
-      const flags = bundle.flags || [];
-      // Align imputed series onto chart labels (DATEON)
-      const byDate = {};
-      const flagByDate = {};
-      for (let i = 0; i < bundle.DATEON.length; i++) {
-        const d = bundle.DATEON[i];
-        const v = impVals[i];
-        byDate[d] = (v === null || v === undefined || v === '' || Number.isNaN(Number(v)))
-          ? null : Number(v);
-        flagByDate[d] = !!flags[i];
+      if (showImputed) {
+        const bundle = getImputedBundle(network, siteId);
+        if (bundle && bundle.DATEON && bundle.DATEON.length) {
+          const varKey = variable.replace(/^variable_/, '');
+          const impVals = bundle[varKey] || bundle['variable_' + varKey] || [];
+          const flags = bundle.flags || [];
+          const byDate = {};
+          const flagByDate = {};
+          for (let i = 0; i < bundle.DATEON.length; i++) {
+            const d = bundle.DATEON[i];
+            const v = impVals[i];
+            byDate[d] = (v === null || v === undefined || v === '' || Number.isNaN(Number(v)))
+              ? null : Number(v);
+            flagByDate[d] = !!flags[i];
+          }
+          const aligned = labels.map(d => (d in byDate ? byDate[d] : null));
+          const pointColors = labels.map(d => flagByDate[d] ? '#2ecc71' : lineColor);
+          const pointRadii = labels.map(d => flagByDate[d] ? 3 : 2);
+          datasets.push({
+            label: `${network} ${siteId} ${variable} imputed`,
+            data: aligned,
+            borderColor: '#2ecc71',
+            backgroundColor: '#2ecc71',
+            pointBackgroundColor: pointColors,
+            pointBorderColor: pointColors,
+            pointRadius: pointRadii,
+            pointHoverRadius: 5,
+            pointHitRadius: 6,
+            borderWidth: 1.2,
+            tension: 0,
+            spanGaps: false
+          });
+        }
       }
-      const aligned = labels.map(d => (d in byDate ? byDate[d] : null));
-      const pointColors = labels.map(d => flagByDate[d] ? '#2ecc71' : lineColor);
-      const pointRadii = labels.map(d => flagByDate[d] ? 3 : 2);
 
-      datasets.push({
-        label: `${network} ${siteId} ${variable} imputed`,
-        data: aligned,
-        borderColor: '#2ecc71',
-        backgroundColor: '#2ecc71',
-        pointBackgroundColor: pointColors,
-        pointBorderColor: pointColors,
-        pointRadius: pointRadii,
-        pointHoverRadius: 5,
-        pointHitRadius: 6,
-        borderWidth: 1.2,
-        tension: 0,
-        spanGaps: false
-      });
+      if (showSeasonal) {
+        const bundle = getSeasonalBundle(network, siteId);
+        if (bundle && bundle.DATEON && bundle.DATEON.length) {
+          const aligned = alignSeriesToLabels(bundle, variable, labels);
+          datasets.push({
+            label: `${network} ${siteId} ${variable} seasonal`,
+            data: aligned,
+            borderColor: darkGreen,
+            backgroundColor: darkGreen,
+            pointBackgroundColor: darkGreen,
+            pointBorderColor: darkGreen,
+            borderWidth: 1.6,
+            pointRadius: 0,
+            pointHoverRadius: 3,
+            pointHitRadius: 5,
+            tension: 0,
+            spanGaps: false
+          });
+        }
+      }
       return datasets;
+    }
+
+    function refreshTrendOverlays(network, siteId) {
+      const key = selKey(network, siteId);
+      const state = charts[key];
+      if (!state || !state.chart) return;
+      const suffix = safeSite(siteId) + '-' + network.toLowerCase();
+      const btnI = document.getElementById('btn-impute-' + suffix);
+      const chkI = document.getElementById('chk-impute-' + suffix);
+      const btnS = document.getElementById('btn-seasonal-' + suffix);
+      const chkS = document.getElementById('chk-seasonal-' + suffix);
+      if (btnI) btnI.classList.toggle('active-impute', !!state.showImputed);
+      if (chkI) chkI.checked = !!state.showImputed;
+      if (btnS) btnS.classList.toggle('active-seasonal', !!state.showSeasonal);
+      if (chkS) chkS.checked = !!state.showSeasonal;
+
+      const ds = buildTrendDatasets(
+        network, siteId, state.variable, state.labels, state.values,
+        !!state.showImputed, !!state.showSeasonal
+      );
+      state.chart.data.datasets = ds;
+      state.chart.update('none');
+      applyTrendWindow(network, siteId);
+
+      const st = document.getElementById('impute-status-' + suffix);
+      if (st) {
+        const parts = [];
+        if (state.showImputed) {
+          const b = getImputedBundle(network, siteId);
+          if (!b) parts.push('imputed: no data');
+          else parts.push('imputed pts: ' + (b.flags || []).filter(Boolean).length + '/' + (b.DATEON || []).length);
+        }
+        if (state.showSeasonal) {
+          const b = getSeasonalBundle(network, siteId);
+          if (!b) parts.push('seasonal: no data');
+          else parts.push('seasonal rows: ' + (b.DATEON || []).length);
+        }
+        st.textContent = parts.join(' · ');
+      }
     }
 
     function setImputationVisible(network, siteId, visible) {
@@ -2361,30 +2531,15 @@
       const state = charts[key];
       if (!state || !state.chart) return;
       state.showImputed = !!visible;
-      const suffix = safeSite(siteId) + '-' + network.toLowerCase();
-      const btn = document.getElementById('btn-impute-' + suffix);
-      if (btn) btn.classList.toggle('active-impute', !!visible);
-      const chk = document.getElementById('chk-impute-' + suffix);
-      if (chk) chk.checked = !!visible;
-      // rebuild datasets
-      const ds = buildTrendDatasets(
-        network, siteId, state.variable, state.labels, state.values, state.showImputed
-      );
-      state.chart.data.datasets = ds;
-      state.chart.update('none');
-      applyTrendWindow(network, siteId);
-      const st = document.getElementById('impute-status-' + suffix);
-      if (st) {
-        if (!visible) st.textContent = '';
-        else {
-          const bundle = getImputedBundle(network, siteId);
-          if (!bundle) st.textContent = 'No imputed file data for this SITE_ID';
-          else {
-            const nImp = (bundle.flags || []).filter(Boolean).length;
-            st.textContent = 'imputed points in file: ' + nImp + ' / ' + (bundle.DATEON || []).length;
-          }
-        }
-      }
+      refreshTrendOverlays(network, siteId);
+    }
+
+    function setSeasonalVisible(network, siteId, visible) {
+      const key = selKey(network, siteId);
+      const state = charts[key];
+      if (!state || !state.chart) return;
+      state.showSeasonal = !!visible;
+      refreshTrendOverlays(network, siteId);
     }
 
     function toggleSimpleImputation(network, siteId) {
@@ -2397,11 +2552,28 @@
       const bundle = getImputedBundle(network, siteId);
       if (!bundle) {
         alert('No imputed data for ' + network + ' · ' + siteId +
-          '\\nExpected file: data/input/' +
+          '\nExpected: data/input/' +
           (network === 'CASTNET' ? 'CASTNET/CASTNET_imputed_all.csv' : 'NTN/NTN_imputed_all.csv'));
         return;
       }
       setImputationVisible(network, siteId, !state.showImputed);
+    }
+
+    function toggleSeasonalPattern(network, siteId) {
+      const key = selKey(network, siteId);
+      const state = charts[key];
+      if (!state || !state.chart) {
+        alert('Open the statistical-trending plot first.');
+        return;
+      }
+      const bundle = getSeasonalBundle(network, siteId);
+      if (!bundle) {
+        alert('No seasonal pattern data for ' + network + ' · ' + siteId +
+          '\nExpected: data/input/' +
+          (network === 'CASTNET' ? 'CASTNET/CASTNET_seasonal_trend.csv' : 'NTN/NTN_seasonal_trend.csv'));
+        return;
+      }
+      setSeasonalVisible(network, siteId, !state.showSeasonal);
     }
 
     function onCombineCheck(network, siteId, el) {
@@ -2824,6 +2996,7 @@
       await loadCoverage();
       await loadTimeseries();
       await loadImputedAll();
+      await loadSeasonalTrend();
       await loadCompleteness();
       await loadAcfFftCombined();
       buildMarkersAndTable();
