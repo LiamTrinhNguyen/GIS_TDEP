@@ -1334,6 +1334,17 @@
       return null;
     }
 
+    function normalizeSeasonalVarName(v) {
+      let s = String(v == null ? '' : v).trim();
+      s = s.replace(/^variable_/i, '');
+      const u = s.toUpperCase();
+      if (u === 'NA' || u === 'SODIUM' || u === 'NA+' || u === 'SOD') return 'SODIUM';
+      if (u === 'CA' || u === 'CALCIUM') return 'CA';
+      if (u === 'MG' || u === 'MAGNESIUM') return 'MG';
+      if (u === 'K' || u === 'POTASSIUM') return 'K';
+      return u;
+    }
+
     async function loadSeasonalTrend() {
       // Schema: SITE_ID, variable, week, seasonal_mean
       seasonalData = { CASTNET: {}, NTN: {} };
@@ -1349,6 +1360,12 @@
             continue;
           }
           const rows = parseCSV(await res.text());
+          if (!rows.length) {
+            console.warn('Seasonal file empty:', path);
+            continue;
+          }
+          // Debug header keys from first row
+          console.log('Seasonal headers', network, Object.keys(rows[0] || {}));
           const bySite = {};
           let nRows = 0;
           rows.forEach(raw => {
@@ -1363,21 +1380,40 @@
                   const v = upperMap[key];
                   if (v === null || v === undefined) continue;
                   const s = String(v).trim();
-                  if (s === '' || s.toUpperCase() === 'NA' || s.toUpperCase() === 'NAN') continue;
+                  // week / mean can be 0 — only skip empty / NA text
+                  if (s === '' || s.toUpperCase() === 'NAN') continue;
+                  if (s.toUpperCase() === 'NA' && key !== 'VARIABLE' && key !== 'VAR') continue;
                   return s;
                 }
               }
               return '';
             }
-            const siteId = String(pick('SITE_ID', 'SITEID') || '').trim();
-            let variable = String(pick('variable', 'VARIABLE', 'SPECIES', 'PARAM', 'VAR') || '').trim();
-            const weekStr = pick('week', 'WEEK', 'WEEKNUM', 'WEEK_OF_YEAR', 'WOY');
-            const meanStr = pick('seasonal_mean', 'SEASONAL_MEAN', 'MEAN', 'VALUE', 'SEASONAL');
+            // Allow NA as variable name: pick variable without filtering NA
+            function pickRaw(...names) {
+              for (const n of names) {
+                const key = String(n).toUpperCase().replace(/[^A-Z0-9]/g, '');
+                if (Object.prototype.hasOwnProperty.call(upperMap, key)) {
+                  const v = upperMap[key];
+                  if (v === null || v === undefined) continue;
+                  const s = String(v).trim();
+                  if (s === '') continue;
+                  return s;
+                }
+              }
+              return '';
+            }
+            const siteId = String(pickRaw('SITE_ID', 'SITEID') || '').trim();
+            let variable = String(pickRaw('variable', 'VARIABLE', 'SPECIES', 'PARAM', 'VAR') || '').trim();
+            const weekStr = pickRaw('week', 'WEEK', 'WEEKNUM', 'WEEK_OF_YEAR', 'WOY');
+            const meanStr = pickRaw('seasonal_mean', 'SEASONAL_MEAN', 'SEASONALMEAN', 'MEAN', 'VALUE', 'SEASONAL');
             if (!siteId || !variable || weekStr === '' || meanStr === '') return;
-            variable = variable.replace(/^variable_/i, '').toUpperCase();
-            const week = parseInt(weekStr, 10);
+            variable = normalizeSeasonalVarName(variable);
+            let week = parseInt(weekStr, 10);
+            if (Number.isNaN(week)) week = Math.round(Number(weekStr));
+            // Support 0–51 (shift to 1–52) and 1–53
+            if (week === 0) week = 1;
             const mean = Number(meanStr);
-            if (!week || week < 1 || week > 53 || Number.isNaN(mean)) return;
+            if (Number.isNaN(week) || week < 1 || week > 53 || Number.isNaN(mean)) return;
             const sid = siteId.toUpperCase();
             if (!bySite[sid]) bySite[sid] = {};
             if (!bySite[sid][variable]) bySite[sid][variable] = {};
@@ -1385,7 +1421,9 @@
             nRows++;
           });
           seasonalData[network] = bySite;
-          console.log('Loaded seasonal', network, Object.keys(bySite).length, 'sites,', nRows, 'rows');
+          const sampleSite = Object.keys(bySite)[0];
+          const sampleVars = sampleSite ? Object.keys(bySite[sampleSite]) : [];
+          console.log('Loaded seasonal', network, Object.keys(bySite).length, 'sites,', nRows, 'rows; sample vars:', sampleVars.join(','));
         } catch (e) {
           console.error('loadSeasonalTrend', network, e);
         }
@@ -1403,48 +1441,73 @@
       return null;
     }
 
-    /** ISO-like week number 1–53 from a date string (DATEON) */
-    function weekOfYearFromDate(dateStr) {
+    function parseDateParts(dateStr) {
       if (!dateStr) return null;
       const t = String(dateStr).trim();
-      let m = t.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
-      let d;
-      if (m) d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
-      else {
-        m = t.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
-        if (m) d = new Date(Date.UTC(+m[3], +m[1] - 1, +m[2]));
-        else d = new Date(t);
-      }
-      if (!d || isNaN(d.getTime())) return null;
-      // ISO week: Thursday-based
+      let m = t.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+      if (m) return { y: +m[1], mo: +m[2], d: +m[3] };
+      m = t.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+      if (m) return { y: +m[3], mo: +m[1], d: +m[2] };
+      const dt = new Date(t);
+      if (isNaN(dt.getTime())) return null;
+      return { y: dt.getUTCFullYear(), mo: dt.getUTCMonth() + 1, d: dt.getUTCDate() };
+    }
+
+    /** ISO week number 1–53 */
+    function weekOfYearFromDate(dateStr) {
+      const p = parseDateParts(dateStr);
+      if (!p) return null;
+      const d = new Date(Date.UTC(p.y, p.mo - 1, p.d));
       const tmp = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
       tmp.setUTCDate(tmp.getUTCDate() + 4 - (tmp.getUTCDay() || 7));
       const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
-      const week = Math.ceil((((tmp - yearStart) / 86400000) + 1) / 7);
-      return week;
+      return Math.ceil((((tmp - yearStart) / 86400000) + 1) / 7);
+    }
+
+    /** Simple week: floor((dayOfYear-1)/7)+1  → 1–53 */
+    function weekOfYearSimple(dateStr) {
+      const p = parseDateParts(dateStr);
+      if (!p) return null;
+      const start = Date.UTC(p.y, 0, 1);
+      const cur = Date.UTC(p.y, p.mo - 1, p.d);
+      const doy = Math.floor((cur - start) / 86400000) + 1;
+      return Math.min(53, Math.floor((doy - 1) / 7) + 1);
+    }
+
+    function lookupWeekMean(weekMap, w) {
+      if (w == null) return null;
+      if (weekMap[w] != null) return weekMap[w];
+      if (weekMap[String(w)] != null) return weekMap[String(w)];
+      if (w === 53 && weekMap[52] != null) return weekMap[52];
+      if (w === 53 && weekMap['52'] != null) return weekMap['52'];
+      return null;
     }
 
     function seasonalMeansAlignedToLabels(siteBundle, variable, labels) {
       if (!siteBundle || !labels || !labels.length) return labels.map(() => null);
-      const varKey = String(variable || '').replace(/^variable_/i, '').toUpperCase();
-      let weekMap = siteBundle[varKey] || siteBundle[variable] || null;
+      const varKey = normalizeSeasonalVarName(variable);
+      let weekMap = siteBundle[varKey] || null;
       if (!weekMap) {
-        // try any key match ignoring case
         for (const k of Object.keys(siteBundle)) {
-          if (String(k).toUpperCase().replace(/^VARIABLE_/, '') === varKey) {
+          if (normalizeSeasonalVarName(k) === varKey) {
             weekMap = siteBundle[k];
             break;
           }
         }
       }
       if (!weekMap) return labels.map(() => null);
-      return labels.map(dateStr => {
+
+      // Prefer ISO weeks; if almost all null, fall back to simple weeks
+      const isoAligned = labels.map(dateStr => {
         const w = weekOfYearFromDate(dateStr);
-        if (!w) return null;
-        if (weekMap[w] != null) return weekMap[w];
-        // occasional ISO week 53 vs 52 tables
-        if (w === 53 && weekMap[52] != null) return weekMap[52];
-        return null;
+        return lookupWeekMean(weekMap, w);
+      });
+      const isoOk = isoAligned.filter(v => v != null && !Number.isNaN(v)).length;
+      if (isoOk > 0) return isoAligned;
+
+      return labels.map(dateStr => {
+        const w = weekOfYearSimple(dateStr);
+        return lookupWeekMean(weekMap, w);
       });
     }
 
