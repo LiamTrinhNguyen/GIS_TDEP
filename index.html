@@ -375,17 +375,25 @@
     }
     .trend-stats span { white-space: nowrap; }
     .trend-stats .lab { color: #888; }
+    .trend-stats.multi-series,
     .trend-stats.combine-stats {
-      flex-direction: column; gap: 6px; max-height: 140px; overflow-y: auto;
+      flex-direction: column; gap: 6px; max-height: 160px; overflow-y: auto;
     }
+    .trend-stats.multi-series .series-stat,
     .trend-stats.combine-stats .series-stat {
       display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline;
       border-bottom: 1px solid #222; padding-bottom: 4px;
     }
+    .trend-stats.multi-series .series-stat:last-child,
     .trend-stats.combine-stats .series-stat:last-child { border-bottom: none; }
+    .trend-stats.multi-series .series-name,
     .trend-stats.combine-stats .series-name {
-      color: #fff; min-width: 160px; font-size: 11px;
+      color: #fff; min-width: 120px; font-size: 11px;
     }
+    .trend-stats .series-name.orig { color: #e74c3c; }
+    .trend-stats .series-name.imp { color: #2ecc71; }
+    .trend-stats .series-name.seasonal { color: #145a32; }
+    .trend-stats .series-name.ntn-orig { color: #3498db; }
     .trend-body { display: flex; gap: 10px; align-items: stretch; }
     .trend-canvas-wrap { position: relative; height: 300px; flex: 1; min-width: 0; }
     .trend-zoom-wrap {
@@ -797,8 +805,8 @@
             show seasonal
           </label>
           <span class="impute-legend">
-            <span class="dot orig"></span> original
-            <span class="dot imp"></span> imputed
+            <span class="dot orig"></span> original / obs on filled
+            <span class="dot imp"></span> imputed dots (imputation_data=true)
             <span class="dot seasonal"></span> seasonal
           </span>
           <span class="impute-status" id="impute-status-${suffix}"></span>
@@ -2360,20 +2368,116 @@
       if (Math.abs(x) >= 100 || Math.abs(x) < 0.01) return x.toExponential(3);
       return x.toFixed(4).replace(/\.?0+$/, '') || '0';
     }
-    function updateTrendStats(network, siteId, start, end) {
-      const key = selKey(network, siteId);
-      const state = charts[key];
-      if (!state || !state.values.length) return;
-      const s = computeWindowStats(state.values, start, end);
-      const suffix = safeSite(siteId) + '-' + network.toLowerCase();
-      const el = document.getElementById('trend-stats-' + suffix);
-      if (!el) return;
-      el.innerHTML = `
+    function seriesStatRow(name, cls, s) {
+      return `<div class="series-stat">
+        <span class="series-name ${cls}">${name}</span>
         <span><span class="lab">min</span> ${formatNum(s.min)}</span>
         <span><span class="lab">max</span> ${formatNum(s.max)}</span>
         <span><span class="lab">median</span> ${formatNum(s.median)}</span>
         <span><span class="lab">avg</span> ${formatNum(s.avg)}</span>
-        <span><span class="lab">n</span> ${s.n}</span>`;
+        <span><span class="lab">n</span> ${s.n}</span>
+      </div>`;
+    }
+
+    /** Align imputed file values + flags onto chart DATEON labels */
+    function alignImputedToLabels(network, siteId, variable, labels) {
+      const bundle = getImputedBundle(network, siteId);
+      if (!bundle || !bundle.DATEON || !labels) {
+        return { values: (labels || []).map(() => null), flags: (labels || []).map(() => false) };
+      }
+      const varKey = String(variable || '').replace(/^variable_/, '');
+      const impArr = bundle[varKey] || bundle['variable_' + varKey] || [];
+      const flagsArr = bundle.flags || [];
+      const byDate = {};
+      const flagByDate = {};
+      for (let i = 0; i < bundle.DATEON.length; i++) {
+        const d = bundle.DATEON[i];
+        const v = impArr[i];
+        byDate[d] = (v === null || v === undefined || v === '' || Number.isNaN(Number(v)))
+          ? null : Number(v);
+        flagByDate[d] = !!flagsArr[i];
+      }
+      return {
+        values: labels.map(d => (d in byDate ? byDate[d] : null)),
+        flags: labels.map(d => !!flagByDate[d])
+      };
+    }
+
+    function computeWindowStatsMasked(values, flags, start, end, wantImputedFlag) {
+      // wantImputedFlag: true = only imputation_data points; false = only original dots on mixed line
+      const nums = [];
+      const lo = Math.max(0, start);
+      const hi = Math.min((values || []).length - 1, end);
+      for (let i = lo; i <= hi; i++) {
+        const v = values[i];
+        if (v === null || v === undefined || Number.isNaN(v)) continue;
+        const isImp = !!(flags && flags[i]);
+        if (wantImputedFlag === true && !isImp) continue;
+        if (wantImputedFlag === false && isImp) continue;
+        nums.push(v);
+      }
+      if (!nums.length) return { min: null, max: null, median: null, avg: null, n: 0 };
+      let min = nums[0], max = nums[0], sum = 0;
+      for (const v of nums) { if (v < min) min = v; if (v > max) max = v; sum += v; }
+      const sorted = nums.slice().sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      const median = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+      return { min, max, median, avg: sum / nums.length, n: nums.length };
+    }
+
+    function updateTrendStats(network, siteId, start, end) {
+      const key = selKey(network, siteId);
+      const state = charts[key];
+      if (!state) return;
+      const suffix = safeSite(siteId) + '-' + network.toLowerCase();
+      const el = document.getElementById('trend-stats-' + suffix);
+      if (!el) return;
+
+      const isCast = network === 'CASTNET';
+      const origCls = isCast ? 'orig' : 'ntn-orig';
+      const rows = [];
+
+      // 1) Original observed series (always)
+      const sOrig = computeWindowStats(state.values || [], start, end);
+      rows.push(seriesStatRow('original', origCls, sOrig));
+
+      // 2) Simple Imputation overlay = MIXED line (original dots + imputed dots)
+      if (state.showImputed) {
+        const aligned = alignImputedToLabels(
+          network, siteId, state.variable, state.labels || []
+        );
+        // Full mixed line (all non-null points on the imputation series)
+        const sAll = computeWindowStats(aligned.values, start, end);
+        rows.push(seriesStatRow('filled series (mix)', 'imp', sAll));
+        // Original dots only on that line (imputation_data = false)
+        const sObs = computeWindowStatsMasked(aligned.values, aligned.flags, start, end, false);
+        rows.push(seriesStatRow('obs dots on filled', origCls, sObs));
+        // Imputed dots only (imputation_data = true) — green
+        const sImp = computeWindowStatsMasked(aligned.values, aligned.flags, start, end, true);
+        rows.push(seriesStatRow('imputed dots', 'imp', sImp));
+      }
+
+      // 3) Seasonal (if overlay on)
+      if (state.showSeasonal) {
+        let seaVals = null;
+        if (state.chart && state.chart.data && state.chart.data.datasets) {
+          const ds = state.chart.data.datasets.find(d =>
+            /seasonal/i.test(d.label || '')
+          );
+          if (ds) seaVals = ds.data;
+        }
+        if (!seaVals) {
+          const siteVarMap = getSeasonalBundle(network, siteId);
+          if (siteVarMap) {
+            seaVals = seasonalMeansAlignedToLabels(siteVarMap, state.variable, state.labels || []);
+          }
+        }
+        const sSea = computeWindowStats(seaVals || [], start, end);
+        rows.push(seriesStatRow('seasonal', 'seasonal', sSea));
+      }
+
+      el.classList.add('multi-series');
+      el.innerHTML = rows.join('');
     }
     function applyTrendWindow(network, siteId) {
       const key = selKey(network, siteId);
