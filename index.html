@@ -266,6 +266,24 @@
     .week-box.ntn { background: #3498db; border-color: #2980b9; }
     .coverage-empty { color: #555; font-size: 12px; padding: 6px 0; }
     .trend-btn-wrap { margin-top: 10px; text-align: center; }
+    .precip-box {
+      margin-top: 12px;
+      padding: 10px;
+      border: 1px solid #1a5276;
+      background: #0a1520;
+    }
+    .precip-box .precip-title {
+      color: #5dade2;
+      font-size: 12px;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .precip-box .precip-note {
+      color: #888;
+      font-size: 11px;
+      margin-bottom: 8px;
+    }
+
     .impute-bar {
       margin-top: 10px;
       padding: 8px;
@@ -733,9 +751,11 @@
     const VARIABLES = ["SO2","SO4","HNO3","NO3","TNO3","NH4","CA","K","MG","Sodium"];
     const PRECIP_VARS = ["PPT", "SUBPPT"];
     function variablesForNetwork(network) {
-      if (network === 'NTN') return VARIABLES.concat(PRECIP_VARS);
+      // Chemistry only — PPT/SUBPPT live in a separate PRECIPITATION sub-section
       return VARIABLES.slice();
     }
+    let selectedPrecip = {}; // selKey('NTN', siteId) -> 'PPT' | 'SUBPPT'
+
     function isPrecipVar(variable) {
       const v = String(variable || '').replace(/^variable_/i, '').toUpperCase();
       return v === 'PPT' || v === 'SUBPPT';
@@ -2288,27 +2308,47 @@
       });
       ntnIds.forEach((sid, idx) => {
         const range = (dateSummary.NTN || {})[sid] || {};
-        const comp = getCompleteness('NTN', sid);
+        const comp = getCompleteness('NTN', sid, 'CHEM');
         const safeId = sid.replace(/[^A-Za-z0-9_-]/g, '_');
         html += `
           <div class="info-box" id="info-ntn-${safeId}">
             <div class="info-box-header">
-              <div class="title">NTN (NADP) — ${sid} (wet)${ntnIds.length > 1 ? ` · ${idx + 1}/${ntnIds.length}` : ''}</div>
+              <div class="title">NTN (NADP) — ${sid} (wet chemistry)${ntnIds.length > 1 ? ` · ${idx + 1}/${ntnIds.length}` : ''}</div>
               <button type="button" onclick="exportPanelToPdf('info-ntn-${safeId}', 'ntn_${sid}_coverage')">[ EXPORT ]</button>
             </div>
             <div>First day: ${range.first || '—'}</div>
             <div>Last day: ${range.last || '—'}</div>
-            <div>Completeness: <b>${comp.pct}%</b> · bracket ${comp.bracket}</div>
+            <div>Chemistry completeness: <b>${comp.pct}%</b> · bracket ${comp.bracket}</div>
             <div class="var-buttons" id="vars-ntn-${safeId}"></div>
             <div class="coverage-legend">
-              <span class="legend-item"><span class="legend-dot ntn"></span> wet</span>
+              <span class="legend-item"><span class="legend-dot ntn"></span> wet chemistry</span>
               <span class="legend-item"><span class="legend-dot missing"></span> no record</span>
             </div>
             <div class="coverage-block" id="coverage-ntn-${safeId}">
-              <div class="coverage-empty">Click a variable to show weekly coverage</div>
+              <div class="coverage-empty">Click a chemistry variable to show weekly coverage</div>
             </div>
             <div class="trend-btn-wrap">
               <button onclick="showTrendPlot('NTN', '${sid}')">[ STATISTICAL-TRENDING NTN · ${sid} ]</button>
+            </div>
+
+            <div class="precip-box" id="info-ntn-precip-${safeId}">
+              <div class="precip-title">NTN PRECIPITATION — ${sid} (PPT / SUBPPT · mm)</div>
+              <div class="precip-note">
+                Separate from wet-chemistry coverage. Select PPT or SUBPPT, then plot (Y-axis in millimeters).
+              </div>
+              <div>PPT completeness: <b>${getCompleteness('NTN', sid, 'PPT').pct}%</b>
+                · SUBPPT: <b>${getCompleteness('NTN', sid, 'SUBPPT').pct}%</b></div>
+              <div class="var-buttons" id="vars-ntn-precip-${safeId}"></div>
+              <div class="coverage-legend">
+                <span class="legend-item"><span class="legend-dot ntn"></span> precip present</span>
+                <span class="legend-item"><span class="legend-dot missing"></span> no record</span>
+              </div>
+              <div class="coverage-block" id="coverage-ntn-precip-${safeId}">
+                <div class="coverage-empty">Click PPT or SUBPPT to show weekly coverage</div>
+              </div>
+              <div class="trend-btn-wrap">
+                <button onclick="showPrecipTrendPlot('${sid}')">[ STATISTICAL-TRENDING PPT/SUBPPT · ${sid} ]</button>
+              </div>
             </div>
           </div>`;
       });
@@ -2337,11 +2377,18 @@
         ntnIds.forEach((sid, idx) => {
           const safeId = sid.replace(/[^A-Za-z0-9_-]/g, '_');
           const label = ntnIds.length > 1
-            ? `NTN — ${sid} (${idx + 1}/${ntnIds.length})`
-            : `NTN — ${sid}`;
+            ? `NTN chemistry — ${sid} (${idx + 1}/${ntnIds.length})`
+            : `NTN chemistry — ${sid}`;
           html += `<div class="combine-row">
             <span class="net-label">${label}</span>
-            <div class="combine-checks">${variablesForNetwork('NTN').map(v =>
+            <div class="combine-checks">${VARIABLES.map(v =>
+              `<label><input type="checkbox" name="combine-NTN-${safeId}" value="${v}"
+                onchange="onCombineCheck('NTN', '${sid}', this)"> ${v}</label>`
+            ).join('')}</div>
+          </div>`;
+          html += `<div class="combine-row">
+            <span class="net-label">NTN precip (mm) — ${sid}</span>
+            <div class="combine-checks">${PRECIP_VARS.map(v =>
               `<label><input type="checkbox" name="combine-NTN-${safeId}" value="${v}"
                 onchange="onCombineCheck('NTN', '${sid}', this)"> ${v}</label>`
             ).join('')}</div>
@@ -2372,6 +2419,7 @@
       ntnIds.forEach(sid => {
         const safeId = sid.replace(/[^A-Za-z0-9_-]/g, '_');
         createVarButtons('NTN', sid, `vars-ntn-${safeId}`, `coverage-ntn-${safeId}`);
+        createPrecipVarButtons(sid, `vars-ntn-precip-${safeId}`, `coverage-ntn-precip-${safeId}`);
       });
       refreshSimSiteList();
     }
@@ -2407,6 +2455,46 @@
         const target = document.getElementById(coverageId);
         if (target) target.innerHTML = buildCoverageHTML(network, siteId, prev.variable);
       }
+    }
+
+
+    function createPrecipVarButtons(siteId, containerId, coverageId) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      container.innerHTML = '';
+      const key = selKey('NTN', siteId);
+      const prev = selectedPrecip[key];
+      PRECIP_VARS.forEach(v => {
+        const btn = document.createElement('button');
+        btn.textContent = v;
+        btn.title = v + ' (mm)';
+        if (prev === v) btn.classList.add('active-var');
+        btn.onclick = () => {
+          container.querySelectorAll('button').forEach(b => b.classList.remove('active-var'));
+          btn.classList.add('active-var');
+          selectedPrecip[key] = v;
+          // Also set selected so showTrendPlot can use it if needed
+          selected[key] = { network: 'NTN', siteId, variable: v };
+          const target = document.getElementById(coverageId);
+          if (target) target.innerHTML = buildCoverageHTML('NTN', siteId, v);
+        };
+        container.appendChild(btn);
+      });
+      if (prev) {
+        const target = document.getElementById(coverageId);
+        if (target) target.innerHTML = buildCoverageHTML('NTN', siteId, prev);
+      }
+    }
+
+    function showPrecipTrendPlot(siteId) {
+      const key = selKey('NTN', siteId);
+      const v = selectedPrecip[key];
+      if (!v) {
+        alert('Select PPT or SUBPPT in the precipitation section first.');
+        return;
+      }
+      selected[key] = { network: 'NTN', siteId, variable: v };
+      showTrendPlot('NTN', siteId);
     }
 
     function computeWindowStats(values, start, end) {
