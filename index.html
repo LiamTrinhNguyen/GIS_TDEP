@@ -308,6 +308,18 @@
       border-color: #145a32;
     }
     .impute-legend .dot.seasonal { background: #145a32; }
+    .impute-bar button.active-impute-enh {
+      background: #2c1a3a;
+      box-shadow: 0 0 6px #9b59b6;
+      border-color: #9b59b6;
+    }
+    .impute-bar button.active-seasonal-enh {
+      background: #1a2e2a;
+      box-shadow: 0 0 6px #16a085;
+      border-color: #16a085;
+    }
+    .impute-legend .dot.imp-enh { background: #9b59b6; }
+    .impute-legend .dot.seasonal-enh { background: #16a085; }
 
     .impute-toggle {
       display: inline-flex;
@@ -772,7 +784,9 @@
     let coverageData = {};
     let timeseriesData = {};
     let imputedData = { CASTNET: {}, NTN: {} }; // network -> SITE_ID -> { DATEON, vars..., flags }
+    let imputedEnhancedData = { CASTNET: {}, NTN: {} };
     let seasonalData = { CASTNET: {}, NTN: {} }; // network -> SITE_ID -> variable -> { weekNum: seasonal_mean }
+    let seasonalEnhancedData = { CASTNET: {}, NTN: {} };
 
     let completenessData = {};
     let acfFftCombined = { CASTNET: [], NTN: [] };
@@ -917,10 +931,30 @@
               onchange="setSeasonalVisible('${network}', '${siteId}', this.checked${kindArg})" />
             show seasonal
           </label>
+          <button type="button" id="btn-impute-enh-${suffix}"
+            onclick="toggleEnhancedImputation('${network}', '${siteId}'${kindArg})">
+            [ ENHANCED IMPUTATION ]
+          </button>
+          <label class="impute-toggle" title="Show / hide enhanced imputed series">
+            <input type="checkbox" id="chk-impute-enh-${suffix}"
+              onchange="setEnhancedImputationVisible('${network}', '${siteId}', this.checked${kindArg})" />
+            show enh. imputed
+          </label>
+          <button type="button" id="btn-seasonal-enh-${suffix}"
+            onclick="toggleEnhancedSeasonalPattern('${network}', '${siteId}'${kindArg})">
+            [ ENHANCED SEASONAL PATTERN ]
+          </button>
+          <label class="impute-toggle" title="Show / hide enhanced seasonal pattern">
+            <input type="checkbox" id="chk-seasonal-enh-${suffix}"
+              onchange="setEnhancedSeasonalVisible('${network}', '${siteId}', this.checked${kindArg})" />
+            show enh. seasonal
+          </label>
           <span class="impute-legend">
-            <span class="dot orig"></span> original / obs on filled
-            <span class="dot imp"></span> imputed dots (imputation_data=true)
+            <span class="dot orig"></span> original
+            <span class="dot imp"></span> imputed
             <span class="dot seasonal"></span> seasonal
+            <span class="dot imp-enh"></span> enh. imputed
+            <span class="dot seasonal-enh"></span> enh. seasonal
           </span>
           <span class="impute-status" id="impute-status-${suffix}"></span>
         </div>`;
@@ -1482,6 +1516,69 @@
       return null;
     }
 
+    async function loadImputedEnhancedAll() {
+      imputedEnhancedData = { CASTNET: {}, NTN: {} };
+      const paths = {
+        CASTNET: './data/input/CASTNET/CASTNET_imputed_enhanced_all.csv',
+        NTN: './data/input/NTN/NTN_imputed_enhanced_all.csv'
+      };
+      const shortVars = ['SO2','SO4','HNO3','NO3','TNO3','NH4','CA','K','MG','Sodium','PPT','SUBPPT'];
+      for (const [network, path] of Object.entries(paths)) {
+        try {
+          const res = await fetch(path);
+          if (!res.ok) { console.warn('Enhanced imputed file not found:', path); continue; }
+          const rows = parseCSV(await res.text());
+          const bySite = {};
+          rows.forEach(raw => {
+            const upperMap = {};
+            Object.keys(raw).forEach(k => {
+              upperMap[String(k).toUpperCase().replace(/[^A-Z0-9]/g, '')] = raw[k];
+            });
+            function pick(...names) {
+              for (const n of names) {
+                const key = String(n).toUpperCase().replace(/[^A-Z0-9]/g, '');
+                if (Object.prototype.hasOwnProperty.call(upperMap, key)) {
+                  const v = upperMap[key];
+                  if (v === null || v === undefined) continue;
+                  const s = String(v).trim();
+                  if (s === '' || s.toUpperCase() === 'NA' || s.toUpperCase() === 'NAN') continue;
+                  return s;
+                }
+              }
+              return '';
+            }
+            const siteId = String(pick('SITE_ID', 'SITEID') || '').trim();
+            const dateon = pick('DATEON', 'DATE_ON', 'DATE', 'START_DATE');
+            if (!siteId || !dateon) return;
+            const sid = siteId.toUpperCase();
+            if (!bySite[sid]) {
+              bySite[sid] = { DATEON: [], flags: [] };
+              shortVars.forEach(v => { bySite[sid][v] = []; });
+            }
+            bySite[sid].DATEON.push(dateon);
+            bySite[sid].flags.push(truthyImputeFlag(
+              pick('imputation_data', 'IMPUTATION_DATA', 'IS_IMPUTED', 'IMPUTED', 'FLAG_IMPUTED')
+            ));
+            shortVars.forEach(v => {
+              const val = pick('variable_' + v, v);
+              bySite[sid][v].push(val === '' ? null : Number(val));
+            });
+          });
+          imputedEnhancedData[network] = bySite;
+          console.log('Loaded enhanced imputed', network, Object.keys(bySite).length, 'sites');
+        } catch (e) { console.error('loadImputedEnhancedAll', network, e); }
+      }
+    }
+    function getImputedEnhancedBundle(network, siteId) {
+      const net = imputedEnhancedData[network] || {};
+      const sid = normalizeSiteId(siteId);
+      if (net[sid]) return net[sid];
+      for (const k of Object.keys(net)) {
+        if (normalizeSiteId(k) === sid) return net[k];
+      }
+      return null;
+    }
+
     function normalizeSeasonalVarName(v) {
       let s = String(v == null ? '' : v).trim();
       s = s.replace(/^variable_/i, '');
@@ -1581,6 +1678,70 @@
     function getSeasonalBundle(network, siteId) {
       // Returns { VARIABLE: { week: mean, ... }, ... } or null
       const net = seasonalData[network] || {};
+      const sid = normalizeSiteId(siteId);
+      if (net[sid]) return net[sid];
+      for (const k of Object.keys(net)) {
+        if (normalizeSiteId(k) === sid) return net[k];
+      }
+      return null;
+    }
+
+    async function loadSeasonalTrendEnhanced() {
+      seasonalEnhancedData = { CASTNET: {}, NTN: {} };
+      const paths = {
+        CASTNET: './data/input/CASTNET/CASTNET_seasonal_trend_enhanced.csv',
+        NTN: './data/input/NTN/NTN_seasonal_trend_enhanced.csv'
+      };
+      for (const [network, path] of Object.entries(paths)) {
+        try {
+          const res = await fetch(path);
+          if (!res.ok) { console.warn('Enhanced seasonal file not found:', path); continue; }
+          const rows = parseCSV(await res.text());
+          if (!rows.length) continue;
+          const bySite = {};
+          let nRows = 0;
+          rows.forEach(raw => {
+            const upperMap = {};
+            Object.keys(raw).forEach(k => {
+              upperMap[String(k).toUpperCase().replace(/[^A-Z0-9]/g, '')] = raw[k];
+            });
+            function pickRaw(...names) {
+              for (const n of names) {
+                const key = String(n).toUpperCase().replace(/[^A-Z0-9]/g, '');
+                if (Object.prototype.hasOwnProperty.call(upperMap, key)) {
+                  const v = upperMap[key];
+                  if (v === null || v === undefined) continue;
+                  const s = String(v).trim();
+                  if (s === '') continue;
+                  return s;
+                }
+              }
+              return '';
+            }
+            const siteId = String(pickRaw('SITE_ID', 'SITEID') || '').trim();
+            let variable = String(pickRaw('variable', 'VARIABLE', 'SPECIES', 'PARAM', 'VAR') || '').trim();
+            const weekStr = pickRaw('week', 'WEEK', 'WEEKNUM', 'WEEK_OF_YEAR', 'WOY');
+            const meanStr = pickRaw('seasonal_mean', 'SEASONAL_MEAN', 'SEASONALMEAN', 'MEAN', 'VALUE', 'SEASONAL');
+            if (!siteId || !variable || weekStr === '' || meanStr === '') return;
+            variable = normalizeSeasonalVarName(variable);
+            let week = parseInt(weekStr, 10);
+            if (Number.isNaN(week)) week = Math.round(Number(weekStr));
+            if (week === 0) week = 1;
+            const mean = Number(meanStr);
+            if (Number.isNaN(week) || week < 1 || week > 53 || Number.isNaN(mean)) return;
+            const sid = siteId.toUpperCase();
+            if (!bySite[sid]) bySite[sid] = {};
+            if (!bySite[sid][variable]) bySite[sid][variable] = {};
+            bySite[sid][variable][week] = mean;
+            nRows++;
+          });
+          seasonalEnhancedData[network] = bySite;
+          console.log('Loaded enhanced seasonal', network, Object.keys(bySite).length, 'sites,', nRows, 'rows');
+        } catch (e) { console.error('loadSeasonalTrendEnhanced', network, e); }
+      }
+    }
+    function getSeasonalEnhancedBundle(network, siteId) {
+      const net = seasonalEnhancedData[network] || {};
       const sid = normalizeSiteId(siteId);
       if (net[sid]) return net[sid];
       for (const k of Object.keys(net)) {
@@ -2980,7 +3141,7 @@
       });
       charts[key] = {
         chart, labels, values: dataVals, network, siteId,
-        variable: sel.variable, showImputed: false, showSeasonal: false, kind: kind
+        variable: sel.variable, showImputed: false, showSeasonal: false, showImputedEnh: false, showSeasonalEnh: false, kind: kind
       };
       const zoomEl = document.getElementById('trend-zoom-' + suffix);
       const scrollEl = document.getElementById('trend-scroll-' + suffix);
@@ -2993,6 +3154,14 @@
       if (btn) btn.classList.remove('active-impute');
       if (chkS) chkS.checked = false;
       if (btnS) btnS.classList.remove('active-seasonal');
+      const chkIE = document.getElementById('chk-impute-enh-' + suffix);
+      const btnIE = document.getElementById('btn-impute-enh-' + suffix);
+      const chkSE = document.getElementById('chk-seasonal-enh-' + suffix);
+      const btnSE = document.getElementById('btn-seasonal-enh-' + suffix);
+      if (chkIE) chkIE.checked = false;
+      if (btnIE) btnIE.classList.remove('active-impute-enh');
+      if (chkSE) chkSE.checked = false;
+      if (btnSE) btnSE.classList.remove('active-seasonal-enh');
       if (st) {
         const parts = [];
         const bi = getImputedBundle(network, siteId);
@@ -3025,11 +3194,13 @@
       return labels.map(d => (d in byDate ? byDate[d] : null));
     }
 
-    function buildTrendDatasets(network, siteId, variable, labels, origVals, showImputed, showSeasonal) {
+    function buildTrendDatasets(network, siteId, variable, labels, origVals, showImputed, showSeasonal, showImputedEnh, showSeasonalEnh) {
       const isCastnet = network === 'CASTNET';
       const lineColor = isCastnet ? '#e74c3c' : '#3498db';
       const yUnit = getYUnit(network, variable);
       const darkGreen = '#145a32';
+      const enhImpColor = '#9b59b6';
+      const enhSeaColor = '#16a085';
       const datasets = [{
         label: `${network} ${siteId} ${variable} original (${yUnit})`,
         data: origVals,
@@ -3103,6 +3274,62 @@
           }
         }
       }
+
+      if (showImputedEnh) {
+        const bundle = getImputedEnhancedBundle(network, siteId);
+        if (bundle && bundle.DATEON && bundle.DATEON.length) {
+          const varKey = variable.replace(/^variable_/, '');
+          const impVals = bundle[varKey] || bundle['variable_' + varKey] || [];
+          const flags = bundle.flags || [];
+          const byDate = {}, flagByDate = {};
+          for (let i = 0; i < bundle.DATEON.length; i++) {
+            const d = bundle.DATEON[i];
+            const v = impVals[i];
+            byDate[d] = (v === null || v === undefined || v === '' || Number.isNaN(Number(v))) ? null : Number(v);
+            flagByDate[d] = !!flags[i];
+          }
+          const aligned = labels.map(d => (d in byDate ? byDate[d] : null));
+          const pointColors = labels.map(d => flagByDate[d] ? enhImpColor : lineColor);
+          const pointRadii = labels.map(d => flagByDate[d] ? 3 : 2);
+          datasets.push({
+            label: `${network} ${siteId} ${variable} enhanced imputed`,
+            data: aligned,
+            borderColor: enhImpColor,
+            backgroundColor: enhImpColor,
+            pointBackgroundColor: pointColors,
+            pointBorderColor: pointColors,
+            pointRadius: pointRadii,
+            pointHoverRadius: 5,
+            pointHitRadius: 6,
+            borderWidth: 1.2,
+            tension: 0,
+            spanGaps: false
+          });
+        }
+      }
+      if (showSeasonalEnh) {
+        const bundle = getSeasonalEnhancedBundle(network, siteId);
+        if (bundle) {
+          const aligned = seasonalMeansAlignedToLabels(bundle, variable, labels);
+          const nOk = aligned.filter(v => v != null && !Number.isNaN(v)).length;
+          if (nOk > 0) {
+            datasets.push({
+              label: `${network} ${siteId} ${variable} enhanced seasonal`,
+              data: aligned,
+              borderColor: enhSeaColor,
+              backgroundColor: enhSeaColor,
+              pointBackgroundColor: enhSeaColor,
+              pointBorderColor: enhSeaColor,
+              borderWidth: 1.6,
+              pointRadius: 0,
+              pointHoverRadius: 3,
+              pointHitRadius: 5,
+              tension: 0,
+              spanGaps: false
+            });
+          }
+        }
+      }
       return datasets;
     }
 
@@ -3121,9 +3348,18 @@
       if (btnS) btnS.classList.toggle('active-seasonal', !!state.showSeasonal);
       if (chkS) chkS.checked = !!state.showSeasonal;
 
+      const btnIE = document.getElementById('btn-impute-enh-' + suffix);
+      const chkIE = document.getElementById('chk-impute-enh-' + suffix);
+      const btnSE = document.getElementById('btn-seasonal-enh-' + suffix);
+      const chkSE = document.getElementById('chk-seasonal-enh-' + suffix);
+      if (btnIE) btnIE.classList.toggle('active-impute-enh', !!state.showImputedEnh);
+      if (chkIE) chkIE.checked = !!state.showImputedEnh;
+      if (btnSE) btnSE.classList.toggle('active-seasonal-enh', !!state.showSeasonalEnh);
+      if (chkSE) chkSE.checked = !!state.showSeasonalEnh;
       const ds = buildTrendDatasets(
         network, siteId, state.variable, state.labels, state.values,
-        !!state.showImputed, !!state.showSeasonal
+        !!state.showImputed, !!state.showSeasonal,
+        !!state.showImputedEnh, !!state.showSeasonalEnh
       );
       state.chart.data.datasets = ds;
       state.chart.update('none');
@@ -3200,7 +3436,55 @@
       setSeasonalVisible(network, siteId, !state.showSeasonal, kind || state.kind);
     }
 
-    function onCombineCheck(network, siteId, el) {
+    
+    function setEnhancedImputationVisible(network, siteId, visible, kind) {
+      const key = chartKey(network, siteId, kind);
+      const state = charts[key];
+      if (!state || !state.chart) return;
+      state.showImputedEnh = !!visible;
+      refreshTrendOverlays(network, siteId, kind || state.kind);
+    }
+    function setEnhancedSeasonalVisible(network, siteId, visible, kind) {
+      const key = chartKey(network, siteId, kind);
+      const state = charts[key];
+      if (!state || !state.chart) return;
+      state.showSeasonalEnh = !!visible;
+      refreshTrendOverlays(network, siteId, kind || state.kind);
+    }
+    function toggleEnhancedImputation(network, siteId, kind) {
+      const key = chartKey(network, siteId, kind);
+      const state = charts[key];
+      if (!state || !state.chart) {
+        alert('Open the statistical-trending plot first.');
+        return;
+      }
+      const bundle = getImputedEnhancedBundle(network, siteId);
+      if (!bundle) {
+        alert('No enhanced imputed data for ' + network + ' · ' + siteId +
+          '\nExpected: data/input/' +
+          (network === 'CASTNET' ? 'CASTNET/CASTNET_imputed_enhanced_all.csv' : 'NTN/NTN_imputed_enhanced_all.csv'));
+        return;
+      }
+      setEnhancedImputationVisible(network, siteId, !state.showImputedEnh, kind || state.kind);
+    }
+    function toggleEnhancedSeasonalPattern(network, siteId, kind) {
+      const key = chartKey(network, siteId, kind);
+      const state = charts[key];
+      if (!state || !state.chart) {
+        alert('Open the statistical-trending plot first.');
+        return;
+      }
+      const bundle = getSeasonalEnhancedBundle(network, siteId);
+      if (!bundle) {
+        alert('No enhanced seasonal data for ' + network + ' · ' + siteId +
+          '\nExpected: data/input/' +
+          (network === 'CASTNET' ? 'CASTNET/CASTNET_seasonal_trend_enhanced.csv' : 'NTN/NTN_seasonal_trend_enhanced.csv'));
+        return;
+      }
+      setEnhancedSeasonalVisible(network, siteId, !state.showSeasonalEnh, kind || state.kind);
+    }
+
+function onCombineCheck(network, siteId, el) {
       // Multi chemical species allowed per site ID
       const key = selKey(network, siteId);
       let list = combineVar[key];
@@ -3620,7 +3904,9 @@
       await loadCoverage();
       await loadTimeseries();
       await loadImputedAll();
+      await loadImputedEnhancedAll();
       await loadSeasonalTrend();
+      await loadSeasonalTrendEnhanced();
       await loadCompleteness();
       await loadAcfFftCombined();
       buildMarkersAndTable();
