@@ -428,6 +428,41 @@
       width: 8px; height: 240px; cursor: pointer; accent-color: #fafafa;
     }
     .trend-scroll-wrap { margin-top: 10px; padding: 0 4px; }
+    .date-range-bar {
+      margin-top: 10px;
+      padding: 8px 4px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      color: #aaa;
+      border-top: 1px solid #222;
+    }
+    .date-range-bar label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #ccc;
+    }
+    .date-range-bar input[type="date"],
+    .date-range-bar input[type="text"] {
+      background: #111;
+      color: #fff;
+      border: 1px solid #555;
+      padding: 4px 8px;
+      font-family: inherit;
+      font-size: 12px;
+    }
+    .date-range-bar button {
+      font-size: 11px;
+      padding: 4px 10px;
+    }
+    .date-range-bar .date-range-status {
+      color: #888;
+      font-size: 11px;
+    }
+
     .trend-scroll-wrap label {
       font-size: 11px; color: #888; display: block; margin-bottom: 4px;
     }
@@ -688,6 +723,17 @@
           <label>TIME (scroll left / right)</label>
           <input type="range" class="trend-scroll" id="trend-scroll-combine" min="0" max="100" value="0" step="1" />
         </div>
+        <div class="date-range-bar" id="date-range-combine">
+          <label>DATE ON
+            <input type="date" id="date-on-combine" />
+          </label>
+          <label>DATE OFF
+            <input type="date" id="date-off-combine" />
+          </label>
+          <button type="button" onclick="applyCombineDateRangeWindow()">[ APPLY RANGE ]</button>
+          <button type="button" onclick="clearCombineDateRangeWindow()">[ CLEAR ]</button>
+          <span class="date-range-status" id="date-range-status-combine"></span>
+        </div>
       </div>
     </div>
   </div>
@@ -840,6 +886,17 @@
         <div class="trend-scroll-wrap">
           <label>TIME (scroll left / right)</label>
           <input type="range" class="trend-scroll" id="trend-scroll-${suffix}" min="0" max="100" value="0" step="1" />
+        </div>
+        <div class="date-range-bar" id="date-range-${suffix}">
+          <label>DATE ON
+            <input type="date" id="date-on-${suffix}" />
+          </label>
+          <label>DATE OFF
+            <input type="date" id="date-off-${suffix}" />
+          </label>
+          <button type="button" onclick="applyDateRangeWindow('${network}', '${siteId}'${kindArg})">[ APPLY RANGE ]</button>
+          <button type="button" onclick="clearDateRangeWindow('${network}', '${siteId}'${kindArg})">[ CLEAR ]</button>
+          <span class="date-range-status" id="date-range-status-${suffix}"></span>
         </div>
         <div class="impute-bar" id="impute-bar-${suffix}">
           <button type="button" id="btn-impute-${suffix}"
@@ -2634,6 +2691,99 @@
       el.classList.add('multi-series');
       el.innerHTML = rows.join('');
     }
+    function normalizeDateInput(s) {
+      if (!s) return null;
+      const t = String(s).trim();
+      if (!t) return null;
+      let m = t.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+      if (m) return `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+      m = t.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
+      if (m) return `${m[3]}-${String(m[1]).padStart(2,'0')}-${String(m[2]).padStart(2,'0')}`;
+      const d = new Date(t);
+      if (isNaN(d.getTime())) return null;
+      return d.toISOString().slice(0, 10);
+    }
+    function labelToDateKey(lab) {
+      return normalizeDateInput(lab);
+    }
+    /** First index with label date >= dateOn; last index with label date <= dateOff */
+    function findDateWindowIndices(labels, dateOn, dateOff) {
+      const on = normalizeDateInput(dateOn);
+      const off = normalizeDateInput(dateOff);
+      if (!labels || !labels.length) return null;
+      let start = 0, end = labels.length - 1;
+      if (on) {
+        start = labels.findIndex(lab => {
+          const k = labelToDateKey(lab);
+          return k && k >= on;
+        });
+        if (start < 0) start = labels.length - 1;
+      }
+      if (off) {
+        end = -1;
+        for (let i = labels.length - 1; i >= 0; i--) {
+          const k = labelToDateKey(labels[i]);
+          if (k && k <= off) { end = i; break; }
+        }
+        if (end < 0) end = 0;
+      }
+      if (start > end) {
+        const t = start; start = end; end = t;
+      }
+      return { start, end };
+    }
+    function yExtentsFromChart(chart, start, end) {
+      if (!chart || !chart.data || !chart.data.datasets) return null;
+      let ymin = Infinity, ymax = -Infinity, n = 0;
+      chart.data.datasets.forEach(ds => {
+        if (ds.hidden) return;
+        const arr = ds.data || [];
+        for (let i = Math.max(0, start); i <= Math.min(arr.length - 1, end); i++) {
+          const v = arr[i];
+          if (v === null || v === undefined || Number.isNaN(Number(v))) continue;
+          const num = Number(v);
+          if (num < ymin) ymin = num;
+          if (num > ymax) ymax = num;
+          n++;
+        }
+      });
+      if (!n) return null;
+      if (ymin === ymax) {
+        const pad = Math.abs(ymin) * 0.05 || 1;
+        return { min: ymin - pad, max: ymax + pad };
+      }
+      const span = ymax - ymin;
+      const pad = span * 0.08;
+      return { min: ymin - pad, max: ymax + pad };
+    }
+    function applyChartWindow(chart, labels, start, end, fitY) {
+      if (!chart) return;
+      chart.options.scales.x.min = start;
+      chart.options.scales.x.max = end;
+      if (fitY) {
+        const y = yExtentsFromChart(chart, start, end);
+        if (y) {
+          chart.options.scales.y.min = y.min;
+          chart.options.scales.y.max = y.max;
+        } else {
+          delete chart.options.scales.y.min;
+          delete chart.options.scales.y.max;
+        }
+      } else {
+        delete chart.options.scales.y.min;
+        delete chart.options.scales.y.max;
+      }
+      chart.update('none');
+    }
+    function syncSlidersToWindow(zoomEl, scrollEl, n, start, end) {
+      if (!zoomEl || !scrollEl || n <= 0) return;
+      const windowSize = Math.max(1, end - start + 1);
+      const zoomPct = Math.max(2, Math.min(100, Math.round((windowSize / n) * 100)));
+      zoomEl.value = zoomPct;
+      const maxStart = Math.max(0, n - windowSize);
+      scrollEl.max = maxStart;
+      scrollEl.value = Math.min(start, maxStart);
+    }
     function applyTrendWindow(network, siteId, kind) {
       const key = chartKey(network, siteId, kind);
       const state = charts[key];
@@ -2642,6 +2792,10 @@
       const zoomSlider = document.getElementById('trend-zoom-' + suffix);
       const scrollSlider = document.getElementById('trend-scroll-' + suffix);
       if (!zoomSlider || !scrollSlider) return;
+      // Slider mode clears sticky date-range lock
+      state.dateRangeActive = false;
+      const stEl = document.getElementById('date-range-status-' + suffix);
+      if (stEl) stEl.textContent = '';
       const zoomPct = parseInt(zoomSlider.value, 10) / 100;
       const windowSize = Math.max(2, Math.round(state.labels.length * zoomPct));
       const maxStart = Math.max(0, state.labels.length - windowSize);
@@ -2649,11 +2803,96 @@
       if (parseInt(scrollSlider.value, 10) > maxStart) scrollSlider.value = maxStart;
       const start = parseInt(scrollSlider.value, 10);
       const end = start + windowSize - 1;
-      state.chart.options.scales.x.min = start;
-      state.chart.options.scales.x.max = end;
-      state.chart.update('none');
+      applyChartWindow(state.chart, state.labels, start, end, true);
       updateTrendStats(network, siteId, start, end, kind || state.kind);
     }
+    function applyDateRangeWindow(network, siteId, kind) {
+      const key = chartKey(network, siteId, kind);
+      const state = charts[key];
+      if (!state || !state.chart || !state.labels.length) {
+        alert('Open a plot first.');
+        return;
+      }
+      const suffix = idSuffix(network, siteId, kind || state.kind);
+      const onEl = document.getElementById('date-on-' + suffix);
+      const offEl = document.getElementById('date-off-' + suffix);
+      const stEl = document.getElementById('date-range-status-' + suffix);
+      const dateOn = onEl ? onEl.value : '';
+      const dateOff = offEl ? offEl.value : '';
+      if (!dateOn && !dateOff) {
+        if (stEl) stEl.textContent = 'Enter DATE ON and/or DATE OFF';
+        return;
+      }
+      const win = findDateWindowIndices(state.labels, dateOn, dateOff);
+      if (!win) return;
+      const { start, end } = win;
+      state.dateRangeActive = true;
+      const zoomEl = document.getElementById('trend-zoom-' + suffix);
+      const scrollEl = document.getElementById('trend-scroll-' + suffix);
+      syncSlidersToWindow(zoomEl, scrollEl, state.labels.length, start, end);
+      applyChartWindow(state.chart, state.labels, start, end, true);
+      updateTrendStats(network, siteId, start, end, kind || state.kind);
+      if (stEl) {
+        stEl.textContent =
+          `Window: ${state.labels[start]} → ${state.labels[end]}  (i=${start}…${end})`;
+      }
+    }
+    function clearDateRangeWindow(network, siteId, kind) {
+      const key = chartKey(network, siteId, kind);
+      const state = charts[key];
+      const suffix = idSuffix(network, siteId, kind || (state && state.kind));
+      const onEl = document.getElementById('date-on-' + suffix);
+      const offEl = document.getElementById('date-off-' + suffix);
+      const stEl = document.getElementById('date-range-status-' + suffix);
+      if (onEl) onEl.value = '';
+      if (offEl) offEl.value = '';
+      if (stEl) stEl.textContent = '';
+      if (state) state.dateRangeActive = false;
+      const zoomEl = document.getElementById('trend-zoom-' + suffix);
+      const scrollEl = document.getElementById('trend-scroll-' + suffix);
+      if (zoomEl) zoomEl.value = 100;
+      if (scrollEl) scrollEl.value = 0;
+      applyTrendWindow(network, siteId, kind);
+    }
+    function applyCombineDateRangeWindow() {
+      if (!combineChart || !combineLabels.length) {
+        alert('Open the combine plot first.');
+        return;
+      }
+      const dateOn = (document.getElementById('date-on-combine') || {}).value || '';
+      const dateOff = (document.getElementById('date-off-combine') || {}).value || '';
+      const stEl = document.getElementById('date-range-status-combine');
+      if (!dateOn && !dateOff) {
+        if (stEl) stEl.textContent = 'Enter DATE ON and/or DATE OFF';
+        return;
+      }
+      const win = findDateWindowIndices(combineLabels, dateOn, dateOff);
+      if (!win) return;
+      const { start, end } = win;
+      const zoomEl = document.getElementById('trend-zoom-combine');
+      const scrollEl = document.getElementById('trend-scroll-combine');
+      syncSlidersToWindow(zoomEl, scrollEl, combineLabels.length, start, end);
+      applyChartWindow(combineChart, combineLabels, start, end, true);
+      updateCombineStats(start, end);
+      if (stEl) {
+        stEl.textContent =
+          `Window: ${combineLabels[start]} → ${combineLabels[end]}  (i=${start}…${end})`;
+      }
+    }
+    function clearCombineDateRangeWindow() {
+      const onEl = document.getElementById('date-on-combine');
+      const offEl = document.getElementById('date-off-combine');
+      const stEl = document.getElementById('date-range-status-combine');
+      if (onEl) onEl.value = '';
+      if (offEl) offEl.value = '';
+      if (stEl) stEl.textContent = '';
+      const zoomEl = document.getElementById('trend-zoom-combine');
+      const scrollEl = document.getElementById('trend-scroll-combine');
+      if (zoomEl) zoomEl.value = 100;
+      if (scrollEl) scrollEl.value = 0;
+      applyCombineWindow();
+    }
+
     function showTrendPlot(network, siteIdArg, variableOverride, kind) {
       const siteId = siteIdArg;
       if (!siteId) { alert('Missing site ID.'); return; }
@@ -3020,6 +3259,8 @@
       const zoomSlider = document.getElementById('trend-zoom-combine');
       const scrollSlider = document.getElementById('trend-scroll-combine');
       if (!zoomSlider || !scrollSlider) return;
+      const stEl = document.getElementById('date-range-status-combine');
+      if (stEl) stEl.textContent = '';
       const zoomPct = parseInt(zoomSlider.value, 10) / 100;
       const windowSize = Math.max(2, Math.round(combineLabels.length * zoomPct));
       const maxStart = Math.max(0, combineLabels.length - windowSize);
@@ -3027,9 +3268,7 @@
       if (parseInt(scrollSlider.value, 10) > maxStart) scrollSlider.value = maxStart;
       const start = parseInt(scrollSlider.value, 10);
       const end = start + windowSize - 1;
-      combineChart.options.scales.x.min = start;
-      combineChart.options.scales.x.max = end;
-      combineChart.update('none');
+      applyChartWindow(combineChart, combineLabels, start, end, true);
       updateCombineStats(start, end);
     }
     function defaultCombineColor(network, indexInNetwork) {
