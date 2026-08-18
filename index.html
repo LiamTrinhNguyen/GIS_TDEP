@@ -473,6 +473,13 @@
         <span id="overview-count" style="margin-left:8px;color:#888;"></span>
       </div>
       <div class="overview-controls">
+        Completeness metric:
+        <button id="ov-metric-chem" class="active-net" onclick="setOverviewMetric('CHEM')">[ CHEMISTRY ]</button>
+        <button id="ov-metric-ppt" onclick="setOverviewMetric('PPT')">[ PPT mm ]</button>
+        <button id="ov-metric-subppt" onclick="setOverviewMetric('SUBPPT')">[ SUBPPT mm ]</button>
+        <span style="color:#888;font-size:11px;margin-left:6px;">PPT/SUBPPT apply to NTN only</span>
+      </div>
+      <div class="overview-controls">
         Completeness (multi-select):
         <button id="ov-br-all" class="active-net" onclick="setOverviewBracket('ALL')">[ ALL ]</button>
         <button id="ov-br-0-25" onclick="setOverviewBracket('0-25')">[ 0–25% ]</button>
@@ -484,7 +491,7 @@
       <div class="overview-legend">
         <span class="scale">CASTNET (dry) <span class="swatch castnet"></span> 0–25 · 25–50 · 50–75 · 75–100%</span>
         <span class="scale">NTN (wet) <span class="swatch ntn"></span> 0–25 · 25–50 · 50–75 · 75–100%</span>
-        <span>Darker = higher completeness · same dot size</span>
+        <span>Darker = higher completeness · metric: chemistry or NTN PPT/SUBPPT (mm)</span>
       </div>
     </div>
 
@@ -724,6 +731,25 @@
     const mapSnapshots = { 'overview-map': null, 'map': null };
 
     const VARIABLES = ["SO2","SO4","HNO3","NO3","TNO3","NH4","CA","K","MG","Sodium"];
+    const PRECIP_VARS = ["PPT", "SUBPPT"];
+    function variablesForNetwork(network) {
+      if (network === 'NTN') return VARIABLES.concat(PRECIP_VARS);
+      return VARIABLES.slice();
+    }
+    function isPrecipVar(variable) {
+      const v = String(variable || '').replace(/^variable_/i, '').toUpperCase();
+      return v === 'PPT' || v === 'SUBPPT';
+    }
+    function getYUnit(network, variable) {
+      if (isPrecipVar(variable)) return 'mm';
+      return network === 'CASTNET' ? 'µg/m³' : 'mg/L';
+    }
+    function getYLabel(network, variable) {
+      const v = String(variable || '').replace(/^variable_/i, '');
+      if (isPrecipVar(variable)) return v + ' (mm)';
+      return v + ' Concentration (' + getYUnit(network, variable) + ')';
+    }
+    let overviewMetric = 'CHEM'; // CHEM | PPT | SUBPPT
     const COMPLETENESS_COLORS = {
       CASTNET: {
         '0-25': '#f5b7b1', '25-50': '#e74c3c', '50-75': '#c0392b', '75-100': '#7b241c'
@@ -893,23 +919,50 @@
       if (pct < 75) return '50-75';
       return '75-100';
     }
-    function getCompleteness(network, siteId) {
+    function getCompleteness(network, siteId, metric) {
+      const m = metric || overviewMetric || 'CHEM';
       const row = ((completenessData[network] || {})[siteId]) || null;
-      if (!row) return { pct: 0, bracket: '0-25', n_record: 0, n_missing: 0, n_span: 0, siteId };
-      const pct = Number(row.completeness_pct ?? 0);
+      if (!row) return { pct: 0, bracket: '0-25', n_record: 0, n_missing: 0, n_span: 0, siteId, metric: m };
+      let src = row;
+      if (m === 'PPT' || m === 'SUBPPT') {
+        const bv = (row.by_variable || {})[m];
+        if (bv) src = bv;
+        else return { pct: 0, bracket: '0-25', n_record: 0, n_missing: 0, n_span: 0, siteId, metric: m };
+      } else if (row.by_variable && row.by_variable.CHEM) {
+        src = row.by_variable.CHEM;
+      }
+      const pct = Number(src.completeness_pct ?? row.completeness_pct ?? 0);
       return {
-        pct, bracket: row.bracket || bracketFromPct(pct),
-        n_record: row.n_record ?? 0, n_missing: row.n_missing ?? 0, n_span: row.n_span ?? 0, siteId
+        pct,
+        bracket: src.bracket || row.bracket || bracketFromPct(pct),
+        n_record: src.n_record ?? row.n_record ?? 0,
+        n_missing: src.n_missing ?? row.n_missing ?? 0,
+        n_span: src.n_span ?? row.n_span ?? 0,
+        siteId,
+        metric: m
       };
     }
-    function maxCompleteness(network, ids) {
-      let best = { pct: -1, bracket: '0-25', n_record: 0, n_missing: 0, n_span: 0, siteId: null };
+    function maxCompleteness(network, ids, metric) {
+      let best = { pct: -1, bracket: '0-25', n_record: 0, n_missing: 0, n_span: 0, siteId: null, metric: metric || overviewMetric };
       (ids || []).forEach(id => {
-        const c = getCompleteness(network, id);
+        const c = getCompleteness(network, id, metric);
         if (c.pct > best.pct) best = { ...c, siteId: id };
       });
       if (best.pct < 0) best.pct = 0;
       return best;
+    }
+    function setOverviewMetric(mode) {
+      overviewMetric = mode;
+      const map = { CHEM: 'ov-metric-chem', PPT: 'ov-metric-ppt', SUBPPT: 'ov-metric-subppt' };
+      Object.keys(map).forEach(m => {
+        const el = document.getElementById(map[m]);
+        if (el) el.classList.toggle('active-net', overviewMetric === m);
+      });
+      if ((mode === 'PPT' || mode === 'SUBPPT') && overviewNetwork === 'CASTNET') {
+        setOverviewNetwork('NTN');
+        return;
+      }
+      buildOverviewMap();
     }
     function weekInterval(year, weekIndex) {
       const y = parseInt(year, 10);
@@ -987,12 +1040,12 @@
         if (overviewNetwork === 'ALL' && castIds.length === 0 && ntnIds.length === 0) return;
         let network, ids, comp;
         if (overviewNetwork === 'CASTNET') {
-          network = 'CASTNET'; ids = castIds; comp = maxCompleteness('CASTNET', castIds);
+          network = 'CASTNET'; ids = castIds; comp = maxCompleteness('CASTNET', castIds, overviewMetric);
         } else if (overviewNetwork === 'NTN') {
-          network = 'NTN'; ids = ntnIds; comp = maxCompleteness('NTN', ntnIds);
+          network = 'NTN'; ids = ntnIds; comp = maxCompleteness('NTN', ntnIds, overviewMetric);
         } else {
-          const c = maxCompleteness('CASTNET', castIds);
-          const n = maxCompleteness('NTN', ntnIds);
+          const c = maxCompleteness('CASTNET', castIds, overviewMetric);
+          const n = maxCompleteness('NTN', ntnIds, overviewMetric);
           if (c.pct >= n.pct && castIds.length) { network = 'CASTNET'; ids = castIds; comp = c; }
           else if (ntnIds.length) { network = 'NTN'; ids = ntnIds; comp = n; }
           else { network = 'CASTNET'; ids = castIds; comp = c; }
@@ -1006,7 +1059,7 @@
         const label = network === 'CASTNET' ? 'CASTNET (dry)' : 'NTN (wet)';
         marker.bindPopup(
           `<b>${label}</b><br>SITE_ID(s): ${formatSiteIdsText(ids)}<br>` +
-          `Completeness: <b>${comp.pct}%</b> · bracket ${comp.bracket}<br>` +
+          `Metric: <b>${overviewMetric}</b> · Completeness: <b>${comp.pct}%</b> · bracket ${comp.bracket}<br>` +
           `Record weeks: ${comp.n_record} · Missing: ${comp.n_missing}<br>` +
           (comp.siteId ? `Primary ID: ${comp.siteId} · record ≈ ${years.toFixed(1)} yr<br>` : '') +
           `${site.lat.toFixed(4)}, ${site.lon.toFixed(4)}`
@@ -1016,7 +1069,7 @@
         shown++;
       });
       document.getElementById('overview-count').textContent =
-        `${shown} location(s) · network: ${overviewNetwork} · bracket: ${bracketLabel()}`;
+        `${shown} location(s) · network: ${overviewNetwork} · metric: ${overviewMetric} · bracket: ${bracketLabel()}`;
       if (overviewMarkers.length) {
         overviewMap.fitBounds(L.featureGroup(overviewMarkers).getBounds().pad(0.12));
       }
@@ -1277,7 +1330,7 @@
         CASTNET: './data/input/CASTNET/CASTNET_imputed_all.csv',
         NTN: './data/input/NTN/NTN_imputed_all.csv'
       };
-      const shortVars = ['SO2','SO4','HNO3','NO3','TNO3','NH4','CA','K','MG','Sodium'];
+      const shortVars = ['SO2','SO4','HNO3','NO3','TNO3','NH4','CA','K','MG','Sodium','PPT','SUBPPT'];
       for (const [network, path] of Object.entries(paths)) {
         try {
           const res = await fetch(path);
@@ -1761,15 +1814,17 @@
       }
       const nSpan = nRecord + nMissing;
       const pct = nSpan > 0 ? ((nRecord / nSpan) * 100).toFixed(1) : '0.0';
-      const siteComp = getCompleteness(network, siteId);
+      const metricForVar = isPrecipVar(variable) ? String(variable).toUpperCase() : 'CHEM';
+      const siteComp = getCompleteness(network, siteId, metricForVar);
+      const unitHint = isPrecipVar(variable) ? ' · unit mm' : '';
       let html = `
-        <div class="plot-title">${variable} · ${siteId}</div>
+        <div class="plot-title">${variable} · ${siteId}${unitHint}</div>
         <div style="font-size:11px;color:#aaa;margin-bottom:6px;">
           Record: <b style="color:#fff">${nRecord}</b> · No record: <b style="color:#fff">${nMissing}</b>
           · Span: ${nSpan} · Coverage: ${pct}%
         </div>
         <div style="font-size:11px;color:#888;margin-bottom:6px;">
-          Site completeness: <b style="color:#fff">${siteComp.pct}%</b> · bracket <b style="color:#fff">${siteComp.bracket}</b>
+          Completeness (${metricForVar}): <b style="color:#fff">${siteComp.pct}%</b> · bracket <b style="color:#fff">${siteComp.bracket}</b>
         </div>`;
       years.forEach(year => {
         const binary = yearData[year] || '';
@@ -1791,6 +1846,7 @@
       'variable_SO2', 'variable_SO4', 'variable_HNO3', 'variable_NO3',
       'variable_TNO3', 'variable_NH4', 'variable_CA', 'variable_K',
       'variable_MG', 'variable_Sodium',
+      'PPT', 'SUBPPT',
       'days_on_to_off', 'valid_on_off', 'days_to_next', 'valid_interval',
       'network'
     ];
@@ -1966,6 +2022,8 @@
       out.variable_K = pick('variable_K', 'K');
       out.variable_MG = pick('variable_MG', 'MG');
       out.variable_Sodium = pick('variable_Sodium', 'SODIUM', 'NA');
+      out.PPT = pick('PPT', 'variable_PPT');
+      out.SUBPPT = pick('SUBPPT', 'variable_SUBPPT');
       out.days_on_to_off = pick('days_on_to_off', 'DAYSONTOOFF', 'DAYS_ON_TO_OFF', 'EXPOSURE_DAYS');
       out.valid_on_off = pick('valid_on_off', 'VALIDONOFF', 'VALID_ON_OFF');
       out.days_to_next = pick('days_to_next', 'DAYSTONEXT', 'DAYS_TO_NEXT');
@@ -2010,7 +2068,7 @@
     /** Fallback: build rows from site_timeseries.json when wide CSV is unavailable */
     function rowsFromTimeseries(network, siteIdList) {
       const rows = [];
-      const shortVars = ['SO2','SO4','HNO3','NO3','TNO3','NH4','CA','K','MG','Sodium'];
+      const shortVars = ['SO2','SO4','HNO3','NO3','TNO3','NH4','CA','K','MG','Sodium','PPT','SUBPPT'];
       siteIdList.forEach(siteId => {
         const series = (((timeseriesData[network] || {})[siteId]) || {});
         const dates = series.DATEON || [];
@@ -2283,7 +2341,7 @@
             : `NTN — ${sid}`;
           html += `<div class="combine-row">
             <span class="net-label">${label}</span>
-            <div class="combine-checks">${VARIABLES.map(v =>
+            <div class="combine-checks">${variablesForNetwork('NTN').map(v =>
               `<label><input type="checkbox" name="combine-NTN-${safeId}" value="${v}"
                 onchange="onCombineCheck('NTN', '${sid}', this)"> ${v}</label>`
             ).join('')}</div>
@@ -2329,10 +2387,12 @@
     function createVarButtons(network, siteId, containerId, coverageId) {
       const container = document.getElementById(containerId);
       if (!container) return;
+      container.innerHTML = '';
       const prev = selected[selKey(network, siteId)];
-      VARIABLES.forEach(v => {
+      variablesForNetwork(network).forEach(v => {
         const btn = document.createElement('button');
         btn.textContent = v;
+        if (isPrecipVar(v)) btn.title = v + ' (mm)';
         if (prev && prev.variable === v) btn.classList.add('active-var');
         btn.onclick = () => {
           container.querySelectorAll('button').forEach(b => b.classList.remove('active-var'));
@@ -2522,10 +2582,12 @@
       const panel = ensureTrendPanelDOM(network, siteId);
       panel.classList.add('visible');
       const isCastnet = network === 'CASTNET';
-      const yUnit = isCastnet ? 'µg/m³' : 'mg/L';
-      const chartTitle = isCastnet
-        ? `Ambient Air ${sel.variable} Concentrations at ${siteId}`
-        : `Wet Deposition ${sel.variable} Concentrations at ${siteId}`;
+      const yUnit = getYUnit(network, sel.variable);
+      const chartTitle = isPrecipVar(sel.variable)
+        ? `NTN ${sel.variable} (precipitation) at ${siteId}`
+        : (isCastnet
+          ? `Ambient Air ${sel.variable} Concentrations at ${siteId}`
+          : `Wet Deposition ${sel.variable} Concentrations at ${siteId}`);
       const suffix = safeSite(siteId) + '-' + network.toLowerCase();
       const headerEl = document.getElementById('trend-header-' + suffix);
       if (headerEl) headerEl.textContent = `${chartTitle} | Y-bar = zoom · X-bar = time`;
@@ -2564,7 +2626,7 @@
               grid: { color: '#222' }
             },
             y: {
-              title: { display: true, text: `${sel.variable} Concentration (${yUnit})`, color: '#aaa' },
+              title: { display: true, text: getYLabel(network, sel.variable), color: '#aaa' },
               ticks: { color: '#aaa', font: { family: 'Consolas', size: 11 } },
               grid: { color: '#222' }
             }
@@ -2621,7 +2683,7 @@
     function buildTrendDatasets(network, siteId, variable, labels, origVals, showImputed, showSeasonal) {
       const isCastnet = network === 'CASTNET';
       const lineColor = isCastnet ? '#e74c3c' : '#3498db';
-      const yUnit = isCastnet ? 'µg/m³' : 'mg/L';
+      const yUnit = getYUnit(network, variable);
       const darkGreen = '#145a32';
       const datasets = [{
         label: `${network} ${siteId} ${variable} original (${yUnit})`,
@@ -3029,7 +3091,7 @@
         const defaultColor = defaultCombineColor(s.network, idx);
         // Keep user color if same key was used before
         if (!combineColors[s.key]) combineColors[s.key] = defaultColor;
-        const unit = isCast ? 'µg/m³' : 'mg/L';
+        const unit = getYUnit(network, variable);
         if (combineVisibility[s.key] === undefined) combineVisibility[s.key] = true;
         combineSeriesMeta.push({
           key: s.key,
@@ -3074,7 +3136,7 @@
               grid: { color: '#222' }
             },
             y: {
-              title: { display: true, text: 'Concentration (CASTNET µg/m³ · NTN mg/L)', color: '#aaa' },
+              title: { display: true, text: 'Value (CASTNET µg/m³ · NTN mg/L · PPT/SUBPPT mm)', color: '#aaa' },
               ticks: { color: '#aaa', font: { family: 'Consolas', size: 11 } },
               grid: { color: '#222' }
             }
