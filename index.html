@@ -290,11 +290,16 @@
       border: 1px solid #333;
       background: #0d0d0d;
       display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 11px;
+      color: #aaa;
+    }
+    .impute-row {
+      display: flex;
       flex-wrap: wrap;
       align-items: center;
       gap: 10px;
-      font-size: 11px;
-      color: #aaa;
     }
     .impute-bar button { font-size: 11px; padding: 4px 10px; }
     .impute-bar button.active-impute {
@@ -913,50 +918,56 @@
           <span class="date-range-status" id="date-range-status-${suffix}"></span>
         </div>
         <div class="impute-bar" id="impute-bar-${suffix}">
-          <button type="button" id="btn-impute-${suffix}"
-            onclick="toggleSimpleImputation('${network}', '${siteId}'${kindArg})">
-            [ SIMPLE IMPUTATION ]
-          </button>
-          <label class="impute-toggle" title="Show / hide imputed series">
-            <input type="checkbox" id="chk-impute-${suffix}"
-              onchange="setImputationVisible('${network}', '${siteId}', this.checked${kindArg})" />
-            show imputed
-          </label>
-          <button type="button" id="btn-seasonal-${suffix}"
-            onclick="toggleSeasonalPattern('${network}', '${siteId}'${kindArg})">
-            [ SEASONAL PATTERN ]
-          </button>
-          <label class="impute-toggle" title="Show / hide seasonal pattern line">
-            <input type="checkbox" id="chk-seasonal-${suffix}"
-              onchange="setSeasonalVisible('${network}', '${siteId}', this.checked${kindArg})" />
-            show seasonal
-          </label>
-          <button type="button" id="btn-impute-enh-${suffix}"
-            onclick="toggleEnhancedImputation('${network}', '${siteId}'${kindArg})">
-            [ ENHANCED IMPUTATION ]
-          </button>
-          <label class="impute-toggle" title="Show / hide enhanced imputed series">
-            <input type="checkbox" id="chk-impute-enh-${suffix}"
-              onchange="setEnhancedImputationVisible('${network}', '${siteId}', this.checked${kindArg})" />
-            show enh. imputed
-          </label>
-          <button type="button" id="btn-seasonal-enh-${suffix}"
-            onclick="toggleEnhancedSeasonalPattern('${network}', '${siteId}'${kindArg})">
-            [ ENHANCED SEASONAL PATTERN ]
-          </button>
-          <label class="impute-toggle" title="Show / hide enhanced seasonal pattern">
-            <input type="checkbox" id="chk-seasonal-enh-${suffix}"
-              onchange="setEnhancedSeasonalVisible('${network}', '${siteId}', this.checked${kindArg})" />
-            show enh. seasonal
-          </label>
-          <span class="impute-legend">
-            <span class="dot orig"></span> original
-            <span class="dot imp"></span> imputed
-            <span class="dot seasonal"></span> seasonal
-            <span class="dot imp-enh"></span> enh. imputed
-            <span class="dot seasonal-enh"></span> enh. seasonal
-          </span>
-          <span class="impute-status" id="impute-status-${suffix}"></span>
+          <div class="impute-row">
+            <button type="button" id="btn-impute-${suffix}"
+              onclick="toggleSimpleImputation('${network}', '${siteId}'${kindArg})">
+              [ SIMPLE IMPUTATION ]
+            </button>
+            <label class="impute-toggle" title="Show / hide imputed series">
+              <input type="checkbox" id="chk-impute-${suffix}"
+                onchange="setImputationVisible('${network}', '${siteId}', this.checked${kindArg})" />
+              show imputed
+            </label>
+            <button type="button" id="btn-seasonal-${suffix}"
+              onclick="toggleSeasonalPattern('${network}', '${siteId}'${kindArg})">
+              [ SEASONAL PATTERN ]
+            </button>
+            <label class="impute-toggle" title="Show / hide seasonal pattern line">
+              <input type="checkbox" id="chk-seasonal-${suffix}"
+                onchange="setSeasonalVisible('${network}', '${siteId}', this.checked${kindArg})" />
+              show seasonal
+            </label>
+          </div>
+          <div class="impute-row">
+            <button type="button" id="btn-impute-enh-${suffix}"
+              onclick="toggleEnhancedImputation('${network}', '${siteId}'${kindArg})">
+              [ ENHANCED IMPUTATION ]
+            </button>
+            <label class="impute-toggle" title="Show / hide enhanced imputed series">
+              <input type="checkbox" id="chk-impute-enh-${suffix}"
+                onchange="setEnhancedImputationVisible('${network}', '${siteId}', this.checked${kindArg})" />
+              show enh. imputed
+            </label>
+            <button type="button" id="btn-seasonal-enh-${suffix}"
+              onclick="toggleEnhancedSeasonalPattern('${network}', '${siteId}'${kindArg})">
+              [ ENHANCED SEASONAL PATTERN ]
+            </button>
+            <label class="impute-toggle" title="Show / hide enhanced seasonal pattern">
+              <input type="checkbox" id="chk-seasonal-enh-${suffix}"
+                onchange="setEnhancedSeasonalVisible('${network}', '${siteId}', this.checked${kindArg})" />
+              show enh. seasonal
+            </label>
+          </div>
+          <div class="impute-row">
+            <span class="impute-legend">
+              <span class="dot orig"></span> original
+              <span class="dot imp"></span> imputed
+              <span class="dot seasonal"></span> seasonal
+              <span class="dot imp-enh"></span> enh. imputed
+              <span class="dot seasonal-enh"></span> enh. seasonal
+            </span>
+            <span class="impute-status" id="impute-status-${suffix}"></span>
+          </div>
         </div>`;
       host.appendChild(panel);
       return panel;
