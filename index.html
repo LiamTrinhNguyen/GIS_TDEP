@@ -384,6 +384,7 @@
     .trend-panel.visible { display: block; }
     .trend-panel.castnet-panel { border-color: #e74c3c; }
     .trend-panel.ntn-panel { border-color: #3498db; }
+    .trend-panel.precip-panel { border-color: #1a5276; }
     .trend-panel.combine-panel { border-color: #fafafa; }
     .trend-header { font-size: 14px; letter-spacing: 1px; margin-bottom: 0; color: #aaa; }
     .trend-stats {
@@ -781,8 +782,14 @@
 
     function selKey(network, siteId) { return network + '__' + siteId; }
     function safeSite(siteId) { return String(siteId).replace(/[^A-Za-z0-9_-]/g, '_'); }
-    function panelIdFor(network, siteId) {
-      return 'trend-panel-' + network.toLowerCase() + '-' + safeSite(siteId);
+    function chartKey(network, siteId, kind) {
+      return selKey(network, siteId) + (kind ? '__' + kind : '');
+    }
+    function idSuffix(network, siteId, kind) {
+      return safeSite(siteId) + '-' + network.toLowerCase() + (kind ? '-' + kind : '');
+    }
+    function panelIdFor(network, siteId, kind) {
+      return 'trend-panel-' + network.toLowerCase() + '-' + safeSite(siteId) + (kind ? '-' + kind : '');
     }
     function destroyAllSiteCharts() {
       Object.keys(charts).forEach(k => {
@@ -792,25 +799,28 @@
       const host = document.getElementById('trend-panels-dynamic');
       if (host) host.innerHTML = '';
     }
-    function ensureTrendPanelDOM(network, siteId) {
-      const pid = panelIdFor(network, siteId);
+    function ensureTrendPanelDOM(network, siteId, kind) {
+      const pid = panelIdFor(network, siteId, kind);
       let panel = document.getElementById(pid);
       if (panel) return panel;
       const host = document.getElementById('trend-panels-dynamic');
       const isCast = network === 'CASTNET';
-      const border = isCast ? '#e74c3c' : '#3498db';
+      const isPrecip = kind === 'precip';
+      const border = isPrecip ? '#1a5276' : (isCast ? '#e74c3c' : '#3498db');
       const sidSafe = safeSite(siteId);
-      const suffix = sidSafe + '-' + network.toLowerCase();
+      const suffix = idSuffix(network, siteId, kind);
+      const kindArg = kind ? `, '${kind}'` : '';
       panel = document.createElement('div');
-      panel.className = 'trend-panel visible ' + (isCast ? 'castnet-panel' : 'ntn-panel');
+      panel.className = 'trend-panel visible ' + (isPrecip ? 'ntn-panel precip-panel' : (isCast ? 'castnet-panel' : 'ntn-panel'));
       panel.id = pid;
       panel.style.borderColor = border;
+      const titleHint = isPrecip ? (network + ' PRECIP · ' + siteId) : (network + ' · ' + siteId);
       panel.innerHTML = `
         <div class="title-row">
-          <div class="trend-header title-text" id="trend-header-${suffix}">${network} · ${siteId}</div>
+          <div class="trend-header title-text" id="trend-header-${suffix}">${titleHint}</div>
           <div class="export-btns">
-            <button type="button" onclick="exportPanelToPdf('${pid}', 'trend_${network}_${sidSafe}')">[ EXPORT PANEL ]</button>
-            <button type="button" onclick="closeTrendPanel('${network}', '${siteId}')">[ CLOSE ]</button>
+            <button type="button" onclick="exportPanelToPdf('${pid}', 'trend_${network}_${sidSafe}${kind ? '_' + kind : ''}')">[ EXPORT PANEL ]</button>
+            <button type="button" onclick="closeTrendPanel('${network}', '${siteId}'${kindArg})">[ CLOSE ]</button>
           </div>
         </div>
         <div class="trend-stats" id="trend-stats-${suffix}">
@@ -833,21 +843,21 @@
         </div>
         <div class="impute-bar" id="impute-bar-${suffix}">
           <button type="button" id="btn-impute-${suffix}"
-            onclick="toggleSimpleImputation('${network}', '${siteId}')">
+            onclick="toggleSimpleImputation('${network}', '${siteId}'${kindArg})">
             [ SIMPLE IMPUTATION ]
           </button>
           <label class="impute-toggle" title="Show / hide imputed series">
             <input type="checkbox" id="chk-impute-${suffix}"
-              onchange="setImputationVisible('${network}', '${siteId}', this.checked)" />
+              onchange="setImputationVisible('${network}', '${siteId}', this.checked${kindArg})" />
             show imputed
           </label>
           <button type="button" id="btn-seasonal-${suffix}"
-            onclick="toggleSeasonalPattern('${network}', '${siteId}')">
+            onclick="toggleSeasonalPattern('${network}', '${siteId}'${kindArg})">
             [ SEASONAL PATTERN ]
           </button>
           <label class="impute-toggle" title="Show / hide seasonal pattern line">
             <input type="checkbox" id="chk-seasonal-${suffix}"
-              onchange="setSeasonalVisible('${network}', '${siteId}', this.checked)" />
+              onchange="setSeasonalVisible('${network}', '${siteId}', this.checked${kindArg})" />
             show seasonal
           </label>
           <span class="impute-legend">
@@ -860,13 +870,13 @@
       host.appendChild(panel);
       return panel;
     }
-    function closeTrendPanel(network, siteId) {
-      const key = selKey(network, siteId);
+    function closeTrendPanel(network, siteId, kind) {
+      const key = chartKey(network, siteId, kind);
       if (charts[key] && charts[key].chart) {
         try { charts[key].chart.destroy(); } catch (e) {}
         delete charts[key];
       }
-      const panel = document.getElementById(panelIdFor(network, siteId));
+      const panel = document.getElementById(panelIdFor(network, siteId, kind));
       if (panel) panel.remove();
     }
 
@@ -1223,7 +1233,7 @@
         if (!st || !st.chart) return;
         const pid = panelIdFor(st.network, st.siteId);
         if (elementId === pid) {
-          applyTrendWindow(st.network, st.siteId);
+          applyTrendWindow(st.network, st.siteId, st.kind);
           st.chart.update('none');
         }
       });
@@ -2473,8 +2483,6 @@
           container.querySelectorAll('button').forEach(b => b.classList.remove('active-var'));
           btn.classList.add('active-var');
           selectedPrecip[key] = v;
-          // Also set selected so showTrendPlot can use it if needed
-          selected[key] = { network: 'NTN', siteId, variable: v };
           const target = document.getElementById(coverageId);
           if (target) target.innerHTML = buildCoverageHTML('NTN', siteId, v);
         };
@@ -2493,8 +2501,7 @@
         alert('Select PPT or SUBPPT in the precipitation section first.');
         return;
       }
-      selected[key] = { network: 'NTN', siteId, variable: v };
-      showTrendPlot('NTN', siteId);
+      showTrendPlot('NTN', siteId, v, 'precip');
     }
 
     function computeWindowStats(values, start, end) {
@@ -2573,11 +2580,11 @@
       return { min, max, median, avg: sum / nums.length, n: nums.length };
     }
 
-    function updateTrendStats(network, siteId, start, end) {
-      const key = selKey(network, siteId);
+    function updateTrendStats(network, siteId, start, end, kind) {
+      const key = chartKey(network, siteId, kind);
       const state = charts[key];
       if (!state) return;
-      const suffix = safeSite(siteId) + '-' + network.toLowerCase();
+      const suffix = idSuffix(network, siteId, kind || state.kind);
       const el = document.getElementById('trend-stats-' + suffix);
       if (!el) return;
 
@@ -2627,11 +2634,11 @@
       el.classList.add('multi-series');
       el.innerHTML = rows.join('');
     }
-    function applyTrendWindow(network, siteId) {
-      const key = selKey(network, siteId);
+    function applyTrendWindow(network, siteId, kind) {
+      const key = chartKey(network, siteId, kind);
       const state = charts[key];
       if (!state || !state.chart || state.labels.length === 0) return;
-      const suffix = safeSite(siteId) + '-' + network.toLowerCase();
+      const suffix = idSuffix(network, siteId, kind || state.kind);
       const zoomSlider = document.getElementById('trend-zoom-' + suffix);
       const scrollSlider = document.getElementById('trend-scroll-' + suffix);
       if (!zoomSlider || !scrollSlider) return;
@@ -2645,17 +2652,28 @@
       state.chart.options.scales.x.min = start;
       state.chart.options.scales.x.max = end;
       state.chart.update('none');
-      updateTrendStats(network, siteId, start, end);
+      updateTrendStats(network, siteId, start, end, kind || state.kind);
     }
-    function showTrendPlot(network, siteIdArg) {
+    function showTrendPlot(network, siteIdArg, variableOverride, kind) {
       const siteId = siteIdArg;
       if (!siteId) { alert('Missing site ID.'); return; }
-      const key = selKey(network, siteId);
-      const sel = selected[key];
-      if (!sel || !sel.variable) {
-        alert('Select a variable under ' + network + ' · ' + siteId + ' first.');
+      kind = kind || '';
+      const key = chartKey(network, siteId, kind);
+      let variable = variableOverride;
+      if (!variable) {
+        if (kind === 'precip') variable = selectedPrecip[selKey(network, siteId)];
+        else {
+          const sel = selected[selKey(network, siteId)];
+          variable = sel && sel.variable;
+        }
+      }
+      if (!variable) {
+        alert(kind === 'precip'
+          ? 'Select PPT or SUBPPT in the precipitation section first.'
+          : ('Select a variable under ' + network + ' · ' + siteId + ' first.'));
         return;
       }
+      const sel = { network, siteId, variable };
       const series = (((timeseriesData[network] || {})[siteId]) || {});
       const dates = series.DATEON || [];
       let values = series[sel.variable] || series['variable_' + sel.variable] || [];
@@ -2667,7 +2685,7 @@
         dataVals.push((v === null || v === undefined || v === '') ? null : Number(v));
       }
       // Separate panel per site ID (same network allowed)
-      const panel = ensureTrendPanelDOM(network, siteId);
+      const panel = ensureTrendPanelDOM(network, siteId, kind);
       panel.classList.add('visible');
       const isCastnet = network === 'CASTNET';
       const yUnit = getYUnit(network, sel.variable);
@@ -2676,7 +2694,7 @@
         : (isCastnet
           ? `Ambient Air ${sel.variable} Concentrations at ${siteId}`
           : `Wet Deposition ${sel.variable} Concentrations at ${siteId}`);
-      const suffix = safeSite(siteId) + '-' + network.toLowerCase();
+      const suffix = idSuffix(network, siteId, kind);
       const headerEl = document.getElementById('trend-header-' + suffix);
       if (headerEl) headerEl.textContent = `${chartTitle} | Y-bar = zoom · X-bar = time`;
       const canvas = document.getElementById('trend-chart-' + suffix);
@@ -2723,7 +2741,7 @@
       });
       charts[key] = {
         chart, labels, values: dataVals, network, siteId,
-        variable: sel.variable, showImputed: false, showSeasonal: false
+        variable: sel.variable, showImputed: false, showSeasonal: false, kind: kind
       };
       const zoomEl = document.getElementById('trend-zoom-' + suffix);
       const scrollEl = document.getElementById('trend-scroll-' + suffix);
@@ -2747,9 +2765,9 @@
       zoomEl.value = 100;
       scrollEl.value = 0;
       scrollEl.max = 0;
-      zoomEl.oninput = () => applyTrendWindow(network, siteId);
-      scrollEl.oninput = () => applyTrendWindow(network, siteId);
-      applyTrendWindow(network, siteId);
+      zoomEl.oninput = () => applyTrendWindow(network, siteId, kind);
+      scrollEl.oninput = () => applyTrendWindow(network, siteId, kind);
+      applyTrendWindow(network, siteId, kind);
       panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
@@ -2849,11 +2867,12 @@
       return datasets;
     }
 
-    function refreshTrendOverlays(network, siteId) {
-      const key = selKey(network, siteId);
+    function refreshTrendOverlays(network, siteId, kind) {
+      const key = chartKey(network, siteId, kind);
       const state = charts[key];
       if (!state || !state.chart) return;
-      const suffix = safeSite(siteId) + '-' + network.toLowerCase();
+      kind = kind || state.kind || '';
+      const suffix = idSuffix(network, siteId, kind);
       const btnI = document.getElementById('btn-impute-' + suffix);
       const chkI = document.getElementById('chk-impute-' + suffix);
       const btnS = document.getElementById('btn-seasonal-' + suffix);
@@ -2869,7 +2888,7 @@
       );
       state.chart.data.datasets = ds;
       state.chart.update('none');
-      applyTrendWindow(network, siteId);
+      applyTrendWindow(network, siteId, kind);
 
       const st = document.getElementById('impute-status-' + suffix);
       if (st) {
@@ -2892,24 +2911,24 @@
       }
     }
 
-    function setImputationVisible(network, siteId, visible) {
-      const key = selKey(network, siteId);
+    function setImputationVisible(network, siteId, visible, kind) {
+      const key = chartKey(network, siteId, kind);
       const state = charts[key];
       if (!state || !state.chart) return;
       state.showImputed = !!visible;
-      refreshTrendOverlays(network, siteId);
+      refreshTrendOverlays(network, siteId, kind || state.kind);
     }
 
-    function setSeasonalVisible(network, siteId, visible) {
-      const key = selKey(network, siteId);
+    function setSeasonalVisible(network, siteId, visible, kind) {
+      const key = chartKey(network, siteId, kind);
       const state = charts[key];
       if (!state || !state.chart) return;
       state.showSeasonal = !!visible;
-      refreshTrendOverlays(network, siteId);
+      refreshTrendOverlays(network, siteId, kind || state.kind);
     }
 
-    function toggleSimpleImputation(network, siteId) {
-      const key = selKey(network, siteId);
+    function toggleSimpleImputation(network, siteId, kind) {
+      const key = chartKey(network, siteId, kind);
       const state = charts[key];
       if (!state || !state.chart) {
         alert('Open the statistical-trending plot first.');
@@ -2922,11 +2941,11 @@
           (network === 'CASTNET' ? 'CASTNET/CASTNET_imputed_all.csv' : 'NTN/NTN_imputed_all.csv'));
         return;
       }
-      setImputationVisible(network, siteId, !state.showImputed);
+      setImputationVisible(network, siteId, !state.showImputed, kind || state.kind);
     }
 
-    function toggleSeasonalPattern(network, siteId) {
-      const key = selKey(network, siteId);
+    function toggleSeasonalPattern(network, siteId, kind) {
+      const key = chartKey(network, siteId, kind);
       const state = charts[key];
       if (!state || !state.chart) {
         alert('Open the statistical-trending plot first.');
@@ -2939,7 +2958,7 @@
           (network === 'CASTNET' ? 'CASTNET/CASTNET_seasonal_trend.csv' : 'NTN/NTN_seasonal_trend.csv'));
         return;
       }
-      setSeasonalVisible(network, siteId, !state.showSeasonal);
+      setSeasonalVisible(network, siteId, !state.showSeasonal, kind || state.kind);
     }
 
     function onCombineCheck(network, siteId, el) {
@@ -3179,7 +3198,7 @@
         const defaultColor = defaultCombineColor(s.network, idx);
         // Keep user color if same key was used before
         if (!combineColors[s.key]) combineColors[s.key] = defaultColor;
-        const unit = getYUnit(network, variable);
+        const unit = getYUnit(s.network, s.variable);
         if (combineVisibility[s.key] === undefined) combineVisibility[s.key] = true;
         combineSeriesMeta.push({
           key: s.key,
