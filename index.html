@@ -1110,7 +1110,7 @@
     }
     function recordYears(network, siteId) {
       if (!siteId) return 0;
-      const range = ((dateSummary[network] || {})[siteId]) || {};
+      const range = getSiteDateRange(network, siteId);
       const a = range.first, b = range.last;
       if (!a || !b) return 0;
       const t0 = Date.parse(a), t1 = Date.parse(b);
@@ -1416,18 +1416,89 @@
         return count;
       } catch (e) { console.error(e); return 0; }
     }
+    function pickRowField(row, ...names) {
+      if (!row) return '';
+      const keys = Object.keys(row);
+      const upper = {};
+      keys.forEach(k => { upper[String(k).toUpperCase().replace(/[^A-Z0-9]/g, '')] = row[k]; });
+      for (const n of names) {
+        const key = String(n).toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (Object.prototype.hasOwnProperty.call(upper, key)) {
+          const v = upper[key];
+          if (v === null || v === undefined) continue;
+          const s = String(v).trim();
+          if (s === '' || s.toUpperCase() === 'NA' || s.toUpperCase() === 'NAN') continue;
+          return s;
+        }
+      }
+      return '';
+    }
+    function normalizeNetworkName(net) {
+      const u = String(net || '').trim().toUpperCase();
+      if (u === 'CASTNET' || u === 'CAST') return 'CASTNET';
+      if (u === 'NTN' || u === 'NADP' || u === 'NTNNADP') return 'NTN';
+      return u;
+    }
+    function getSiteDateRange(network, siteId) {
+      const netMap = dateSummary[network] || {};
+      const sid = normalizeSiteId(siteId);
+      if (netMap[sid]) return netMap[sid];
+      if (netMap[siteId]) return netMap[siteId];
+      for (const k of Object.keys(netMap)) {
+        if (normalizeSiteId(k) === sid) return netMap[k];
+      }
+      // Fallback: derive from timeseries DATEON list
+      const series = ((timeseriesData[network] || {})[siteId])
+        || ((timeseriesData[network] || {})[sid])
+        || null;
+      if (series && series.DATEON && series.DATEON.length) {
+        const dates = series.DATEON.map(d => String(d).trim()).filter(Boolean).sort();
+        if (dates.length) return { first: dates[0], last: dates[dates.length - 1] };
+      }
+      // try case-insensitive timeseries key
+      const netTs = timeseriesData[network] || {};
+      for (const k of Object.keys(netTs)) {
+        if (normalizeSiteId(k) === sid && netTs[k].DATEON && netTs[k].DATEON.length) {
+          const dates = netTs[k].DATEON.map(d => String(d).trim()).filter(Boolean).sort();
+          if (dates.length) return { first: dates[0], last: dates[dates.length - 1] };
+        }
+      }
+      return { first: '', last: '' };
+    }
     async function loadDateSummary() {
       try {
         const res = await fetch('./data/input/site_date_summary.csv');
-        if (!res.ok) return;
+        if (!res.ok) {
+          console.warn('site_date_summary.csv not found');
+          return;
+        }
         const rows = parseCSV(await res.text());
         dateSummary = { CASTNET: {}, NTN: {} };
+        let n = 0;
         rows.forEach(r => {
-          const net = r.NETWORK;
+          const net = normalizeNetworkName(pickRowField(r, 'NETWORK', 'network', 'NET'));
+          const siteId = pickRowField(r, 'SITE_ID', 'SITEID', 'SITE');
+          // Generator writes first_DATEON / last_DATEOFF; older files may use FIRST_DATE / LAST_DATE
+          const first = pickRowField(
+            r,
+            'FIRST_DATE', 'first_DATEON', 'FIRST_DATEON', 'DATEON_MIN', 'FIRST', 'START_DATE', 'DATEON'
+          );
+          const last = pickRowField(
+            r,
+            'LAST_DATE', 'last_DATEOFF', 'LAST_DATEOFF', 'DATEON_MAX', 'LAST', 'END_DATE', 'DATEOFF'
+          );
+          if (!net || !siteId) return;
           if (!dateSummary[net]) dateSummary[net] = {};
-          dateSummary[net][r.SITE_ID] = { first: r.FIRST_DATE, last: r.LAST_DATE };
+          const sid = normalizeSiteId(siteId);
+          dateSummary[net][sid] = { first, last };
+          // also keep original key for convenience
+          dateSummary[net][siteId] = { first, last };
+          n++;
         });
-      } catch (e) { console.error(e); }
+        console.log('Loaded date summary rows:', n,
+          'CASTNET', Object.keys(dateSummary.CASTNET || {}).length,
+          'NTN', Object.keys(dateSummary.NTN || {}).length);
+      } catch (e) { console.error('loadDateSummary', e); }
     }
     async function loadCoverage() {
       try {
@@ -2520,7 +2591,7 @@
       html += `</div>`;
 
       castIds.forEach((sid, idx) => {
-        const range = (dateSummary.CASTNET || {})[sid] || {};
+        const range = getSiteDateRange('CASTNET', sid);
         const comp = getCompleteness('CASTNET', sid);
         const safeId = sid.replace(/[^A-Za-z0-9_-]/g, '_');
         html += `
@@ -2546,7 +2617,7 @@
           </div>`;
       });
       ntnIds.forEach((sid, idx) => {
-        const range = (dateSummary.NTN || {})[sid] || {};
+        const range = getSiteDateRange('NTN', sid);
         const comp = getCompleteness('NTN', sid, 'CHEM');
         const safeId = sid.replace(/[^A-Za-z0-9_-]/g, '_');
         html += `
