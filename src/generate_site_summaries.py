@@ -1,16 +1,8 @@
 """
-Generate lightweight files for the web dashboard:
-1. data/input/site_date_summary.csv
-2. data/input/site_variable_coverage.json  (52-week aligned; includes PPT/SUBPPT for NTN)
-3. data/input/site_timeseries.json        (values for plotting; includes PPT/SUBPPT)
-4. data/input/site_completeness.json      (site-level chemistry + optional PPT/SUBPPT metrics)
-
-Completeness (per metric):
-  span = weeks from first present to last present (inclusive)
-  completeness_pct = 100 * n_record / n_span  (0 if no records)
-
-For NTN, also computes by_variable completeness for PPT and SUBPPT
-from columns PPT / SUBPPT (or variable_PPT / variable_SUBPPT) in the wide file.
+Generate lightweight files for the web dashboard.
+Calendar year + calendar week from Jan 1.
+Year-boundary rule:
+  week 53 of year Y  OR  week 1 of year Y+1  →  set both bits to 1
 """
 from __future__ import annotations
 
@@ -18,6 +10,10 @@ import json
 from pathlib import Path
 
 import polars as pl
+
+pl.Config.set_tbl_rows(-1)
+pl.Config.set_tbl_cols(-1)
+pl.Config.set_tbl_width_chars(-1)
 
 BASE = Path("data/input")
 CASTNET_WIDE = BASE / "CASTNET" / "CASTNET_transformed_wide.csv"
@@ -28,7 +24,8 @@ OUT_COVERAGE = BASE / "site_variable_coverage.json"
 OUT_TIMESERIES = BASE / "site_timeseries.json"
 OUT_COMPLETENESS = BASE / "site_completeness.json"
 
-# Chemistry (both networks when present in wide file)
+JSON_DUMP_KW = dict(indent=2, sort_keys=True, ensure_ascii=False)
+
 CHEMISTRY_VARS = [
     "variable_SO2",
     "variable_SO4",
@@ -42,7 +39,6 @@ CHEMISTRY_VARS = [
     "variable_Sodium",
 ]
 
-# NTN precipitation — stand-alone parameters (mm)
 PRECIP_VARS = ["PPT", "SUBPPT"]
 
 
@@ -61,7 +57,6 @@ def bracket_from_pct(pct: float) -> str:
 
 
 def resolve_columns(df: pl.DataFrame, candidates: list[str]) -> list[str]:
-    """Return existing column names matching candidates (case-insensitive)."""
     lower = {c.lower(): c for c in df.columns}
     found = []
     for cand in candidates:
@@ -73,7 +68,6 @@ def resolve_columns(df: pl.DataFrame, candidates: list[str]) -> list[str]:
             found.append(lower[f"variable_{cand}".lower()])
         elif cand.replace("variable_", "").lower() in lower:
             found.append(lower[cand.replace("variable_", "").lower()])
-    # de-dupe preserve order
     out, seen = [], set()
     for c in found:
         if c not in seen:
@@ -92,16 +86,14 @@ def parse_dates(df: pl.DataFrame) -> pl.DataFrame:
     return df.with_columns(
         [
             pl.col("DATEON").dt.year().alias("year"),
-            pl.col("DATEON").dt.week().alias("week"),
+            ((pl.col("DATEON").dt.ordinal_day() - 1) // 7 + 1).alias("week"),
         ]
     )
 
 
 def completeness_from_year_map(year_map: dict) -> dict:
-    """year_map: {year: '0101...'} length 52. Compute span-based completeness."""
     flat = []
-    years = sorted(year_map.keys())
-    for y in years:
+    for y in sorted(year_map.keys()):
         s = year_map.get(y) or ""
         for ch in s:
             flat.append("1" if ch == "1" else "0")
@@ -119,8 +111,7 @@ def completeness_from_year_map(year_map: dict) -> dict:
             "n_missing": 0,
             "n_span": 0,
         }
-    n_record = 0
-    n_missing = 0
+    n_record = n_missing = 0
     for i in range(first, last + 1):
         if flat[i] == "1":
             n_record += 1
@@ -137,6 +128,46 @@ def completeness_from_year_map(year_map: dict) -> dict:
     }
 
 
+def _ensure_year(year_map: dict, year: int) -> list:
+    yk = str(int(year))
+    if yk not in year_map:
+        year_map[yk] = ["0"] * 53
+    return year_map[yk]
+
+
+def _set_bit(year_map: dict, year: int, week: int) -> None:
+    bits = _ensure_year(year_map, year)
+    wi = int(week) - 1
+    if wi < 0:
+        wi = 0
+    if wi > 52:
+        wi = 52
+    bits[wi] = "1"
+
+
+def mark_week(year_map: dict, year, week, present: bool) -> None:
+    """
+    Mark the sample week present.
+    Boundary rule: week 53 of Y and week 1 of Y+1 are the same
+    year-turn sample → fill 1 in both slots.
+    """
+    if year is None or week is None or not present:
+        return
+    y = int(year)
+    w = int(week)
+    if w < 1:
+        w = 1
+    if w > 53:
+        w = 53
+
+    _set_bit(year_map, y, w)
+
+    if w == 53:
+        _set_bit(year_map, y + 1, 1)
+    elif w == 1:
+        _set_bit(year_map, y - 1, 53)
+
+
 def process_network(csv_path: Path, network_name: str):
     print(f"Processing {network_name} ...")
     df = pl.read_csv(csv_path, infer_schema_length=10000)
@@ -148,22 +179,18 @@ def process_network(csv_path: Path, network_name: str):
         if network_name == "NTN"
         else []
     )
-    # Map actual column -> short name
+
     col_to_short = {}
     for c in chem_cols:
         col_to_short[c] = short_name(c)
     for c in precip_cols:
         s = short_name(c).upper()
-        if s in ("PPT", "SUBPPT"):
-            col_to_short[c] = s
-        else:
-            col_to_short[c] = short_name(c)
+        col_to_short[c] = s if s in ("PPT", "SUBPPT") else short_name(c)
 
     print(f"  chemistry columns: {list(col_to_short.values())}")
     if precip_cols:
         print(f"  precip columns: {[col_to_short[c] for c in precip_cols]}")
 
-    # ----- 1. Date range summary -----
     summary = (
         df.group_by("SITE_ID")
         .agg(
@@ -175,23 +202,22 @@ def process_network(csv_path: Path, network_name: str):
         .with_columns(pl.lit(network_name).alias("network"))
     )
 
-    # ----- 2–4. Per-site coverage / timeseries / completeness -----
     coverage: dict = {}
     timeseries: dict = {}
     completeness: dict = {}
 
-    site_ids = df["SITE_ID"].unique().to_list()
-    for site_id in site_ids:
+    for site_id in df["SITE_ID"].unique().to_list():
         sid = str(site_id)
         site_df = df.filter(pl.col("SITE_ID") == site_id).sort("DATEON")
 
-        # timeseries base
         dates = site_df["DATEON"].to_list()
         date_strs = [d.isoformat() if hasattr(d, "isoformat") else str(d) for d in dates]
         ts: dict = {"DATEON": date_strs}
 
         site_cov: dict = {}
         by_variable_comp: dict = {}
+        years = site_df["year"].to_list()
+        weeks = site_df["week"].to_list()
 
         for col, short in col_to_short.items():
             vals = []
@@ -205,36 +231,21 @@ def process_network(csv_path: Path, network_name: str):
                         vals.append(None)
             ts[short] = vals
 
-            # year -> 52-char binary
             year_map: dict[str, list] = {}
-            years = site_df["year"].to_list()
-            weeks = site_df["week"].to_list()
             for y, w, val in zip(years, weeks, vals):
-                if y is None or w is None:
-                    continue
-                yk = str(int(y))
-                if yk not in year_map:
-                    year_map[yk] = ["0"] * 52
-                wi = int(w) - 1
-                if wi < 0:
-                    wi = 0
-                if wi > 51:
-                    wi = 51
-                if val is not None:
-                    year_map[yk][wi] = "1"
+                mark_week(year_map, y, w, val is not None)
             site_cov[short] = {y: "".join(bits) for y, bits in year_map.items()}
             by_variable_comp[short] = completeness_from_year_map(site_cov[short])
 
         timeseries[sid] = ts
         coverage[sid] = site_cov
 
-        # Site-level chemistry completeness: union of chemistry present weeks
         chem_shorts = [col_to_short[c] for c in chem_cols]
         chem_year_union: dict[str, list] = {}
         for short in chem_shorts:
             for y, bits in site_cov.get(short, {}).items():
                 if y not in chem_year_union:
-                    chem_year_union[y] = ["0"] * 52
+                    chem_year_union[y] = ["0"] * 53
                 for i, ch in enumerate(bits):
                     if ch == "1":
                         chem_year_union[y][i] = "1"
@@ -247,12 +258,8 @@ def process_network(csv_path: Path, network_name: str):
             "n_record": chem_comp["n_record"],
             "n_missing": chem_comp["n_missing"],
             "n_span": chem_comp["n_span"],
-            "by_variable": {},
+            "by_variable": dict(by_variable_comp),
         }
-        for short in ("PPT", "SUBPPT"):
-            if short in by_variable_comp:
-                entry["by_variable"][short] = by_variable_comp[short]
-        # also expose chemistry overall under metric key CHEM for UI clarity
         entry["by_variable"]["CHEM"] = {
             "completeness_pct": chem_comp["completeness_pct"],
             "bracket": chem_comp["bracket"],
@@ -262,7 +269,19 @@ def process_network(csv_path: Path, network_name: str):
         }
         completeness[sid] = entry
 
+    print(summary.sort("SITE_ID"))
+    print(f"  sites: {len(coverage)}")
+    if coverage:
+        example = next(iter(coverage))
+        print(f"  example site {example}: variables = {list(coverage[example].keys())}")
+
     return summary, coverage, timeseries, completeness
+
+
+def write_json(path: Path, obj) -> None:
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(obj, f, **JSON_DUMP_KW)
+    print(f"Created: {path}")
 
 
 def main():
@@ -297,18 +316,9 @@ def main():
         pl.concat(all_summaries).write_csv(OUT_SUMMARY)
         print(f"Created: {OUT_SUMMARY}")
 
-    with open(OUT_COVERAGE, "w") as f:
-        json.dump(all_coverage, f)
-    print(f"Created: {OUT_COVERAGE}")
-
-    with open(OUT_TIMESERIES, "w") as f:
-        json.dump(all_timeseries, f)
-    print(f"Created: {OUT_TIMESERIES}")
-
-    with open(OUT_COMPLETENESS, "w") as f:
-        json.dump(all_completeness, f)
-    print(f"Created: {OUT_COMPLETENESS}")
-
+    write_json(OUT_COVERAGE, all_coverage)
+    write_json(OUT_TIMESERIES, all_timeseries)
+    write_json(OUT_COMPLETENESS, all_completeness)
     print("Done.")
 
 
