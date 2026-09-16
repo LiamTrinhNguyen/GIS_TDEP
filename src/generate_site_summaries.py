@@ -2,7 +2,8 @@
 Generate lightweight files for the web dashboard.
 Calendar year + calendar week from Jan 1.
 Year-boundary rule:
-  week 53 of year Y  OR  week 1 of year Y+1  →  set both bits to 1
+  week 53 of Y  OR  week 1 of Y+1  →  set both bits to 1
+Completeness and bracket are always recomputed from those final bits.
 """
 from __future__ import annotations
 
@@ -25,6 +26,7 @@ OUT_TIMESERIES = BASE / "site_timeseries.json"
 OUT_COMPLETENESS = BASE / "site_completeness.json"
 
 JSON_DUMP_KW = dict(indent=2, sort_keys=True, ensure_ascii=False)
+WEEKS_PER_YEAR = 53
 
 CHEMISTRY_VARS = [
     "variable_SO2",
@@ -38,7 +40,6 @@ CHEMISTRY_VARS = [
     "variable_MG",
     "variable_Sodium",
 ]
-
 PRECIP_VARS = ["PPT", "SUBPPT"]
 
 
@@ -92,17 +93,24 @@ def parse_dates(df: pl.DataFrame) -> pl.DataFrame:
 
 
 def completeness_from_year_map(year_map: dict) -> dict:
+    """Always derive pct / bracket from the final bit strings (after dual-mark)."""
     flat = []
-    for y in sorted(year_map.keys()):
+    for y in sorted(year_map.keys(), key=lambda x: int(x)):
         s = year_map.get(y) or ""
+        if len(s) < WEEKS_PER_YEAR:
+            s = s.ljust(WEEKS_PER_YEAR, "0")
+        elif len(s) > WEEKS_PER_YEAR:
+            s = s[:WEEKS_PER_YEAR]
         for ch in s:
             flat.append("1" if ch == "1" else "0")
+
     first = last = -1
     for i, ch in enumerate(flat):
         if ch == "1":
             if first < 0:
                 first = i
             last = i
+
     if first < 0:
         return {
             "completeness_pct": 0.0,
@@ -111,6 +119,7 @@ def completeness_from_year_map(year_map: dict) -> dict:
             "n_missing": 0,
             "n_span": 0,
         }
+
     n_record = n_missing = 0
     for i in range(first, last + 1):
         if flat[i] == "1":
@@ -131,41 +140,67 @@ def completeness_from_year_map(year_map: dict) -> dict:
 def _ensure_year(year_map: dict, year: int) -> list:
     yk = str(int(year))
     if yk not in year_map:
-        year_map[yk] = ["0"] * 53
+        year_map[yk] = ["0"] * WEEKS_PER_YEAR
     return year_map[yk]
 
 
 def _set_bit(year_map: dict, year: int, week: int) -> None:
     bits = _ensure_year(year_map, year)
-    wi = int(week) - 1
-    if wi < 0:
-        wi = 0
-    if wi > 52:
-        wi = 52
+    wi = max(0, min(int(week) - 1, WEEKS_PER_YEAR - 1))
     bits[wi] = "1"
 
 
 def mark_week(year_map: dict, year, week, present: bool) -> None:
-    """
-    Mark the sample week present.
-    Boundary rule: week 53 of Y and week 1 of Y+1 are the same
-    year-turn sample → fill 1 in both slots.
-    """
     if year is None or week is None or not present:
         return
     y = int(year)
     w = int(week)
-    if w < 1:
-        w = 1
-    if w > 53:
-        w = 53
+    w = max(1, min(w, WEEKS_PER_YEAR))
 
     _set_bit(year_map, y, w)
-
     if w == 53:
         _set_bit(year_map, y + 1, 1)
     elif w == 1:
         _set_bit(year_map, y - 1, 53)
+
+
+def bits_to_year_map(year_map_bits: dict) -> dict:
+    return {y: "".join(bits) for y, bits in year_map_bits.items()}
+
+
+def union_year_maps(maps: list[dict]) -> dict:
+    union_bits: dict[str, list] = {}
+    for ym in maps:
+        for y, bits in ym.items():
+            if y not in union_bits:
+                union_bits[y] = ["0"] * WEEKS_PER_YEAR
+            s = bits if isinstance(bits, str) else "".join(bits)
+            s = s.ljust(WEEKS_PER_YEAR, "0")[:WEEKS_PER_YEAR]
+            for i, ch in enumerate(s):
+                if ch == "1":
+                    union_bits[y][i] = "1"
+    return bits_to_year_map(union_bits)
+
+
+def build_completeness_entry(site_cov: dict, chem_shorts: list[str]) -> dict:
+    """Recompute every completeness field from final coverage strings."""
+    by_variable = {}
+    for short, year_map in site_cov.items():
+        by_variable[short] = completeness_from_year_map(year_map)
+
+    chem_maps = [site_cov[s] for s in chem_shorts if s in site_cov]
+    chem_map = union_year_maps(chem_maps) if chem_maps else {}
+    chem_comp = completeness_from_year_map(chem_map)
+    by_variable["CHEM"] = dict(chem_comp)
+
+    return {
+        "completeness_pct": chem_comp["completeness_pct"],
+        "bracket": chem_comp["bracket"],
+        "n_record": chem_comp["n_record"],
+        "n_missing": chem_comp["n_missing"],
+        "n_span": chem_comp["n_span"],
+        "by_variable": by_variable,
+    }
 
 
 def process_network(csv_path: Path, network_name: str):
@@ -205,6 +240,7 @@ def process_network(csv_path: Path, network_name: str):
     coverage: dict = {}
     timeseries: dict = {}
     completeness: dict = {}
+    chem_shorts = [col_to_short[c] for c in chem_cols]
 
     for site_id in df["SITE_ID"].unique().to_list():
         sid = str(site_id)
@@ -215,7 +251,6 @@ def process_network(csv_path: Path, network_name: str):
         ts: dict = {"DATEON": date_strs}
 
         site_cov: dict = {}
-        by_variable_comp: dict = {}
         years = site_df["year"].to_list()
         weeks = site_df["week"].to_list()
 
@@ -231,43 +266,14 @@ def process_network(csv_path: Path, network_name: str):
                         vals.append(None)
             ts[short] = vals
 
-            year_map: dict[str, list] = {}
+            year_bits: dict[str, list] = {}
             for y, w, val in zip(years, weeks, vals):
-                mark_week(year_map, y, w, val is not None)
-            site_cov[short] = {y: "".join(bits) for y, bits in year_map.items()}
-            by_variable_comp[short] = completeness_from_year_map(site_cov[short])
+                mark_week(year_bits, y, w, val is not None)
+            site_cov[short] = bits_to_year_map(year_bits)
 
         timeseries[sid] = ts
         coverage[sid] = site_cov
-
-        chem_shorts = [col_to_short[c] for c in chem_cols]
-        chem_year_union: dict[str, list] = {}
-        for short in chem_shorts:
-            for y, bits in site_cov.get(short, {}).items():
-                if y not in chem_year_union:
-                    chem_year_union[y] = ["0"] * 53
-                for i, ch in enumerate(bits):
-                    if ch == "1":
-                        chem_year_union[y][i] = "1"
-        chem_map = {y: "".join(b) for y, b in chem_year_union.items()}
-        chem_comp = completeness_from_year_map(chem_map)
-
-        entry = {
-            "completeness_pct": chem_comp["completeness_pct"],
-            "bracket": chem_comp["bracket"],
-            "n_record": chem_comp["n_record"],
-            "n_missing": chem_comp["n_missing"],
-            "n_span": chem_comp["n_span"],
-            "by_variable": dict(by_variable_comp),
-        }
-        entry["by_variable"]["CHEM"] = {
-            "completeness_pct": chem_comp["completeness_pct"],
-            "bracket": chem_comp["bracket"],
-            "n_record": chem_comp["n_record"],
-            "n_missing": chem_comp["n_missing"],
-            "n_span": chem_comp["n_span"],
-        }
-        completeness[sid] = entry
+        completeness[sid] = build_completeness_entry(site_cov, chem_shorts)
 
     print(summary.sort("SITE_ID"))
     print(f"  sites: {len(coverage)}")
