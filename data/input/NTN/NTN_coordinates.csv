@@ -1,4 +1,124 @@
 network,SITE_ID,siteName,status,startDate,stopDate,county,state,LATITUDE,LONGITUDE,elevation,stateName,siteClass
+NTN,NM09,Cuba,I,2/3/82,4/4/00,Sandoval,NM,36.0408,-106.9714,2124,New Mexico,I
+NTN,ND07,Theodore Roosevelt National Park-North Unit Headquarters,I,5/5/81,12/12/00,McKenzie,ND,47.6014,-103.2642,611,North Dakota,I
+NTN,TX38,Forest Seed Center,I,8/18/81,7/10/01,Nacogdoches,TX,31.5605,-94.8608,84,Texas,R
+NTN,CAN4,Sutton,I,9/16/86,10/2/01,Brome,PQ,45.0761,-72.6756,244,Quebec,R
+NTN,MD03,White Rock Substation,I,10/3/84,3/4/02,Carroll,MD,39.4089,-76.9953,172,Maryland,S
+NTN,NV00,Red Rock Canyon,I,1/22/85,12/10/02,Clark,NV,36.1358,-115.4256,1137,Nevada,U
+NTN,OR98,Bull Run,I,7/13/82,10/6/03,Clackamas,OR,45.4492,-122.1533,267,Oregon,R
+NTN,OK08,Lake Eucha,I,2/1/00,1/28/04,Delaware,OK,36.3481,-94.8239,243,Oklahoma,R
+NTN,NY65,Jasper,I,2/19/80,6/15/04,Steuben,NY,42.1064,-77.5358,634,New York,R
+NTN,IL19,Argonne,I,3/11/80,9/28/04,Du Page,IL,41.7011,-87.9953,229,Illinois,U
+NTN,HI99,Hawaii Volcanoes National Park-Thurston,I,11/21/00,2/15/05,Hawaii,HI,19.4194,-155.2403,1195,Hawaii,I
+NTN,MN05,Fond du Lac,I,11/19/96,3/22/05,Carlton,MN,46.7131,-92.5108,390,Minnesota,R
+NTN,WI97,Lac Courte Oreilles Reservation,I,11/27/01,3/22/05,Sawyer,WI,45.9944,-91.3711,418,Wisconsin,R
+NTN,GA98,Skidaway,I,6/18/02,5/24/05,Chatham,GA,31.9958,-81.0185,3,Georgia,S
+NTN,CA95,Death Valley National Park-Cow Creek,I,2/8/00,5/31/05,Inyo,CA,36.589,-116.978,125,California,I
+NTN,AK99,Ambler,I,5/12/04,8/9/05,Northwest Arctic,AK,67.0931,-157.8689,88,Alaska,I
+NTN,WI32,Middle Village,I,1/22/02,3/28/06,Shawano,WI,44.9308,-88.755,319,Wisconsin,R
+NTN,ID15,Smiths Ferry,I,10/9/84,9/27/06,Valley,ID,44.2978,-116.0636,1442,Idaho,I
+NTN,MI97,Isle Royale National Park-Wallace Lake,I,5/22/85,10/10/06,Keweenaw,MI,48.0575,-88.6342,201,Michigan,I
+NTN,ME95,Wolapomomqot Ciw Wocuk,I,6/12/02,12/12/06,Penobscot,ME,45.3406,-67.9876,182,Maine,I
+NTN,TX39,Texas A&M University-Corpus Christi,I,1/2/02,12/26/06,Nueces,TX,27.7125,-97.3291,5,Texas,S
+NTN,SC99,Fort Johnson,I,3/19/02,3/20/07,Charleston,SC,32.7508,-79.8975,2,South Carolina,S
+NTN,SC07,ACE Basin National Estuarine Research Reserve,I,12/31/01,12/25/07,Colleton,SC,32.5993,-80.4554,1,South Carolina,I
+NTN,OR02,Alsea Guard Ranger Station,I,12/27/79,12/26/07,Benton,OR,44.3856,-123.6153,104,Oregon,I
+NTN,MO43,Tyson Research Center,I,8/28/01,5/7/08,St. Louis,MO,38.5185,-90.5652,174,Missouri,U
+NTN,DE99,Trap Pond State Park,I,5/27/03,9/23/08,Sussex,DE,38.4994,-75.4482,12,Delaware,R
+NTN,SC11,North Inlet-Winyah Bay National Estuarine Research Reserve,I,1/8/02,1/8/09,Georgetown,SC,33.3497,-79.1888,0,South Carolina,R
+NTN,CO18,Ripple Creek Pass,I,5/13/03,1/13/09,Rio Blanco,CO,40.0851,-107.3118,2929,Colorado,I
+NTN,MI29,Peshawbestown,I,1/22/02,3/31/09,Leelanau,MI,45.0289,-85.6292,209,Michigan,R
+NTN,VA27,James Madison University Farm,I,7/9/02,6/30/09,Rockingham,VA,38.3034,-78.8178,336,Virginia,R
+NTN,VA10,Mason Neck,I,8/12/03,7/14/09,Fairfax,VA,38.6294,-77.2047,6,Virginia,U
+NTN,OK99,Stilwell,I,5/22/07,7/28/09,Adair,OK,35.7508,-94.67,299,Oklahoma,R
+NTN,AL02,Delta Elementary,I,6/5/01,1/5/10,Baldwin,AL,30.7907,-87.8498,66,Alabama,R
+NTN,AL24,Bay Road,I,5/29/01,1/5/10,Mobile,AL,30.4746,-88.1411,6,Alabama,R
+NTN,MA13,East,I,2/2/82,9/28/10,Middlesex,MA,42.3845,-71.2146,190,Massachusetts,U
+NTN,OH15,Lykens,I,1/26/99,10/12/10,Crawford,OH,40.5502,-82.9982,303,Ohio,R
+NTN,VA98,Harcum,I,8/31/04,8/29/11,Gloucester,VA,37.5312,-76.4928,13,Virginia,R
+NTN,UT08,Murphy Ridge,I,3/25/86,6/26/12,Rich,UT,41.3586,-111.048,2146,Utah,R
+NTN,CAN6,Frelighsburg - Intercomparison,I,10/6/11,9/18/12,Brome,PQ,45.0503,-72.8617,195,Quebec,R
+NTN,NM01,Gila Cliff Dwellings National Monument,I,7/29/85,9/25/12,Catron,NM,33.2203,-108.2347,1772,New Mexico,I
+NTN,NM12,Capulin Volcano National Monument,I,11/15/84,9/25/12,Union,NM,36.779,-103.981,2190,New Mexico,I
+NTN,MD07,Catoctin Mountain Park,I,5/27/03,6/11/13,Frederick,MD,39.647,-77.4848,471,Maryland,R
+NTN,WI09,Popple River,I,12/30/86,12/31/13,Florence,WI,45.7964,-88.3994,421,Wisconsin,I
+NTN,WI25,Suring,I,1/23/85,12/31/13,Oconto,WI,45.052,-88.3726,262,Wisconsin,I
+NTN,WI28,Lake Dubay,I,6/29/82,12/31/13,Portage,WI,44.7073,-89.7716,385,Wisconsin,R
+NTN,WI98,Wildcat Mountain,I,8/1/89,12/31/13,Vernon,WI,43.7023,-90.5685,386,Wisconsin,R
+NTN,WI99,Lake Geneva,I,6/5/84,12/31/13,Walworth,WI,42.5792,-88.5006,288,Wisconsin,R
+NTN,CO89,Rocky Mountain National Park-Loch Vale,I,9/29/09,9/30/14,Larimer,CO,40.2878,-105.6628,3159,Colorado,I
+NTN,NY29,Moss Lake,I,7/29/03,12/30/14,Herkimer,NY,43.7868,-74.8429,566,New York,I
+NTN,AK06,Gates of the Arctic National Park - Bettles,I,11/4/08,10/27/15,Yukon-Koyukuk,AK,66.906,-151.683,630,Alaska,I
+NTN,FL99,Kennedy Space Center,I,8/2/83,10/27/15,Brevard,FL,28.5428,-80.644,2,Florida,R
+NTN,FL03,Bradford Forest,I,10/10/78,3/29/16,Bradford,FL,29.9748,-82.1978,44,Florida,R
+NTN,IL18,Shabbona,I,5/26/81,3/29/16,De Kalb,IL,41.8414,-88.8511,265,Illinois,R
+NTN,AL19,Birmingham,I,12/19/12,10/18/16,Jefferson,AL,33.553,-86.8148,200,Alabama,U
+NTN,FL96,Pensacola,I,1/2/13,12/6/16,Escambia,FL,30.5499,-87.375,45,Florida,S
+NTN,AL03,Centreville,I,2/22/11,12/13/16,Bibb,AL,32.9034,-87.2499,135,Alabama,R
+NTN,IL63,Dixon Springs Agricultural Center,I,1/30/79,1/31/17,Pope,IL,37.4356,-88.6719,161,Illinois,I
+NTN,GA33,Sapelo Island,I,11/26/02,2/21/17,McIntosh,GA,31.3961,-81.2811,3,Georgia,I
+NTN,PA71,Little Buffalo State Park,I,7/26/11,5/29/17,Perry,PA,40.4603,-77.1692,155,Pennsylvania,R
+NTN,PA60,Valley Forge,I,7/26/11,6/5/17,Montgomery,PA,40.1166,-75.8833,46,Pennsylvania,S
+NTN,PA52,Little Pine State Park,I,7/26/11,6/6/17,Lycoming,PA,41.3639,-77.3561,228,Pennsylvania,I
+NTN,PA02,Crooked Creek Lake,I,7/27/11,6/7/17,Armstrong,PA,40.7131,-79.5144,294,Pennsylvania,R
+NTN,PA21,Goddard State Park,I,7/26/11,6/20/17,Crawford,PA,41.4271,-80.1451,385,Pennsylvania,R
+NTN,PA47,Millersville,I,11/21/02,6/27/17,Lancaster,PA,39.9909,-76.3856,84,Pennsylvania,S
+NTN,PA83,Laurel Hill State Park,I,7/26/11,10/4/17,Somerset,PA,39.9869,-79.2544,594,Pennsylvania,R
+NTN,AG01,Laurenti-MAR,I,10/24/11,1/8/18,,AG,-30.9501,-62.8244,83,, 
+NTN,MI98,Raco,I,5/1/84,1/10/18,Chippewa,MI,46.3723,-84.7434,272,Michigan,I
+NTN,TX21,Longview,I,6/29/82,2/27/18,Gregg,TX,32.3786,-94.7117,103,Texas,R
+NTN,FL32,Orlando,I,12/14/05,3/1/18,Orange,FL,28.5926,-81.1904,21,Florida,U
+NTN,PA98,Frances Slocum State Park,I,7/26/11,7/3/18,Luzerne,PA,41.3445,-75.8901,370,Pennsylvania,S
+NTN,NC17,University Research Farm,I,1/30/15,4/30/19,Guilford,NC,36.0672,-79.7344,238,North Carolina,U
+NTN,PA90,Hills Creek State Park,I,7/26/11,7/2/19,Tioga,PA,41.8043,-77.1903,476,Pennsylvania,R
+NTN,OR09,Silver Lake Ranger Station,I,8/23/83,12/3/19,Lake,OR,43.119,-121.059,1338,Oregon,I
+NTN,KY99,Mulberry Flat,I,12/27/94,12/4/19,Trigg,KY,36.9029,-88.0121,110,Kentucky,R
+NTN,SK21,Hudson Bay,I,4/30/12,3/31/20,,SK,52.8877,-102.5756,423,Saskatchewan,I
+NTN,SK30,Weyburn,I,6/7/16,3/31/20,,SK,49.5523,-103.8557,589,Saskatchewan,R
+NTN,PA30,Erie,I,7/27/11,9/30/20,Erie,PA,42.1558,-80.1134,177,Pennsylvania,S
+NTN,WI19,Marinette,I,7/14/20,11/9/20,Marinette,WI,45.0698,-87.629,,Wisconsin,R
+NTN,CO83,Timnath,I,3/3/20,1/4/21,Larimer,CO,40.5194,-104.96,,Colorado,U
+NTN,CO13,Fort Collins,I,12/4/18,1/6/21,Larimer,CO,40.5923,-105.1414,1570,Colorado,S
+NTN,TX02,Muleshoe National Wildlife Refuge,I,6/18/85,1/12/21,Bailey,TX,33.9557,-102.776,1144,Texas,I
+NTN,MO05,University Forest,I,10/27/81,6/22/21,Butler,MO,36.9108,-90.3187,165,Missouri,R
+NTN,OK17,Kessler Atmospheric and Ecological Field Station,I,3/29/83,8/24/21,McClain,OK,34.98,-97.5214,331,Oklahoma,R
+NTN,WV99,Canaan Valley Institute,I,8/27/19,9/20/21,Tucker,WV,39.1191,-79.4522,988,West Virginia,I
+NTN,GA20,Bellville,I,4/26/83,5/3/22,Evans,GA,32.0849,-81.9367,54,Georgia,R
+NTN,CO92,Sunlight Peak,I,1/13/88,5/10/22,Garfield,CO,39.4264,-107.3799,3218,Colorado,R
+NTN,MI52,Ann Arbor,I,1/26/99,5/10/22,Washtenaw,MI,42.4164,-83.9019,267,Michigan,S
+NTN,OH54,Deer Creek State Park,I,1/26/99,5/10/22,Pickaway,OH,39.6359,-83.2606,267,Ohio,R
+NTN,MS19,Newton,I,11/11/86,10/17/22,Newton,MS,32.3269,-89.2086,134,Mississippi,R
+NTN,CA28,Kings River Experimental Watershed,I,4/24/07,11/7/22,Fresno,CA,37.0592,-119.1822,2000,California,I
+NTN,WI08,Brule River,I,4/22/14,11/8/22,Douglas,WI,46.7466,-91.6055,207,Wisconsin,I
+NTN,IL46,Alhambra,I,1/26/99,11/29/22,Madison,IL,38.8689,-89.6219,164,Illinois,R
+NTN,NY59,Wanakena,I,1/2/13,1/3/23,St. Lawrence,NY,44.1461,-74.9025,468,New York,I
+NTN,KS97,Kickapoo Tribe - Powhattan,I,10/13/15,6/13/23,Brown,KS,39.7603,-95.6358,367,Kansas,R
+NTN,CO22,Pawnee,I,5/22/79,8/23/23,Weld,CO,40.806,-104.756,1641,Colorado,I
+NTN,MN28,Grindstone Lake,I,12/31/96,8/30/23,Pine,MN,46.1217,-93.0001,350,Minnesota,R
+NTN,TN14,Hatchie National Wildlife Refuge,I,10/2/84,11/21/23,Haywood,TN,35.4988,-89.2611,117,Tennessee,R
+NTN,NY93,Paul Smith's,I,1/1/13,12/31/23,Franklin,NY,44.434,-74.246,498,New York,R
+NTN,AZ97,Petrified Forest National Park-Rainbow Forest,I,12/3/02,1/2/24,Apache,AZ,34.8224,-109.8925,1707,Arizona,I
+NTN,FL05,Chassahowitzka National Wildlife Refuge,I,8/27/96,3/26/24,Citrus,FL,28.7486,-82.5551,3,Florida,R
+NTN,GA09,Okefenokee National Wildlife Refuge,I,6/3/97,4/2/24,Charlton,GA,30.7404,-82.1283,45,Georgia,I
+NTN,MI48,Seney National Wildlife Refuge-Headquarters,I,11/28/00,4/2/24,Schoolcraft,MI,46.2889,-85.9504,220,Michigan,I
+NTN,SC05,Cape Romain National Wildlife Refuge,I,11/21/00,4/2/24,Charleston,SC,32.943,-79.6592,1,South Carolina,R
+NTN,SC03,Savannah River,I,12/13/11,4/16/24,Barnwell,SC,33.245,-81.6505,90,South Carolina,I
+NTN,AR02,Warren 2WSW,I,5/25/82,4/30/24,Bradley,AR,33.605,-92.0972,76,Arkansas,R
+NTN,AZ99,Oliver Knoll,I,8/25/81,4/30/24,Graham,AZ,33.0708,-109.866,1176,Arizona,I
+NTN,CA45,Hopland,I,10/3/79,4/30/24,Mendocino,CA,39.0045,-123.086,253,California,R
+NTN,ME08,Gilead,I,9/28/99,4/30/24,Oxford,ME,44.4003,-71.0098,212,Maine,I
+NTN,VA00,Charlottesville,I,10/2/84,4/30/24,Albemarle,VA,38.0402,-78.5427,172,Virginia,S
+NTN,CA42,Tanbark Flat,I,1/12/82,6/21/24,Los Angeles,CA,34.2071,-117.7618,853,California,U
+NTN,PA13,Allegheny Portage Railroad National Historic Site,I,7/26/11,8/27/24,Cambria,PA,40.457,-78.56,739,Pennsylvania,S
+NTN,KS32,Lake Scott State Park,I,3/27/84,9/3/24,Scott,KS,38.6717,-100.9164,863,Kansas,I
+NTN,NY10,Chautauqua,I,6/10/80,9/17/24,Chautauqua,NY,42.2994,-79.3964,488,New York,R
+NTN,MT00,Little Bighorn Battlefield National Monument,I,7/13/84,11/6/24,Big Horn,MT,45.5701,-107.438,962,Montana,I
+NTN,CO09,Kawuneechee Meadow,I,7/10/12,1/28/25,Grand,CO,40.2603,-105.8292,2633,Colorado,I
+NTN,CO15,Sand Spring,I,3/20/79,8/26/25,Moffat,CO,40.5077,-107.7025,1998,Colorado,R
+NTN,WY02,Sinks Canyon,I,8/21/84,8/26/25,Fremont,WY,42.7336,-108.8498,2164,Wyoming,R
+NTN,WY99,Newcastle,I,8/11/81,8/26/25,Weston,WY,43.873,-104.1917,1466,Wyoming,I
+NTN,MD15,Smith Island,I,6/1/04,9/2/25,Somerset,MD,37.9925,-76.0345,2,Maryland,I
+NTN,TN00,UT Forest Research Station,I,3/11/80,9/30/25,Anderson,TN,35.998,-84.2194,310,Tennessee,S
 NTN,AB32,Fort Mackay,A,9/13/16,,Regional Municipality of Wood Buffalo,AB,57.1894,-111.6406,265,Alberta,I
 NTN,AB34,Stony Mountain,A,4/24/19,,Regional Municipality of Wood Buffalo,AB,55.6214,-111.1727,673,Alberta,I
 NTN,AB35,Elk Island,A,1/3/23,,Improvement District No. 13 (Elk Island),AB,53.6824,-112.868,711,Alberta,I
@@ -239,173 +359,3 @@ NTN,WY94,Grand Tetons National Park,A,9/27/11,,Teton,WY,43.6709,-110.5995,2105,W
 NTN,WY95,Brooklyn Lake,A,9/22/92,,Albany,WY,41.3647,-106.2408,3181,Wyoming,I
 NTN,WY97,South Pass City,A,4/30/85,,Fremont,WY,42.4944,-108.832,2524,Wyoming,I
 NTN,WY98,Gypsum Creek,A,12/26/84,,Sublette,WY,43.2227,-109.9917,2428,Wyoming,I
-NTN,AG01,Laurenti-MAR,I,10/24/11,1/8/18,,AG,-30.9501,-62.8244,83,, 
-NTN,AK06,Gates of the Arctic National Park - Bettles,I,11/4/08,10/27/15,Yukon-Koyukuk,AK,66.906,-151.683,630,Alaska,I
-NTN,AK99,Ambler,I,5/12/04,8/9/05,Northwest Arctic,AK,67.0931,-157.8689,88,Alaska,I
-NTN,AL02,Delta Elementary,I,6/5/01,1/5/10,Baldwin,AL,30.7907,-87.8498,66,Alabama,R
-NTN,AL03,Centreville,I,2/22/11,12/13/16,Bibb,AL,32.9034,-87.2499,135,Alabama,R
-NTN,AL19,Birmingham,I,12/19/12,10/18/16,Jefferson,AL,33.553,-86.8148,200,Alabama,U
-NTN,AL24,Bay Road,I,5/29/01,1/5/10,Mobile,AL,30.4746,-88.1411,6,Alabama,R
-NTN,AR02,Warren 2WSW,I,5/25/82,4/30/24,Bradley,AR,33.605,-92.0972,76,Arkansas,R
-NTN,AS01,Samoa,I,5/20/80,10/13/92,,AS,-14.2525,-170.5633,82,American Samoa, 
-NTN,AZ01,Tombstone,I,3/27/79,9/1/81,Cochise,AZ,31.7089,-110.0572,1398,Arizona,I
-NTN,AZ97,Petrified Forest National Park-Rainbow Forest,I,12/3/02,1/2/24,Apache,AZ,34.8224,-109.8925,1707,Arizona,I
-NTN,AZ99,Oliver Knoll,I,8/25/81,4/30/24,Graham,AZ,33.0708,-109.866,1176,Arizona,I
-NTN,CA28,Kings River Experimental Watershed,I,4/24/07,11/7/22,Fresno,CA,37.0592,-119.1822,2000,California,I
-NTN,CA34,Bishop,I,4/15/80,6/22/82,Inyo,CA,37.3708,-118.3664,1252,California,R
-NTN,CA42,Tanbark Flat,I,1/12/82,6/21/24,Los Angeles,CA,34.2071,-117.7618,853,California,U
-NTN,CA45,Hopland,I,10/3/79,4/30/24,Mendocino,CA,39.0045,-123.086,253,California,R
-NTN,CA68,Palomar Mountain,I,3/15/83,1/12/88,San Diego,CA,33.3089,-116.8539,1695,California,R
-NTN,CA85,Channel Islands National Park,I,7/22/80,2/19/82,Ventura,CA,34.0158,-119.3619,49,California,I
-NTN,CA95,Death Valley National Park-Cow Creek,I,2/8/00,5/31/05,Inyo,CA,36.589,-116.978,125,California,I
-NTN,CA98,Chuchupate Ranger Station,I,8/2/83,1/23/96,Ventura,CA,34.8061,-119.0114,1614,California,R
-NTN,CAN1,Lethbridge,I,4/28/81,4/3/84,Lethbridge,AB,49.6369,-112.7878,913,Alberta,S
-NTN,CAN2,Mount Forest,I,5/5/81,3/20/84,Wellington,ON,43.9914,-80.7461,410,Ontario,R
-NTN,CAN3,Kejimkujik National Park,I,5/12/81,4/3/84,Queens,NS,44.4328,-65.2056,152,Nova Scotia,I
-NTN,CAN4,Sutton,I,9/16/86,10/2/01,Brome,PQ,45.0761,-72.6756,244,Quebec,R
-NTN,CAN6,Frelighsburg - Intercomparison,I,10/6/11,9/18/12,Brome,PQ,45.0503,-72.8617,195,Quebec,R
-NTN,CO09,Kawuneechee Meadow,I,7/10/12,1/28/25,Grand,CO,40.2603,-105.8292,2633,Colorado,I
-NTN,CO13,Fort Collins,I,12/4/18,1/6/21,Larimer,CO,40.5923,-105.1414,1570,Colorado,S
-NTN,CO15,Sand Spring,I,3/20/79,8/26/25,Moffat,CO,40.5077,-107.7025,1998,Colorado,R
-NTN,CO18,Ripple Creek Pass,I,5/13/03,1/13/09,Rio Blanco,CO,40.0851,-107.3118,2929,Colorado,I
-NTN,CO22,Pawnee,I,5/22/79,8/23/23,Weld,CO,40.806,-104.756,1641,Colorado,I
-NTN,CO83,Timnath,I,3/3/20,1/4/21,Larimer,CO,40.5194,-104.96,,Colorado,U
-NTN,CO89,Rocky Mountain National Park-Loch Vale,I,9/29/09,9/30/14,Larimer,CO,40.2878,-105.6628,3159,Colorado,I
-NTN,CO92,Sunlight Peak,I,1/13/88,5/10/22,Garfield,CO,39.4264,-107.3799,3218,Colorado,R
-NTN,CO95,Engineer Mountain Guard Station,I,7/29/86,1/2/90,San Juan,CO,37.6597,-107.7992,2758,Colorado,I
-NTN,DE99,Trap Pond State Park,I,5/27/03,9/23/08,Sussex,DE,38.4994,-75.4482,12,Delaware,R
-NTN,FL03,Bradford Forest,I,10/10/78,3/29/16,Bradford,FL,29.9748,-82.1978,44,Florida,R
-NTN,FL05,Chassahowitzka National Wildlife Refuge,I,8/27/96,3/26/24,Citrus,FL,28.7486,-82.5551,3,Florida,R
-NTN,FL32,Orlando,I,12/14/05,3/1/18,Orange,FL,28.5926,-81.1904,21,Florida,U
-NTN,FL96,Pensacola,I,1/2/13,12/6/16,Escambia,FL,30.5499,-87.375,45,Florida,S
-NTN,FL99,Kennedy Space Center,I,8/2/83,10/27/15,Brevard,FL,28.5428,-80.644,2,Florida,R
-NTN,GA09,Okefenokee National Wildlife Refuge,I,6/3/97,4/2/24,Charlton,GA,30.7404,-82.1283,45,Georgia,I
-NTN,GA20,Bellville,I,4/26/83,5/3/22,Evans,GA,32.0849,-81.9367,54,Georgia,R
-NTN,GA23,Fort Frederica National Monument,I,9/3/85,9/27/88,Glynn,GA,31.2253,-81.3922,2,Georgia,R
-NTN,GA33,Sapelo Island,I,11/26/02,2/21/17,McIntosh,GA,31.3961,-81.2811,3,Georgia,I
-NTN,GA50,Tifton ARS,I,10/4/83,2/10/94,Tift,GA,31.4731,-83.5331,104,Georgia,R
-NTN,GA98,Skidaway,I,6/18/02,5/24/05,Chatham,GA,31.9958,-81.0185,3,Georgia,S
-NTN,HI00,Mauna Loa,I,6/10/80,9/28/93,Hawaii,HI,19.5392,-155.5792,3399,Hawaii,I
-NTN,HI99,Hawaii Volcanoes National Park-Thurston,I,11/21/00,2/15/05,Hawaii,HI,19.4194,-155.2403,1195,Hawaii,I
-NTN,ID04,Headquarters,I,7/20/82,9/25/91,Clearwater,ID,46.6278,-115.8194,969,Idaho,I
-NTN,ID15,Smiths Ferry,I,10/9/84,9/27/06,Valley,ID,44.2978,-116.0636,1442,Idaho,I
-NTN,IL18,Shabbona,I,5/26/81,3/29/16,De Kalb,IL,41.8414,-88.8511,265,Illinois,R
-NTN,IL19,Argonne,I,3/11/80,9/28/04,Du Page,IL,41.7011,-87.9953,229,Illinois,U
-NTN,IL35,Southern Illinois University,I,7/31/79,1/4/94,Jackson,IL,37.71,-89.2689,146,Illinois,R
-NTN,IL46,Alhambra,I,1/26/99,11/29/22,Madison,IL,38.8689,-89.6219,164,Illinois,R
-NTN,IL47,Salem,I,4/15/80,11/22/88,Marion,IL,38.6433,-88.9669,173,Illinois,R
-NTN,IL63,Dixon Springs Agricultural Center,I,1/30/79,1/31/17,Pope,IL,37.4356,-88.6719,161,Illinois,I
-NTN,IL99,Omega,I,9/26/89,9/28/93,Marion,IL,38.71,-88.7492,153,Illinois,I
-NTN,KS32,Lake Scott State Park,I,3/27/84,9/3/24,Scott,KS,38.6717,-100.9164,863,Kansas,I
-NTN,KS97,Kickapoo Tribe - Powhattan,I,10/13/15,6/13/23,Brown,KS,39.7603,-95.6358,367,Kansas,R
-NTN,KY38,Land Between the Lakes,I,10/2/84,4/16/96,Trigg,KY,36.7906,-88.0672,181,Kentucky,R
-NTN,KY99,Mulberry Flat,I,12/27/94,12/4/19,Trigg,KY,36.9029,-88.0121,110,Kentucky,R
-NTN,LA06,Hill Farm Research Station,I,11/16/82,1/26/88,Claiborne,LA,32.7514,-93.0506,88,Louisiana,R
-NTN,MA13,East,I,2/2/82,9/28/10,Middlesex,MA,42.3845,-71.2146,190,Massachusetts,U
-NTN,MD03,White Rock Substation,I,10/3/84,3/4/02,Carroll,MD,39.4089,-76.9953,172,Maryland,S
-NTN,MD07,Catoctin Mountain Park,I,5/27/03,6/11/13,Frederick,MD,39.647,-77.4848,471,Maryland,R
-NTN,MD15,Smith Island,I,6/1/04,9/2/25,Somerset,MD,37.9925,-76.0345,2,Maryland,I
-NTN,ME08,Gilead,I,9/28/99,4/30/24,Oxford,ME,44.4003,-71.0098,212,Maine,I
-NTN,ME95,Wolapomomqot Ciw Wocuk,I,6/12/02,12/12/06,Penobscot,ME,45.3406,-67.9876,182,Maine,I
-NTN,ME97,Presque Isle,I,6/5/84,9/27/88,Aroostook,ME,46.6964,-68.0332,165,Maine,R
-NTN,ME99,Acadia National Park-Paradise Hill,I,11/18/80,11/3/81,Hancock,ME,44.4083,-68.2461,37,Maine,R
-NTN,MI22,Houghton,I,10/26/80,2/15/83,Houghton,MI,47.2269,-88.6308,193,Michigan,R
-NTN,MI25,Isle Royale National Park-Windigo,I,8/12/80,10/22/84,Keweenaw,MI,47.9153,-89.1525,216,Michigan,I
-NTN,MI29,Peshawbestown,I,1/22/02,3/31/09,Leelanau,MI,45.0289,-85.6292,209,Michigan,R
-NTN,MI48,Seney National Wildlife Refuge-Headquarters,I,11/28/00,4/2/24,Schoolcraft,MI,46.2889,-85.9504,220,Michigan,I
-NTN,MI52,Ann Arbor,I,1/26/99,5/10/22,Washtenaw,MI,42.4164,-83.9019,267,Michigan,S
-NTN,MI97,Isle Royale National Park-Wallace Lake,I,5/22/85,10/10/06,Keweenaw,MI,48.0575,-88.6342,201,Michigan,I
-NTN,MI98,Raco,I,5/1/84,1/10/18,Chippewa,MI,46.3723,-84.7434,272,Michigan,I
-NTN,MN05,Fond du Lac,I,11/19/96,3/22/05,Carlton,MN,46.7131,-92.5108,390,Minnesota,R
-NTN,MN28,Grindstone Lake,I,12/31/96,8/30/23,Pine,MN,46.1217,-93.0001,350,Minnesota,R
-NTN,MO05,University Forest,I,10/27/81,6/22/21,Butler,MO,36.9108,-90.3187,165,Missouri,R
-NTN,MO43,Tyson Research Center,I,8/28/01,5/7/08,St. Louis,MO,38.5185,-90.5652,174,Missouri,U
-NTN,MO50,Baker Observatory,I,10/14/86,5/10/88,Webster,MO,37.3986,-93.0425,415,Missouri,R
-NTN,MS14,Meridian,I,4/15/80,1/2/90,Lauderdale,MS,32.3344,-88.745,89,Mississippi,R
-NTN,MS19,Newton,I,11/11/86,10/17/22,Newton,MS,32.3269,-89.2086,134,Mississippi,R
-NTN,MT00,Little Bighorn Battlefield National Monument,I,7/13/84,11/6/24,Big Horn,MT,45.5701,-107.438,962,Montana,I
-NTN,MT13,Give Out Morgan,I,9/14/82,12/15/98,Roosevelt,MT,48.4886,-105.2083,806,Montana,I
-NTN,MT99,Glacier National Park-St Mary Ranger Station,I,1/25/83,11/28/89,Glacier,MT,48.7411,-113.43,1391,Montana,I
-NTN,NC11,Research Triangle Institute,I,10/14/80,1/4/83,Durham,NC,35.9025,-78.87,99,North Carolina,U
-NTN,NC17,University Research Farm,I,1/30/15,4/30/19,Guilford,NC,36.0672,-79.7344,238,North Carolina,U
-NTN,NC33,Research Triangle Park,I,4/15/80,3/1/83,Durham,NC,35.8964,-78.8606,94,North Carolina,U
-NTN,ND07,Theodore Roosevelt National Park-North Unit Headquarters,I,5/5/81,12/12/00,McKenzie,ND,47.6014,-103.2642,611,North Dakota,I
-NTN,NJ29,Princeton,I,8/6/80,7/7/81,Mercer,NJ,40.3456,-74.6169,37,New Jersey,U
-NTN,NM01,Gila Cliff Dwellings National Monument,I,7/29/85,9/25/12,Catron,NM,33.2203,-108.2347,1772,New Mexico,I
-NTN,NM09,Cuba,I,2/3/82,4/4/00,Sandoval,NM,36.0408,-106.9714,2124,New Mexico,I
-NTN,NM12,Capulin Volcano National Monument,I,11/15/84,9/25/12,Union,NM,36.779,-103.981,2190,New Mexico,I
-NTN,NV00,Red Rock Canyon,I,1/22/85,12/10/02,Clark,NV,36.1358,-115.4256,1137,Nevada,U
-NTN,NV01,Saval Ranch,I,7/18/84,3/25/97,Elko,NV,41.2853,-115.8522,1872,Nevada,I
-NTN,NY10,Chautauqua,I,6/10/80,9/17/24,Chautauqua,NY,42.2994,-79.3964,488,New York,R
-NTN,NY12,Knobit,I,1/2/80,8/6/85,Columbia,NY,42.3783,-73.5028,406,New York,R
-NTN,NY29,Moss Lake,I,7/29/03,12/30/14,Herkimer,NY,43.7868,-74.8429,566,New York,I
-NTN,NY51,Stilwell Lake,I,6/26/79,10/2/84,Orange,NY,41.35,-74.0394,186,New York,S
-NTN,NY59,Wanakena,I,1/2/13,1/3/23,St. Lawrence,NY,44.1461,-74.9025,468,New York,I
-NTN,NY65,Jasper,I,2/19/80,6/15/04,Steuben,NY,42.1064,-77.5358,634,New York,R
-NTN,NY93,Paul Smith's,I,1/1/13,12/31/23,Franklin,NY,44.434,-74.246,498,New York,R
-NTN,OH15,Lykens,I,1/26/99,10/12/10,Crawford,OH,40.5502,-82.9982,303,Ohio,R
-NTN,OH54,Deer Creek State Park,I,1/26/99,5/10/22,Pickaway,OH,39.6359,-83.2606,267,Ohio,R
-NTN,OK08,Lake Eucha,I,2/1/00,1/28/04,Delaware,OK,36.3481,-94.8239,243,Oklahoma,R
-NTN,OK17,Kessler Atmospheric and Ecological Field Station,I,3/29/83,8/24/21,McClain,OK,34.98,-97.5214,331,Oklahoma,R
-NTN,OK25,Clayton Lake,I,2/1/83,8/12/86,Pushmataha,OK,34.5297,-95.3531,349,Oklahoma,I
-NTN,OK99,Stilwell,I,5/22/07,7/28/09,Adair,OK,35.7508,-94.67,299,Oklahoma,R
-NTN,OR02,Alsea Guard Ranger Station,I,12/27/79,12/26/07,Benton,OR,44.3856,-123.6153,104,Oregon,I
-NTN,OR08,Lost Creek Dam,I,10/21/80,12/6/83,Jackson,OR,42.6678,-122.6831,475,Oregon,I
-NTN,OR09,Silver Lake Ranger Station,I,8/23/83,12/3/19,Lake,OR,43.119,-121.059,1338,Oregon,I
-NTN,OR11,Vines Hill,I,7/15/80,3/30/93,Malheur,OR,43.8994,-117.4269,904,Oregon,I
-NTN,OR17,Pendleton,I,4/15/80,6/15/82,Umatilla,OR,45.69,-118.8378,452,Oregon,R
-NTN,OR98,Bull Run,I,7/13/82,10/6/03,Clackamas,OR,45.4492,-122.1533,267,Oregon,R
-NTN,OR99,Schmidt Farm,I,12/26/79,4/26/83,Benton,OR,44.6264,-123.2139,69,Oregon,S
-NTN,PA02,Crooked Creek Lake,I,7/27/11,6/7/17,Armstrong,PA,40.7131,-79.5144,294,Pennsylvania,R
-NTN,PA13,Allegheny Portage Railroad National Historic Site,I,7/26/11,8/27/24,Cambria,PA,40.457,-78.56,739,Pennsylvania,S
-NTN,PA21,Goddard State Park,I,7/26/11,6/20/17,Crawford,PA,41.4271,-80.1451,385,Pennsylvania,R
-NTN,PA30,Erie,I,7/27/11,9/30/20,Erie,PA,42.1558,-80.1134,177,Pennsylvania,S
-NTN,PA47,Millersville,I,11/21/02,6/27/17,Lancaster,PA,39.9909,-76.3856,84,Pennsylvania,S
-NTN,PA52,Little Pine State Park,I,7/26/11,6/6/17,Lycoming,PA,41.3639,-77.3561,228,Pennsylvania,I
-NTN,PA60,Valley Forge,I,7/26/11,6/5/17,Montgomery,PA,40.1166,-75.8833,46,Pennsylvania,S
-NTN,PA71,Little Buffalo State Park,I,7/26/11,5/29/17,Perry,PA,40.4603,-77.1692,155,Pennsylvania,R
-NTN,PA83,Laurel Hill State Park,I,7/26/11,10/4/17,Somerset,PA,39.9869,-79.2544,594,Pennsylvania,R
-NTN,PA90,Hills Creek State Park,I,7/26/11,7/2/19,Tioga,PA,41.8043,-77.1903,476,Pennsylvania,R
-NTN,PA98,Frances Slocum State Park,I,7/26/11,7/3/18,Luzerne,PA,41.3445,-75.8901,370,Pennsylvania,S
-NTN,SC03,Savannah River,I,12/13/11,4/16/24,Barnwell,SC,33.245,-81.6505,90,South Carolina,I
-NTN,SC05,Cape Romain National Wildlife Refuge,I,11/21/00,4/2/24,Charleston,SC,32.943,-79.6592,1,South Carolina,R
-NTN,SC07,ACE Basin National Estuarine Research Reserve,I,12/31/01,12/25/07,Colleton,SC,32.5993,-80.4554,1,South Carolina,I
-NTN,SC11,North Inlet-Winyah Bay National Estuarine Research Reserve,I,1/8/02,1/8/09,Georgetown,SC,33.3497,-79.1888,0,South Carolina,R
-NTN,SC18,Clemson,I,3/27/79,6/17/86,Pickens,SC,34.6239,-82.7342,256,South Carolina,S
-NTN,SC99,Fort Johnson,I,3/19/02,3/20/07,Charleston,SC,32.7508,-79.8975,2,South Carolina,S
-NTN,SD00,Huron,I,4/30/80,9/20/83,Beadle,SD,44.3842,-98.2206,390,South Dakota,R
-NTN,SK21,Hudson Bay,I,4/30/12,3/31/20,,SK,52.8877,-102.5756,423,Saskatchewan,I
-NTN,SK30,Weyburn,I,6/7/16,3/31/20,,SK,49.5523,-103.8557,589,Saskatchewan,R
-NTN,TN00,UT Forest Research Station,I,3/11/80,9/30/25,Anderson,TN,35.998,-84.2194,310,Tennessee,S
-NTN,TN14,Hatchie National Wildlife Refuge,I,10/2/84,11/21/23,Haywood,TN,35.4988,-89.2611,117,Tennessee,R
-NTN,TN98,Wilburn Chapel,I,1/2/90,5/7/96,Giles,TN,35.1825,-87.1964,302,Tennessee,R
-NTN,TN99,Giles County,I,10/2/84,1/2/90,Giles,TN,35.2847,-86.9033,244,Tennessee,R
-NTN,TX02,Muleshoe National Wildlife Refuge,I,6/18/85,1/12/21,Bailey,TX,33.9557,-102.776,1144,Texas,I
-NTN,TX18,Y Experimental Ranch,I,6/30/92,1/2/96,Foard,TX,33.9242,-100.0469,489,Texas,I
-NTN,TX21,Longview,I,6/29/82,2/27/18,Gregg,TX,32.3786,-94.7117,103,Texas,R
-NTN,TX38,Forest Seed Center,I,8/18/81,7/10/01,Nacogdoches,TX,31.5605,-94.8608,84,Texas,R
-NTN,TX39,Texas A&M University-Corpus Christi,I,1/2/02,12/26/06,Nueces,TX,27.7125,-97.3291,5,Texas,S
-NTN,TX51,Throckmorton,I,5/29/84,5/19/92,Throckmorton,TX,33.2733,-99.2153,425,Texas,I
-NTN,TX53,Victoria,I,4/15/80,9/27/88,Victoria,TX,28.8453,-96.9203,31,Texas,S
-NTN,UT02,Cedar Mountain,I,5/11/81,1/17/84,Emery,UT,39.1711,-110.6183,2331,Utah,I
-NTN,UT08,Murphy Ridge,I,3/25/86,6/26/12,Rich,UT,41.3586,-111.048,2146,Utah,R
-NTN,VA00,Charlottesville,I,10/2/84,4/30/24,Albemarle,VA,38.0402,-78.5427,172,Virginia,S
-NTN,VA10,Mason Neck,I,8/12/03,7/14/09,Fairfax,VA,38.6294,-77.2047,6,Virginia,U
-NTN,VA27,James Madison University Farm,I,7/9/02,6/30/09,Rockingham,VA,38.3034,-78.8178,336,Virginia,R
-NTN,VA29,Whitetop Mountain,I,9/30/86,9/18/90,Smyth,VA,36.6389,-81.6058,1686,Virginia,R
-NTN,VA33,Love's Mill,I,10/2/84,7/2/85,Washington,VA,36.7367,-81.6869,663,Virginia,R
-NTN,VA98,Harcum,I,8/31/04,8/29/11,Gloucester,VA,37.5312,-76.4928,13,Virginia,R
-NTN,WA15,Sullivan Lake,I,5/8/84,11/24/87,Pend Oreille,WA,48.8433,-117.2839,796,Washington,I
-NTN,WI08,Brule River,I,4/22/14,11/8/22,Douglas,WI,46.7466,-91.6055,207,Wisconsin,I
-NTN,WI09,Popple River,I,12/30/86,12/31/13,Florence,WI,45.7964,-88.3994,421,Wisconsin,I
-NTN,WI19,Marinette,I,7/14/20,11/9/20,Marinette,WI,45.0698,-87.629,,Wisconsin,R
-NTN,WI25,Suring,I,1/23/85,12/31/13,Oconto,WI,45.052,-88.3726,262,Wisconsin,I
-NTN,WI28,Lake Dubay,I,6/29/82,12/31/13,Portage,WI,44.7073,-89.7716,385,Wisconsin,R
-NTN,WI32,Middle Village,I,1/22/02,3/28/06,Shawano,WI,44.9308,-88.755,319,Wisconsin,R
-NTN,WI97,Lac Courte Oreilles Reservation,I,11/27/01,3/22/05,Sawyer,WI,45.9944,-91.3711,418,Wisconsin,R
-NTN,WI98,Wildcat Mountain,I,8/1/89,12/31/13,Vernon,WI,43.7023,-90.5685,386,Wisconsin,R
-NTN,WI99,Lake Geneva,I,6/5/84,12/31/13,Walworth,WI,42.5792,-88.5006,288,Wisconsin,R
-NTN,WV99,Canaan Valley Institute,I,8/27/19,9/20/21,Tucker,WV,39.1191,-79.4522,988,West Virginia,I
-NTN,WY02,Sinks Canyon,I,8/21/84,8/26/25,Fremont,WY,42.7336,-108.8498,2164,Wyoming,R
-NTN,WY96,Nash Fork,I,11/18/86,9/17/92,Albany,WY,41.3403,-106.1908,2856,Wyoming,I
-NTN,WY99,Newcastle,I,8/11/81,8/26/25,Weston,WY,43.873,-104.1917,1466,Wyoming,I
