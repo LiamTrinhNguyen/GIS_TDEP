@@ -23,6 +23,12 @@
     .header { text-align: center; margin-bottom: 12px; }
     .header h1 { font-size: 22px; letter-spacing: 2px; }
     .subtitle { color: #aaa; font-size: 13px; margin-top: 4px; }
+    .visit-count {
+      color: #888;
+      font-size: 12px;
+      margin-top: 6px;
+    }
+    .visit-count b { color: #fff; }
     .toolbar { text-align: center; margin: 12px 0; }
     button {
       background: #111; color: #fff; border: 1px solid #fff;
@@ -516,6 +522,7 @@
     <div class="header">
       <h1>MAP ACTIVE - SIMULATION RUNNING</h1>
       <div class="subtitle">Mapping Display · Statistical Information · Trending · Match Segment</div>
+      <div class="visit-count" id="visit-count">This public URL has been opened — times</div>
     </div>
     <div class="toolbar">
       <button onclick="loadAllSites()">[ LOAD SITES ]</button>
@@ -3998,7 +4005,74 @@ function onCombineCheck(network, siteId, el) {
         '<div class="placeholder">Check locations in MAP VIEW<br>or click markers to multi-select</div>';
       updateMultiSelectCount();
     }
+
+    function canonicalPublicUrl() {
+      const origin = location.origin;
+      let path = location.pathname || '/';
+      path = path.replace(/index\.html$/i, '');
+      if (!path.endsWith('/')) path += '/';
+      return origin + path;
+    }
+    function formatVisitCount(n) {
+      const x = Number(n);
+      if (!Number.isFinite(x) || x < 0) return null;
+      return x.toLocaleString();
+    }
+    function setVisitCountText(n, note) {
+      const el = document.getElementById('visit-count');
+      if (!el) return;
+      const pretty = formatVisitCount(n);
+      if (pretty == null) {
+        el.textContent = note || 'Visit count unavailable';
+        return;
+      }
+      el.innerHTML = 'This public URL has been opened <b>' + pretty +
+        '</b> times <span style="color:#666;">(count tied to this link, not the code version)</span>';
+    }
+    function parseCountFromSvg(svg) {
+      if (!svg) return null;
+      const matches = String(svg).match(/>\s*([\d,]+)\s*</g) || [];
+      const nums = matches.map(s => s.replace(/[^\d]/g, '')).filter(Boolean).map(Number);
+      if (!nums.length) {
+        const m = String(svg).match(/(\d[\d,]{0,12})/);
+        return m ? Number(String(m[1]).replace(/,/g, '')) : null;
+      }
+      return nums[nums.length - 1];
+    }
+    async function recordPublicUrlHit() {
+      const url = canonicalPublicUrl();
+      const sessionKey = 'gis_tdep_hit_' + url;
+      const already = sessionStorage.getItem(sessionKey) === '1';
+      const encoded = encodeURIComponent(url);
+      const incrJson = 'https://hits.seeyoufarm.com/api/count/incr/json/?url=' + encoded;
+      const keepJson = 'https://hits.seeyoufarm.com/api/count/keep/json/?url=' + encoded;
+      const incrSvg  = 'https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=' + encoded;
+      const viewSvg  = 'https://hits.seeyoufarm.com/api/count/view/badge.svg?url=' + encoded;
+      try {
+        let n = null;
+        try {
+          const res = await fetch(already ? keepJson : incrJson, { method: 'GET', cache: 'no-store' });
+          if (res.ok) {
+            const data = await res.json();
+            n = data.count ?? data.totalCount ?? data.total ?? data.value ??
+                (data.data && (data.data.count || data.data.totalCount));
+          }
+        } catch (e) {}
+        if (n == null) {
+          const res = await fetch(already ? viewSvg : incrSvg, { method: 'GET', cache: 'no-store' });
+          n = parseCountFromSvg(await res.text());
+        }
+        if (n == null) throw new Error('no count');
+        sessionStorage.setItem(sessionKey, '1');
+        setVisitCountText(n);
+      } catch (e) {
+        console.warn('visit counter', e);
+        setVisitCountText(null, 'Visit count unavailable (blocked or offline)');
+      }
+    }
+
     window.addEventListener('load', () => setTimeout(loadAllSites, 600));
+    window.addEventListener('load', () => setTimeout(recordPublicUrlHit, 200));
   </script>
 </body>
 </html>
