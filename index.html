@@ -578,7 +578,7 @@
 
     <div class="overview-map-panel" id="overview-map-panel">
       <div class="title-row">
-        <div class="panel-title title-text">NETWORK OVERVIEW MAP · completeness bracket → color</div>
+        <div class="panel-title title-text">NETWORK OVERVIEW MAP · completeness bracket -> color</div>
         <div class="export-btns">
           <button type="button"
             onclick="exportMapToPdf(overviewMap, 'overview-map', 'overview_map_view', 'ov-snap-status')">
@@ -754,8 +754,8 @@
         </select>
         <label for="match-sort-dir">Order</label>
         <select id="match-sort-dir" onchange="applyMatchSort()">
-          <option value="desc" selected>High → Low</option>
-          <option value="asc">Low → High</option>
+          <option value="desc" selected>High -> Low</option>
+          <option value="asc">Low -> High</option>
         </select>
       </div>
       <div class="match-table-wrap">
@@ -1248,7 +1248,7 @@
         </tr></thead>
         <tbody>` + rows.map((r, i) => `
           <tr onclick="selectSite('${r.key}', true)">
-            <td>${i + 1} / ${total}</td>
+            <td>${i + 1}</td>
             <td>${r.siteId}</td>
             <td class="${r.network === 'CASTNET' ? 'net-cast' : 'net-ntn'}">${r.network}</td>
             <td>${r.metric}</td>
@@ -1971,7 +1971,7 @@
       return Math.ceil((((tmp - yearStart) / 86400000) + 1) / 7);
     }
 
-    /** Simple week: floor((dayOfYear-1)/7)+1  → 1–53 */
+    /** Simple week: floor((dayOfYear-1)/7)+1  -> 1–53 */
     function weekOfYearSimple(dateStr) {
       const p = parseDateParts(dateStr);
       if (!p) return null;
@@ -3193,7 +3193,7 @@
       updateTrendStats(network, siteId, start, end, kind || state.kind);
       if (stEl) {
         stEl.textContent =
-          `Window: ${state.labels[start]} → ${state.labels[end]}  (i=${start}…${end})`;
+          `Window: ${state.labels[start]} -> ${state.labels[end]}  (i=${start}…${end})`;
       }
     }
     function clearDateRangeWindow(network, siteId, kind) {
@@ -3235,7 +3235,7 @@
       updateCombineStats(start, end);
       if (stEl) {
         stEl.textContent =
-          `Window: ${combineLabels[start]} → ${combineLabels[end]}  (i=${start}…${end})`;
+          `Window: ${combineLabels[start]} -> ${combineLabels[end]}  (i=${start}…${end})`;
       }
     }
     function clearCombineDateRangeWindow() {
@@ -4025,7 +4025,7 @@ function onCombineCheck(network, siteId, el) {
       const dir = document.getElementById('match-sort-dir').value;
       renderMatchTable(sortMatchRows(matchRows, field, dir));
       const colLabel = document.getElementById('match-sort-col').selectedOptions[0].text;
-      const dirLabel = dir === 'desc' ? 'High → Low' : 'Low → High';
+      const dirLabel = dir === 'desc' ? 'High -> Low' : 'Low -> High';
       const header = document.getElementById('match-header-text');
       header.textContent = `${header.textContent.split(' · Sort:')[0]} · Sort: ${colLabel} ${dirLabel}`;
     }
