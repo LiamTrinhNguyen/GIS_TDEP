@@ -1241,12 +1241,14 @@
         if (nc) return nc;
         return String(a.siteId).localeCompare(String(b.siteId), undefined, { numeric: true, sensitivity: 'base' });
       });
+      const total = rows.length;
       host.innerHTML = `<table class="overview-site-table">
         <thead><tr>
-          <th>SITE_ID</th><th>Network</th><th>Metric</th><th>%</th><th>Bracket</th><th>Lat</th><th>Lon</th>
+          <th>#</th><th>SITE_ID</th><th>Network</th><th>Metric</th><th>%</th><th>Bracket</th><th>Lat</th><th>Lon</th>
         </tr></thead>
-        <tbody>` + rows.map(r => `
+        <tbody>` + rows.map((r, i) => `
           <tr onclick="selectSite('${r.key}', true)">
+            <td>${i + 1} / ${total}</td>
             <td>${r.siteId}</td>
             <td class="${r.network === 'CASTNET' ? 'net-cast' : 'net-ntn'}">${r.network}</td>
             <td>${r.metric}</td>
