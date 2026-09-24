@@ -3987,7 +3987,7 @@ function onCombineCheck(network, siteId, el) {
       const mainS = document.getElementById('main-snap-status');
       if (ovS) { ovS.textContent = 'Adjust view, then EXPORT'; ovS.style.color = '#888'; }
       if (mainS) { mainS.textContent = 'Adjust view, then EXPORT'; mainS.style.color = '#888'; }
-      await loadCoordinator('CASTNET', './data/input/CASTNET/CASTNET_coordinator.csv');
+      await loadCoordinator('CASTNET', './data/input/CASTNET/CASTNET_coordinates.csv');
       await loadCoordinator('NTN', './data/input/NTN/NTN_coordinates.csv');
       await loadDateSummary();
       await loadCoverage();
