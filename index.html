@@ -64,6 +64,54 @@
       display: flex; flex-wrap: wrap; gap: 16px; margin-top: 10px;
       font-size: 11px; color: #aaa; align-items: center;
     }
+    .overview-site-box {
+      margin-top: 12px;
+      border: 1px solid #444;
+      background: #111;
+    }
+    .overview-site-title {
+      padding: 6px 10px;
+      font-size: 12px;
+      color: #ccc;
+      border-bottom: 1px solid #333;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .overview-site-title span.filter {
+      color: #888;
+      font-size: 11px;
+    }
+    .overview-site-list {
+      max-height: 220px;
+      overflow-y: auto;
+      font-size: 12px;
+    }
+    .overview-site-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .overview-site-table th {
+      position: sticky; top: 0;
+      background: #1a1a1a;
+      color: #888;
+      font-weight: normal;
+      text-align: left;
+      padding: 4px 8px;
+      border-bottom: 1px solid #333;
+    }
+    .overview-site-table td {
+      padding: 3px 8px;
+      border-bottom: 1px solid #222;
+      color: #ddd;
+      cursor: pointer;
+    }
+    .overview-site-table tr:hover td { background: #222; }
+    .overview-site-table .net-cast { color: #e74c3c; }
+    .overview-site-table .net-ntn { color: #3498db; }
+    .overview-site-empty { color: #666; padding: 10px; text-align: center; }
+
     .overview-legend .scale { display: inline-flex; align-items: center; gap: 6px; }
     .overview-legend .swatch {
       width: 64px; height: 12px; border: 1px solid #444; border-radius: 2px;
@@ -570,6 +618,15 @@
         <span class="scale">CASTNET (dry) <span class="swatch castnet"></span> 0–25 · 25–50 · 50–75 · 75–100%</span>
         <span class="scale">NTN (wet) <span class="swatch ntn"></span> 0–25 · 25–50 · 50–75 · 75–100%</span>
         <span>Darker = higher completeness · metric: chemistry or NTN PPT/SUBPPT (mm)</span>
+      </div>
+      <div class="overview-site-box">
+        <div class="overview-site-title">
+          <span>SITES IN CURRENT FILTER</span>
+          <span class="filter" id="overview-site-filter">network: ALL · metric: CHEM · bracket: ALL</span>
+        </div>
+        <div class="overview-site-list" id="overview-site-list">
+          <div class="overview-site-empty">Load sites to see the filtered list</div>
+        </div>
       </div>
     </div>
 
@@ -1166,10 +1223,45 @@
       if (overviewBrackets.has('ALL') || overviewBrackets.size === 0) return true;
       return overviewBrackets.has(bracket);
     }
+    function renderOverviewSiteList(rows) {
+      const host = document.getElementById('overview-site-list');
+      const filt = document.getElementById('overview-site-filter');
+      if (filt) {
+        filt.textContent = 'network: ' + overviewNetwork +
+          ' · metric: ' + overviewMetric +
+          ' · bracket: ' + bracketLabel();
+      }
+      if (!host) return;
+      if (!rows.length) {
+        host.innerHTML = '<div class="overview-site-empty">No sites match the current network / metric / bracket</div>';
+        return;
+      }
+      rows.sort((a, b) => {
+        const nc = String(a.network).localeCompare(String(b.network));
+        if (nc) return nc;
+        return String(a.siteId).localeCompare(String(b.siteId), undefined, { numeric: true, sensitivity: 'base' });
+      });
+      host.innerHTML = `<table class="overview-site-table">
+        <thead><tr>
+          <th>SITE_ID</th><th>Network</th><th>Metric</th><th>%</th><th>Bracket</th><th>Lat</th><th>Lon</th>
+        </tr></thead>
+        <tbody>` + rows.map(r => `
+          <tr onclick="selectSite('${r.key}', true)">
+            <td>${r.siteId}</td>
+            <td class="${r.network === 'CASTNET' ? 'net-cast' : 'net-ntn'}">${r.network}</td>
+            <td>${r.metric}</td>
+            <td>${r.pct}%</td>
+            <td>${r.bracket}</td>
+            <td>${r.lat}</td>
+            <td>${r.lon}</td>
+          </tr>`).join('') + `
+        </tbody></table>`;
+    }
     function buildOverviewMap() {
       overviewMarkers.forEach(m => overviewMap.removeLayer(m));
       overviewMarkers = [];
       let shown = 0;
+      const listRows = [];
       Object.keys(siteRegistry).forEach(key => {
         const site = siteRegistry[key];
         const castIds = siteIds(site, 'CASTNET');
@@ -1206,9 +1298,24 @@
         marker.on('click', () => selectSite(key, true));
         overviewMarkers.push(marker);
         shown++;
+        ids.forEach(id => {
+          const one = getCompleteness(network, id, overviewMetric);
+          if (!matchesOverviewBracket(one.bracket) && ids.length > 1) return;
+          listRows.push({
+            key,
+            siteId: id,
+            network,
+            metric: overviewMetric,
+            pct: one.pct,
+            bracket: one.bracket,
+            lat: site.lat.toFixed(4),
+            lon: site.lon.toFixed(4)
+          });
+        });
       });
+      renderOverviewSiteList(listRows);
       document.getElementById('overview-count').textContent =
-        `${shown} location(s) · network: ${overviewNetwork} · metric: ${overviewMetric} · bracket: ${bracketLabel()}`;
+        `${shown} location(s) · ${listRows.length} site ID(s) · network: ${overviewNetwork} · metric: ${overviewMetric} · bracket: ${bracketLabel()}`;
       if (overviewMarkers.length) {
         overviewMap.fitBounds(L.featureGroup(overviewMarkers).getBounds().pad(0.12));
       }
