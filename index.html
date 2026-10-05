@@ -1420,7 +1420,7 @@
         const metric = (typeof overviewMetric !== 'undefined') ? overviewMetric : 'CHEM';
         const net = (typeof overviewNetwork !== 'undefined') ? overviewNetwork : 'ALL';
         const br = (typeof bracketLabel === 'function') ? bracketLabel() : 'ALL';
-        ctx.fillText('Legend (below map, does not cover points) · ' + net + ' · ' + metric + ' · bracket ' + br, 12, 18);
+        ctx.fillText('Legend · ' + net + ' · ' + metric + ' · bracket ' + br, 12, 18);
         ctx.fillStyle = '#aaa';
         ctx.font = '12px Consolas, monospace';
         ctx.fillText('CASTNET (dry)', 12, 42);
