@@ -1396,6 +1396,83 @@
       }
       return snap;
     }
+    function drawSwatch(ctx, x, y, color, label) {
+      ctx.fillStyle = color;
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth = 1;
+      ctx.fillRect(x, y, 18, 12);
+      ctx.strokeRect(x, y, 18, 12);
+      ctx.fillStyle = '#ddd';
+      ctx.font = '12px Consolas, monospace';
+      ctx.fillText(label, x + 24, y + 11);
+    }
+    function buildMapLegendCanvas(mapDivId, width) {
+      const h = mapDivId === 'overview-map' ? 92 : 56;
+      const c = document.createElement('canvas');
+      c.width = width;
+      c.height = h;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#0a0a0a';
+      ctx.fillRect(0, 0, width, h);
+      ctx.fillStyle = '#fff';
+      ctx.font = '13px Consolas, monospace';
+      if (mapDivId === 'overview-map') {
+        const metric = (typeof overviewMetric !== 'undefined') ? overviewMetric : 'CHEM';
+        const net = (typeof overviewNetwork !== 'undefined') ? overviewNetwork : 'ALL';
+        const br = (typeof bracketLabel === 'function') ? bracketLabel() : 'ALL';
+        ctx.fillText('Legend (below map, does not cover points) · ' + net + ' · ' + metric + ' · bracket ' + br, 12, 18);
+        ctx.fillStyle = '#aaa';
+        ctx.font = '12px Consolas, monospace';
+        ctx.fillText('CASTNET (dry)', 12, 42);
+        ctx.fillText('NTN (wet)', 12, 68);
+        const labels = [['0-25', '0–25%'], ['25-50', '25–50%'], ['50-75', '50–75%'], ['75-100', '75–100%']];
+        labels.forEach((pair, i) => {
+          const x = 150 + i * 150;
+          drawSwatch(ctx, x, 32, (COMPLETENESS_COLORS.CASTNET || {})[pair[0]] || '#888', pair[1]);
+          drawSwatch(ctx, x, 58, (COMPLETENESS_COLORS.NTN || {})[pair[0]] || '#888', pair[1]);
+        });
+        ctx.fillStyle = '#888';
+        ctx.fillText('Darker = higher completeness', 760, 18);
+      } else {
+        ctx.fillText('Legend (below map, does not cover points)', 12, 18);
+        drawSwatch(ctx, 12, 32, '#ffffff', 'site (unselected)');
+        ctx.beginPath();
+        ctx.arc(250, 38, 7, 0, Math.PI * 2);
+        ctx.fillStyle = '#2ecc71';
+        ctx.fill();
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#00ffff';
+        ctx.stroke();
+        ctx.fillStyle = '#ddd';
+        ctx.font = '12px Consolas, monospace';
+        ctx.fillText('selected (green fill, cyan ring)', 266, 43);
+      }
+      return c;
+    }
+    function composeMapWithLegend(snap, mapDivId) {
+      const legend = buildMapLegendCanvas(mapDivId, snap.width);
+      const gap = 8;
+      const out = document.createElement('canvas');
+      out.width = snap.width;
+      out.height = snap.height + gap + legend.height;
+      const ctx = out.getContext('2d');
+      ctx.fillStyle = '#0a0a0a';
+      ctx.fillRect(0, 0, out.width, out.height);
+      const img = new Image();
+      return new Promise((resolve, reject) => {
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0);
+          ctx.drawImage(legend, 0, snap.height + gap);
+          resolve({
+            dataUrl: out.toDataURL('image/png', 1.0),
+            width: out.width,
+            height: out.height
+          });
+        };
+        img.onerror = () => reject(new Error('Could not compose legend'));
+        img.src = snap.dataUrl;
+      });
+    }
     async function exportMapToPdf(leafletMap, mapDivId, filenameBase, statusElId) {
       if (!window.jspdf) { alert('jsPDF not loaded.'); return; }
       const btn = document.activeElement;
@@ -1403,14 +1480,18 @@
       if (btn && btn.tagName === 'BUTTON') { btn.disabled = true; btn.textContent = '[ EXPORTING… ]'; }
       try {
         const snap = await captureMapView(leafletMap, mapDivId, statusElId);
+        const composed = await composeMapWithLegend(snap, mapDivId);
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter' });
         const pageW = pdf.internal.pageSize.getWidth();
         const pageH = pdf.internal.pageSize.getHeight();
         const margin = 24;
-        const w = pageW - margin * 2;
-        const h = Math.min((snap.height * w) / snap.width, pageH - margin * 2);
-        pdf.addImage(snap.dataUrl, 'PNG', margin, margin, w, h);
+        const maxW = pageW - margin * 2;
+        const maxH = pageH - margin * 2;
+        let w = maxW;
+        let h = (composed.height * w) / composed.width;
+        if (h > maxH) { h = maxH; w = (composed.width * h) / composed.height; }
+        pdf.addImage(composed.dataUrl, 'PNG', margin, margin, w, h);
         pdf.save(stampName(filenameBase) + '.pdf');
       } catch (err) {
         console.error(err);
