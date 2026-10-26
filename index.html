@@ -785,6 +785,8 @@
             <button type="button" onclick="resetCombineColorsToDefault()">[ RESET COLORS ]</button>
             <button type="button" onclick="showAllCombineSeries()">[ SHOW ALL ]</button>
             <button type="button" onclick="hideAllCombineSeries()">[ HIDE ALL ]</button>
+            <button type="button" id="btn-combine-impute" onclick="toggleCombineImputation()">[ SIMPLE IMPUTATION ]</button>
+            <span style="color:#888;font-size:11px;">green line · green dots = imputed</span>
           </div>
         </div>
         <div class="trend-stats" id="trend-stats-combine">
@@ -876,6 +878,7 @@
     let combineSeriesMeta = [];
     let combineColors = {}; // key -> hex color user chose
     let combineVisibility = {}; // key -> true (visible) / false (hidden)
+    let combineShowImputed = false;
     let matchRows = [];
     const mapSnapshots = { 'overview-map': null, 'map': null };
 
@@ -3796,6 +3799,24 @@ function onCombineCheck(network, siteId, el) {
       }
       return mapObj;
     }
+    function getImputedDateMap(network, siteId, variable) {
+      const values = {};
+      const flags = {};
+      const bundle = getImputedBundle(network, siteId);
+      if (!bundle || !bundle.DATEON) return { values, flags };
+      const varKey = String(variable || '').replace(/^variable_/, '');
+      const impArr = bundle[varKey] || bundle['variable_' + varKey] || [];
+      const flagsArr = bundle.flags || [];
+      for (let i = 0; i < bundle.DATEON.length; i++) {
+        const d = bundle.DATEON[i];
+        if (!d) continue;
+        const v = impArr[i];
+        values[d] = (v === null || v === undefined || v === '' || Number.isNaN(Number(v)))
+          ? null : Number(v);
+        flags[d] = !!flagsArr[i];
+      }
+      return { values, flags };
+    }
     function updateCombineStats(start, end) {
       const el = document.getElementById('trend-stats-combine');
       if (!el || !combineChart) return;
@@ -3882,16 +3903,19 @@ function onCombineCheck(network, siteId, el) {
     }
 
     function buildCombineDatasetsFromMeta() {
-      return combineSeriesMeta.map(m => {
+      const datasets = [];
+      combineSeriesMeta.forEach(m => {
         const color = readCombineColorFromUI(m.key) || combineColors[m.key] || m.defaultColor;
         combineColors[m.key] = color;
         const visible = readCombineVisibilityFromUI(m.key);
         combineVisibility[m.key] = visible;
-        return {
+        datasets.push({
           label: m.label,
           data: m.data,
           borderColor: color,
           backgroundColor: color,
+          pointBackgroundColor: color,
+          pointBorderColor: color,
           borderWidth: 1.2,
           pointRadius: 2,
           pointHoverRadius: 4,
@@ -3899,8 +3923,42 @@ function onCombineCheck(network, siteId, el) {
           tension: 0,
           spanGaps: false,
           hidden: !visible
-        };
+        });
+        if (combineShowImputed && m.imputedData && m.imputedData.some(v => v != null)) {
+          const flags = m.imputedFlags || [];
+          const pointColors = m.imputedData.map((v, i) => flags[i] ? '#2ecc71' : color);
+          const pointRadii = m.imputedData.map((v, i) => flags[i] ? 3 : 2);
+          const short = m.label.replace(/\s*\([^)]*\)\s*$/, '');
+          datasets.push({
+            label: short + ' imputed',
+            data: m.imputedData,
+            borderColor: '#2ecc71',
+            backgroundColor: '#2ecc71',
+            pointBackgroundColor: pointColors,
+            pointBorderColor: pointColors,
+            pointRadius: pointRadii,
+            pointHoverRadius: 5,
+            pointHitRadius: 6,
+            borderWidth: 1.2,
+            tension: 0,
+            spanGaps: false,
+            hidden: !visible
+          });
+        }
       });
+      return datasets;
+    }
+    function toggleCombineImputation() {
+      if (!combineChart || !combineSeriesMeta.length) {
+        alert('Run [ COMBINE STATISTICAL-TRENDING ] first.');
+        return;
+      }
+      combineShowImputed = !combineShowImputed;
+      const btn = document.getElementById('btn-combine-impute');
+      if (btn) btn.classList.toggle('active-impute', combineShowImputed);
+      combineChart.data.datasets = buildCombineDatasetsFromMeta();
+      combineChart.update('none');
+      applyCombineWindow();
     }
 
     function toggleCombineSeriesVisibility(key, isOn) {
@@ -3986,16 +4044,21 @@ function onCombineCheck(network, siteId, el) {
         alert('Check one or more species on at least one SITE_ID row under COMBINE PARAMETERS.');
         return;
       }
-      const seriesMaps = entries.map(e => ({
-        ...e, map: getSeriesMap(e.network, e.siteId, e.variable)
-      }));
-      const allDates = Array.from(new Set(seriesMaps.flatMap(s => Object.keys(s.map)))).sort();
+      const seriesMaps = entries.map(e => {
+        const imp = getImputedDateMap(e.network, e.siteId, e.variable);
+        return { ...e, map: getSeriesMap(e.network, e.siteId, e.variable), imp };
+      });
+      const allDates = Array.from(new Set(
+        seriesMaps.flatMap(s => Object.keys(s.map).concat(Object.keys(s.imp.values || {})))
+      )).sort();
       if (!allDates.length) { alert('No time-series data for selected rows.'); return; }
 
       let castIdx = 0, ntnIdx = 0;
       combineSeriesMeta = [];
       seriesMaps.forEach(s => {
-        if (!Object.keys(s.map).length) return;
+        const hasOrig = Object.keys(s.map).length > 0;
+        const hasImp = Object.keys((s.imp && s.imp.values) || {}).length > 0;
+        if (!hasOrig && !hasImp) return;
         const isCast = s.network === 'CASTNET';
         const idx = isCast ? castIdx++ : ntnIdx++;
         const defaultColor = defaultCombineColor(s.network, idx);
@@ -4010,6 +4073,8 @@ function onCombineCheck(network, siteId, el) {
           variable: s.variable,
           label: `${s.network} ${s.siteId} ${s.variable} (${unit})`,
           data: allDates.map(d => s.map[d] !== undefined ? s.map[d] : null),
+          imputedData: allDates.map(d => (s.imp.values && d in s.imp.values) ? s.imp.values[d] : null),
+          imputedFlags: allDates.map(d => !!(s.imp.flags && s.imp.flags[d])),
           defaultColor
         });
       });
@@ -4019,6 +4084,8 @@ function onCombineCheck(network, siteId, el) {
       const panel = document.getElementById('trend-panel-combine');
       panel.classList.add('visible');
       renderCombineColorPickers(combineSeriesMeta);
+      const impBtn = document.getElementById('btn-combine-impute');
+      if (impBtn) impBtn.classList.toggle('active-impute', combineShowImputed);
 
       const idList = entries.map(e => e.siteId).join(' / ');
       const varList = [...new Set(entries.map(e => e.variable))].join(', ');
@@ -4165,6 +4232,9 @@ function onCombineCheck(network, siteId, el) {
       combineSeriesMeta = [];
       combineColors = {};
       combineVisibility = {};
+      combineShowImputed = false;
+      const impBtn = document.getElementById('btn-combine-impute');
+      if (impBtn) impBtn.classList.remove('active-impute');
       matchRows = [];
       destroyAllSiteCharts();
       const crows = document.getElementById('combine-color-rows');
@@ -4220,40 +4290,32 @@ function onCombineCheck(network, siteId, el) {
       el.innerHTML = 'This public URL has been opened <b>' + pretty +
         '</b> times <span style="color:#666;">(count tied to this link, not the code version)</span>';
     }
-    function parseCountFromSvg(svg) {
-      if (!svg) return null;
-      const matches = String(svg).match(/>\s*([\d,]+)\s*</g) || [];
-      const nums = matches.map(s => s.replace(/[^\d]/g, '')).filter(Boolean).map(Number);
-      if (!nums.length) {
-        const m = String(svg).match(/(\d[\d,]{0,12})/);
-        return m ? Number(String(m[1]).replace(/,/g, '')) : null;
+    function counterKeyFromUrl(url) {
+      try {
+        const u = new URL(url);
+        let key = (u.host + u.pathname).toLowerCase();
+        key = key.replace(/\/index\.html$/i, '').replace(/\/$/, '');
+        key = key.replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '');
+        return (key || 'gis-tdep-root').slice(0, 80);
+      } catch (e) {
+        return 'gis-tdep-local';
       }
-      return nums[nums.length - 1];
     }
     async function recordPublicUrlHit() {
       const url = canonicalPublicUrl();
-      const sessionKey = 'gis_tdep_hit_' + url;
+      const key = counterKeyFromUrl(url);
+      const sessionKey = 'gis_tdep_hit_' + key;
       const already = sessionStorage.getItem(sessionKey) === '1';
-      const encoded = encodeURIComponent(url);
-      const incrJson = 'https://hits.seeyoufarm.com/api/count/incr/json/?url=' + encoded;
-      const keepJson = 'https://hits.seeyoufarm.com/api/count/keep/json/?url=' + encoded;
-      const incrSvg  = 'https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=' + encoded;
-      const viewSvg  = 'https://hits.seeyoufarm.com/api/count/view/badge.svg?url=' + encoded;
+      const base = 'https://abacus.jasoncameron.dev';
+      const endpoint = already
+        ? (base + '/get/gis-tdep/' + encodeURIComponent(key))
+        : (base + '/hit/gis-tdep/' + encodeURIComponent(key));
       try {
-        let n = null;
-        try {
-          const res = await fetch(already ? keepJson : incrJson, { method: 'GET', cache: 'no-store' });
-          if (res.ok) {
-            const data = await res.json();
-            n = data.count ?? data.totalCount ?? data.total ?? data.value ??
-                (data.data && (data.data.count || data.data.totalCount));
-          }
-        } catch (e) {}
-        if (n == null) {
-          const res = await fetch(already ? viewSvg : incrSvg, { method: 'GET', cache: 'no-store' });
-          n = parseCountFromSvg(await res.text());
-        }
-        if (n == null) throw new Error('no count');
+        const res = await fetch(endpoint, { method: 'GET', cache: 'no-store', mode: 'cors' });
+        if (!res.ok) throw new Error('counter HTTP ' + res.status);
+        const data = await res.json();
+        const n = data.value ?? data.count ?? data.total;
+        if (n == null || Number.isNaN(Number(n))) throw new Error('no count in response');
         sessionStorage.setItem(sessionKey, '1');
         setVisitCountText(n);
       } catch (e) {
