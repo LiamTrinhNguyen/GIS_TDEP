@@ -367,7 +367,8 @@
       border-color: #145a32;
     }
     .impute-legend .dot.seasonal { background: #145a32; }
-    .impute-bar button.active-impute-enh {
+    .impute-bar button.active-impute-enh,
+    button.active-impute-enh {
       background: #2c1a3a;
       box-shadow: 0 0 6px #9b59b6;
       border-color: #9b59b6;
@@ -787,6 +788,8 @@
             <button type="button" onclick="hideAllCombineSeries()">[ HIDE ALL ]</button>
             <button type="button" id="btn-combine-impute" onclick="toggleCombineImputation()">[ SIMPLE IMPUTATION ]</button>
             <span style="color:#888;font-size:11px;">green line · green dots = imputed</span>
+            <button type="button" id="btn-combine-impute-enh" onclick="toggleCombineEnhancedImputation()">[ ENHANCED IMPUTATION ]</button>
+            <span style="color:#888;font-size:11px;">purple line · purple dots = enhanced imputed</span>
           </div>
         </div>
         <div class="trend-stats" id="trend-stats-combine">
@@ -879,6 +882,7 @@
     let combineColors = {}; // key -> hex color user chose
     let combineVisibility = {}; // key -> true (visible) / false (hidden)
     let combineShowImputed = false;
+    let combineShowImputedEnh = false;
     let matchRows = [];
     const mapSnapshots = { 'overview-map': null, 'map': null };
 
@@ -3799,10 +3803,9 @@ function onCombineCheck(network, siteId, el) {
       }
       return mapObj;
     }
-    function getImputedDateMap(network, siteId, variable) {
+    function bundleToDateMap(bundle, variable) {
       const values = {};
       const flags = {};
-      const bundle = getImputedBundle(network, siteId);
       if (!bundle || !bundle.DATEON) return { values, flags };
       const varKey = String(variable || '').replace(/^variable_/, '');
       const impArr = bundle[varKey] || bundle['variable_' + varKey] || [];
@@ -3816,6 +3819,12 @@ function onCombineCheck(network, siteId, el) {
         flags[d] = !!flagsArr[i];
       }
       return { values, flags };
+    }
+    function getImputedDateMap(network, siteId, variable) {
+      return bundleToDateMap(getImputedBundle(network, siteId), variable);
+    }
+    function getEnhancedImputedDateMap(network, siteId, variable) {
+      return bundleToDateMap(getImputedEnhancedBundle(network, siteId), variable);
     }
     function updateCombineStats(start, end) {
       const el = document.getElementById('trend-stats-combine');
@@ -3945,6 +3954,27 @@ function onCombineCheck(network, siteId, el) {
             hidden: !visible
           });
         }
+        if (combineShowImputedEnh && m.imputedEnhData && m.imputedEnhData.some(v => v != null)) {
+          const flags = m.imputedEnhFlags || [];
+          const pointColors = m.imputedEnhData.map((v, i) => flags[i] ? '#9b59b6' : color);
+          const pointRadii = m.imputedEnhData.map((v, i) => flags[i] ? 3 : 2);
+          const short = m.label.replace(/\s*\([^)]*\)\s*$/, '');
+          datasets.push({
+            label: short + ' enhanced imputed',
+            data: m.imputedEnhData,
+            borderColor: '#9b59b6',
+            backgroundColor: '#9b59b6',
+            pointBackgroundColor: pointColors,
+            pointBorderColor: pointColors,
+            pointRadius: pointRadii,
+            pointHoverRadius: 5,
+            pointHitRadius: 6,
+            borderWidth: 1.2,
+            tension: 0,
+            spanGaps: false,
+            hidden: !visible
+          });
+        }
       });
       return datasets;
     }
@@ -3956,6 +3986,18 @@ function onCombineCheck(network, siteId, el) {
       combineShowImputed = !combineShowImputed;
       const btn = document.getElementById('btn-combine-impute');
       if (btn) btn.classList.toggle('active-impute', combineShowImputed);
+      combineChart.data.datasets = buildCombineDatasetsFromMeta();
+      combineChart.update('none');
+      applyCombineWindow();
+    }
+    function toggleCombineEnhancedImputation() {
+      if (!combineChart || !combineSeriesMeta.length) {
+        alert('Run [ COMBINE STATISTICAL-TRENDING ] first.');
+        return;
+      }
+      combineShowImputedEnh = !combineShowImputedEnh;
+      const btn = document.getElementById('btn-combine-impute-enh');
+      if (btn) btn.classList.toggle('active-impute-enh', combineShowImputedEnh);
       combineChart.data.datasets = buildCombineDatasetsFromMeta();
       combineChart.update('none');
       applyCombineWindow();
@@ -4046,10 +4088,13 @@ function onCombineCheck(network, siteId, el) {
       }
       const seriesMaps = entries.map(e => {
         const imp = getImputedDateMap(e.network, e.siteId, e.variable);
-        return { ...e, map: getSeriesMap(e.network, e.siteId, e.variable), imp };
+        const impEnh = getEnhancedImputedDateMap(e.network, e.siteId, e.variable);
+        return { ...e, map: getSeriesMap(e.network, e.siteId, e.variable), imp, impEnh };
       });
       const allDates = Array.from(new Set(
-        seriesMaps.flatMap(s => Object.keys(s.map).concat(Object.keys(s.imp.values || {})))
+        seriesMaps.flatMap(s => Object.keys(s.map)
+          .concat(Object.keys(s.imp.values || {}))
+          .concat(Object.keys(s.impEnh.values || {})))
       )).sort();
       if (!allDates.length) { alert('No time-series data for selected rows.'); return; }
 
@@ -4058,7 +4103,8 @@ function onCombineCheck(network, siteId, el) {
       seriesMaps.forEach(s => {
         const hasOrig = Object.keys(s.map).length > 0;
         const hasImp = Object.keys((s.imp && s.imp.values) || {}).length > 0;
-        if (!hasOrig && !hasImp) return;
+        const hasEnh = Object.keys((s.impEnh && s.impEnh.values) || {}).length > 0;
+        if (!hasOrig && !hasImp && !hasEnh) return;
         const isCast = s.network === 'CASTNET';
         const idx = isCast ? castIdx++ : ntnIdx++;
         const defaultColor = defaultCombineColor(s.network, idx);
@@ -4075,6 +4121,8 @@ function onCombineCheck(network, siteId, el) {
           data: allDates.map(d => s.map[d] !== undefined ? s.map[d] : null),
           imputedData: allDates.map(d => (s.imp.values && d in s.imp.values) ? s.imp.values[d] : null),
           imputedFlags: allDates.map(d => !!(s.imp.flags && s.imp.flags[d])),
+          imputedEnhData: allDates.map(d => (s.impEnh.values && d in s.impEnh.values) ? s.impEnh.values[d] : null),
+          imputedEnhFlags: allDates.map(d => !!(s.impEnh.flags && s.impEnh.flags[d])),
           defaultColor
         });
       });
@@ -4086,6 +4134,8 @@ function onCombineCheck(network, siteId, el) {
       renderCombineColorPickers(combineSeriesMeta);
       const impBtn = document.getElementById('btn-combine-impute');
       if (impBtn) impBtn.classList.toggle('active-impute', combineShowImputed);
+      const enhBtn = document.getElementById('btn-combine-impute-enh');
+      if (enhBtn) enhBtn.classList.toggle('active-impute-enh', combineShowImputedEnh);
 
       const idList = entries.map(e => e.siteId).join(' / ');
       const varList = [...new Set(entries.map(e => e.variable))].join(', ');
@@ -4233,8 +4283,11 @@ function onCombineCheck(network, siteId, el) {
       combineColors = {};
       combineVisibility = {};
       combineShowImputed = false;
+      combineShowImputedEnh = false;
       const impBtn = document.getElementById('btn-combine-impute');
       if (impBtn) impBtn.classList.remove('active-impute');
+      const enhBtn = document.getElementById('btn-combine-impute-enh');
+      if (enhBtn) enhBtn.classList.remove('active-impute-enh');
       matchRows = [];
       destroyAllSiteCharts();
       const crows = document.getElementById('combine-color-rows');
